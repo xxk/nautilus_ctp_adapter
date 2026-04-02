@@ -21,6 +21,8 @@ External projects are allowed only as:
 2. reference implementations for current wrapper behavior
 3. temporary validation inputs while the repository-owned native boundary is still being stood up
 
+Managed .NET assemblies in the pack may remain as bootstrap artifacts, but they are not the ongoing mainline boundary for this repository.
+
 ## Expected Runtime Contents
 
 Expected runtime contents under `vendor/ctp/bin/`:

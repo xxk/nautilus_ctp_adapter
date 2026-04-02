@@ -10,6 +10,7 @@ from .loader import (
     find_native_pack_dir,
 )
 from .md_ctypes import CtpMdApi, NativeLoginResponseView, NativeTickView
+from .td_ctypes import CtpTdApi, NativeTdLoginResponseView
 from .manifest import (
     OPTIONAL_COMPAT_DLLS,
     REPO_OWNED_CTP_NATIVE_EXPORTS,
@@ -20,8 +21,10 @@ from .manifest import (
 __all__ = [
     "BOOTSTRAP_MANAGED_DLLS",
     "CtpMdApi",
+    "CtpTdApi",
     "REQUIRED_NATIVE_DLLS",
     "NativeLoginResponseView",
+    "NativeTdLoginResponseView",
     "NativeTickView",
     "OPTIONAL_COMPAT_DLLS",
     "REPO_OWNED_CTP_NATIVE_EXPORTS",

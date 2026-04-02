@@ -26,6 +26,7 @@
 1. 真实账户登录参数、依赖包和前置地址如何在本仓稳定落地
 2. 仓内 runtime 能否接住真实 MD/TD 登录流程
 3. Nautilus 后续接线所需的最小 live smoke 基线是否存在
+4. 主线路径必须收敛到“本项目维护的本地 C wrapper”，不能继续演化成 C# 托管桥
 
 这个 topic 明确不负责：
 
@@ -42,7 +43,7 @@
 
 1. 账号 `025292` 的 live config 路径收敛，且敏感值不进入 tracked 文件
 2. 仓内维护的 native pack / loader / `ctpnative` 口径冻结，且 C wrapper 归属明确在本项目
-3. `rb2610` 行情可通过正式目标路径复现，不再依赖临时 C# host 作为长期方案
+3. `rb2610` 行情可通过正式目标路径复现，不再依赖临时 C# host 或托管桥作为长期方案
 4. TD 登录链路的成功口径、失败口径和缺失配置项被明确写清
 5. 下一个 topic 可以在“已知 live 连通成立”的前提下继续做 InstrumentProvider 和 Nautilus 数据接线
 
@@ -106,6 +107,7 @@
 3. Python/Rust 主线能够接住真实 MD 登录与 `rb2610` 订阅
 4. TD 登录 readiness 的缺口被明确收敛，而不是继续停留在“可能是配置问题”的模糊状态
 5. Nautilus-targeted adapter 路径成为正式方向，临时诊断工具不再承担长期实现职责
+6. 托管 C# 层只允许保留为历史证据，不再作为新实现的允许落点
 
 当前已知最关键的 TD readiness 结论：
 

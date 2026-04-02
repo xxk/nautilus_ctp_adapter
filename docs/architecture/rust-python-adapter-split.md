@@ -63,6 +63,22 @@ Current market-data bootstrap direction:
 4. `rb2610`-style live subscription should enter the system through this mainline bootstrap, not through a temporary host
 5. The current repository-owned Python smoke also proves `ctp_native.dll` can deliver `login_succeeded` and `tick` into the runtime bridge without a temporary C# host
 
+## Mainline Restriction
+
+This repository must not use a C# managed bridge as the continuing implementation path.
+
+Allowed:
+
+1. repository-owned local C wrapper
+2. Rust core on top of that wrapper
+3. Python glue for Nautilus integration
+
+Not allowed as the mainline:
+
+1. extending the temporary C# smoke host
+2. re-centering adapter work around `CTPProviderSwig.dll`
+3. treating managed wrappers as the long-term production boundary
+
 See [runtime-performance-guidelines.md](/D:/Nautilus/nautilus_ctp_adapter/docs/architecture/runtime-performance-guidelines.md).
 
 ## Non-Goal

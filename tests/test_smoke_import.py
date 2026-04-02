@@ -11,6 +11,7 @@ from nautilus_ctp_adapter.native.loader import (
     candidate_native_paths,
 )
 from nautilus_ctp_adapter.native.md_ctypes import CtpMdApi
+from nautilus_ctp_adapter.native.td_ctypes import CtpTdApi
 from nautilus_ctp_adapter.native.manifest import (
     OPTIONAL_COMPAT_DLLS,
     REPO_OWNED_CTP_NATIVE_EXPORTS,
@@ -309,6 +310,18 @@ def test_ctypes_md_api_loads_repo_owned_md_exports() -> None:
     root = Path(__file__).resolve().parents[1]
     api = CtpMdApi.load(root)
     flow_path = root / "var" / "test_md_api_flow"
+    flow_path.mkdir(parents=True, exist_ok=True)
+    handle = api.create(flow_path)
+    try:
+        assert handle > 0
+    finally:
+        api.dispose(handle)
+
+
+def test_ctypes_td_api_loads_repo_owned_td_exports() -> None:
+    root = Path(__file__).resolve().parents[1]
+    api = CtpTdApi.load(root)
+    flow_path = root / "var" / "test_td_api_flow"
     flow_path.mkdir(parents=True, exist_ok=True)
     handle = api.create(flow_path)
     try:
