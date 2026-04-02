@@ -1,0 +1,3 @@
+[workspace]
+members = ["ctp_runtime_core"]
+resolver = "2"

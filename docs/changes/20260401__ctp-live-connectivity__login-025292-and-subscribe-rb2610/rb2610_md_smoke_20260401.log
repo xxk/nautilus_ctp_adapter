@@ -1,0 +1,216 @@
+TD init => 0 [tcp://106.75.173.28:51205]
+MD init => 0 [tcp://106.75.173.28:51213]
+TD authenticate => 0
+TD login request => 0
+MD login request => 0
+MD login callback: success=True error=0 message=
+Post-login delay: 10s
+TD disconnected: reason=4097
+TD disconnected: reason=4097
+TD disconnected: reason=4097
+TD disconnected: reason=4097
+TD disconnected: reason=4097
+TD disconnected: reason=4097
+TD disconnected: reason=4097
+TD disconnected: reason=4097
+TD disconnected: reason=4097
+TD disconnected: reason=4097
+MD subscribe => 0 [rb2610]
+TICK rb2610 last=3137 bid=3136 ask=3137 ts=1775052501781380
+SUCCESS first matching tick => rb2610 last=3137 bid=3136 ask=3137 ts=1775052501781380
+TD disconnected: reason=4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+MD Front Connected
+MD Auto-login: 0155/025292
+MD OnRspUserLogin called: pRspInfo=000000C359C7F600, pRspUserLogin=000000C359C7F660
+  ErrorID=0, ErrorMsg=CTP:No Error
+  FrontID=0, SessionID=0, MaxOrderRef=
+MD Login Success: FrontID=0, SessionID=0
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Failed: ErrorID=63
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FE3A8][650838017][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FE3A8][650838018][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FE3A8][650903555][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FE4F8][650903556][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FD998][650903557][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FDC38][650969094][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FE488][650969095][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FDC38][650969096][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FE3A8][651034633][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FD928][651034634][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FE3A8][651034635][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FDF48][651100172][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FE418][651100173][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FD928][651100174][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FD928][651165711][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FD928][651165712][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FDFB8][651165713][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FE3A8][651231250][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FE4F8][651231251][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FD998][651231252][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FDC38][651296789][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FE4F8][651296790][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FDF48][651296791][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FE488][651362328][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FD928][651362329][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FD998][651362330][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FE3A8][651427867][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FE3A8][651427868][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FDF48][651427869][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FE488][651493406][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FDC38][651493407][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FDC38][651558944][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FD928][651558945][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FE3A8][651558946][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FDC38][651624483][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FDF48][651624484][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FDF48][651624485][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000021F805FDF48][651624486][ 4097]

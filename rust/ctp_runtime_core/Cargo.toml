@@ -1,0 +1,17 @@
+[package]
+name = "ctp_runtime_core"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Platform-neutral Rust runtime core for CTP adapters."
+
+[lib]
+name = "ctp_runtime_core"
+path = "src/lib.rs"
+
+[features]
+default = []
+python = []
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }

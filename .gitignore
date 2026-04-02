@@ -1,0 +1,16 @@
+__pycache__/
+.pytest_cache/
+.venv/
+*.pyc
+*.pyo
+*.pyd
+
+cfgs/local/
+vendor/ctp/bin/
+scripts/ctp_live_smoke_host/bin/
+scripts/ctp_live_smoke_host/obj/
+
+rust/target/
+
+src/*.egg-info/
+src/**/*.egg-info/

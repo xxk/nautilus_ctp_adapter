@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="CTPProviderSwig">
+      <HintPath>..\..\vendor\ctp\bin\CTPProviderSwig.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="CTPProviderSwig.Core">
+      <HintPath>..\..\vendor\ctp\bin\CTPProviderSwig.Core.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="iTrading.Core">
+      <HintPath>..\..\vendor\ctp\bin\iTrading.Core.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="iTradingQuant">
+      <HintPath>..\..\vendor\ctp\bin\iTradingQuant.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\vendor\ctp\bin\ctp_native.dll" Link="ctp_native.dll" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\vendor\ctp\bin\thostmduserapi_se.dll" Link="thostmduserapi_se.dll" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\vendor\ctp\bin\thosttraderapi_se.dll" Link="thosttraderapi_se.dll" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\vendor\ctp\bin\thostmduserapi.dll" Link="thostmduserapi.dll" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\vendor\ctp\bin\thosttraderapi.dll" Link="thosttraderapi.dll" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

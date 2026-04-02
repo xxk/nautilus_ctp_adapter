@@ -1,0 +1,23 @@
+{
+  "BrokerID": "0155",
+  "UserID": "025292",
+  "Password": "",
+  "ProductInfo": "iQuant",
+  "AppID": "client_iq_3.6.2",
+  "AuthCode": "",
+  "Pricer": "tcp://md-front.example:51213",
+  "Host": "tcp://td-front.example:51205",
+  "ProviderId": 45,
+  "PostLoginDelaySeconds": 10,
+  "ManagedAssemblyDir": "",
+  "NativePackDir": "",
+  "Instruments": ["rb2610"],
+  "ExecutionGuardrails": {
+    "Enabled": true,
+    "AllowedInstruments": ["c2609"],
+    "MaxOrderQty": 1,
+    "MaxNetPosition": 5,
+    "MaxSubmitPerMinute": 10,
+    "PriceMode": "best_level_1"
+  }
+}
