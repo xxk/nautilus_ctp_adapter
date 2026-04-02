@@ -36,6 +36,7 @@ class CtpExecutionGuardrails:
     max_net_position: int = 0
     max_submit_per_minute: int = 0
     price_mode: str = "best_level_1"
+    allow_live_order_smoke: bool = False
 
     @classmethod
     def from_dict(cls, values: dict[str, Any] | None) -> "CtpExecutionGuardrails":
@@ -57,6 +58,9 @@ class CtpExecutionGuardrails:
                 _first("max_submit_per_minute", "MaxSubmitPerMinute", default=0) or 0
             ),
             price_mode=str(_first("price_mode", "PriceMode", default="best_level_1")),
+            allow_live_order_smoke=_as_bool(
+                _first("allow_live_order_smoke", "AllowLiveOrderSmoke", default=False)
+            ),
         )
 
     def validate(self) -> list[str]:
@@ -177,6 +181,7 @@ class CtpAdapterConfig:
                 max_net_position=int(_env("EXECUTION_MAX_NET_POSITION", "0") or 0),
                 max_submit_per_minute=int(_env("EXECUTION_MAX_SUBMIT_PER_MINUTE", "0") or 0),
                 price_mode=_env("EXECUTION_PRICE_MODE", "best_level_1"),
+                allow_live_order_smoke=_as_bool(_env("EXECUTION_ALLOW_LIVE_ORDER_SMOKE", "")),
             ),
         )
 

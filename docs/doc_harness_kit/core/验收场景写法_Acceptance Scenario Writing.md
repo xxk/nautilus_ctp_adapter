@@ -52,6 +52,7 @@
 6. 外部系统中的可观测状态变化
 
 不推荐把测试结果当作 change 正式验收信号。`pytest`、`unittest`、`dotnet test` 适合证明 contract 或 function 被锁定，不适合单独证明“这个 change 已正式验收通过”。
+同样，mock、stub、fake、monkeypatch、伪造返回值也不能作为正式验收证据。
 
 不要写：
 
@@ -74,7 +75,7 @@
 
 如果一个场景同时验证太多行为，失败时通常无法快速定位根因。
 
-默认规则：**每个 change 至少 6 个正式验收场景**。推荐结构是 `3 success + 2 failure + 1 boundary`。若少于 6 个，必须在 `acceptance.md` 中写明豁免理由、风险边界与为什么仍足以判定通过。
+默认规则：**每个 change 正式验收场景不得少于 5 个，且至少要有 1 个 failure 场景**。推荐结构仍是 `3 success + 2 failure + 1 boundary`。若少于 5 个，或完全没有 failure 场景，必须在 `acceptance.md` 中写明豁免理由、风险边界与为什么仍足以判定通过。
 
 ---
 
@@ -96,5 +97,5 @@
 
 1. 正式验收只接受真实入口、真实环境、真实产物、真实记录与真实证据。
 2. test 只用于锁定 contract 与 function，属于开发质量证据，不等于 change 验收证据。
-3. mock、stub、monkeypatch、假对象、伪造返回值都不能单独构成正式验收通过。
+3. mock、stub、fake、monkeypatch、假对象、伪造返回值都不能单独构成正式验收通过。
 4. 如果当前只有 test 或局部预验证结果，必须在 `真实验收待办清单` 中明确还缺哪些真实执行步骤。

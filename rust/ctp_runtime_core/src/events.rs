@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CtpEventKind {
     Connected,
@@ -13,6 +15,7 @@ pub enum CtpEventKind {
     Position,
     Account,
     Instrument,
+    InstrumentEnd,
     InstrumentStatus,
     Error,
 }
@@ -25,4 +28,5 @@ pub struct CtpEvent {
     pub client_order_id: Option<String>,
     pub request_id: Option<String>,
     pub message: Option<String>,
+    pub payload: HashMap<String, String>,
 }

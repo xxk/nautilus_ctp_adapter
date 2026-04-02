@@ -10,7 +10,14 @@ from .loader import (
     find_native_pack_dir,
 )
 from .md_ctypes import CtpMdApi, NativeLoginResponseView, NativeTickView
-from .td_ctypes import CtpTdApi, NativeTdLoginResponseView
+from .td_ctypes import (
+    CtpTdApi,
+    NativeExecView,
+    NativeInstrumentView,
+    NativePositionView,
+    NativeTdLoginResponseView,
+    NativeTradingAccountView,
+)
 from .manifest import (
     OPTIONAL_COMPAT_DLLS,
     REPO_OWNED_CTP_NATIVE_EXPORTS,
@@ -23,8 +30,12 @@ __all__ = [
     "CtpMdApi",
     "CtpTdApi",
     "REQUIRED_NATIVE_DLLS",
+    "NativeExecView",
     "NativeLoginResponseView",
+    "NativeInstrumentView",
+    "NativePositionView",
     "NativeTdLoginResponseView",
+    "NativeTradingAccountView",
     "NativeTickView",
     "OPTIONAL_COMPAT_DLLS",
     "REPO_OWNED_CTP_NATIVE_EXPORTS",

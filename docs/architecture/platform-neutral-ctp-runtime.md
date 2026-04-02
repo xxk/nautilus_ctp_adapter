@@ -68,6 +68,9 @@ Current adapter-facing contract direction:
 
 1. `submit_command(command)`
 2. `drain_events(limit)`
+3. instrument query must remain a runtime contract, not a host-specific shortcut
+4. current query sequence is `QUERY_INSTRUMENTS -> INSTRUMENT* -> INSTRUMENT_END`
+5. exchange/symbol normalization should remain adapter-side, not leak host-specific naming into runtime raw records
 
 ## Performance Rule
 

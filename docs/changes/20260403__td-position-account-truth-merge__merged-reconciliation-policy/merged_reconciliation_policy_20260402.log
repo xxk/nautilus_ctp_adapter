@@ -1,0 +1,33 @@
+{"baseline": "td-merged-reconciliation-policy-v1", "account_id": "025292", "disposition": "manual_review_required", "position_count": 73, "observed_callback_count": 9, "historical_callback_count": 9, "current_session_callback_count": 0, "available_ratio": 0.213352, "margin_ratio": 0.781532, "findings": [{"code": "historical_callbacks_present", "severity": "warn", "action": "boundary_required", "metric": "historical_callback_count", "metric_value": 9, "threshold": 0, "message": "Merged snapshot still contains historical callback residue and must preserve that boundary."}, {"code": "available_ratio_warn", "severity": "warn", "action": "manual_review_required", "metric": "available_ratio", "metric_value": 0.213352, "threshold": 0.25, "message": "Available ratio is below the merged truth comfort threshold."}, {"code": "margin_ratio_warn", "severity": "warn", "action": "manual_review_required", "metric": "margin_ratio", "metric_value": 0.781532, "threshold": 0.75, "message": "Margin ratio is above the merged truth comfort threshold."}, {"code": "no_current_session_callbacks", "severity": "info", "action": "evidence_only", "metric": "current_session_callback_count", "metric_value": 0, "threshold": "> 0 optional", "message": "No callbacks were classified as belonging to the current TD session truth."}], "bridge_command_kinds": ["connect", "connect", "query_positions", "connect", "query_account"], "bridge_event_kinds": ["login_succeeded", "order", "order", "order", "trade", "order", "order", "order", "order", "order", "settlement_confirmed", "login_succeeded", "settlement_confirmed", "login_succeeded", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "login_succeeded", "settlement_confirmed", "login_succeeded", "account"]}
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000019753B81098][636289025][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000019753B81808][636551171][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000019753B80E68][636682245][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000019753B80CA8][637009928][ 4097]

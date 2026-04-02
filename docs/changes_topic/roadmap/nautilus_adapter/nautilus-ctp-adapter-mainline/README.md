@@ -2,8 +2,8 @@
 
 **创建日期**：2026-04-01
 **最后更新**：2026-04-02
-**状态**：进行中
-**进度**：Topic 2 / 5
+**状态**：已完成
+**进度**：Completed
 **topic-id**：nautilus-ctp-adapter-mainline
 **用途**：作为 `nautilus_ctp_adapter` 的总 roadmap，按多个 topic 推进“使用真实 CTP 账户、集中适配 Nautilus”的正式开发计划。
 
@@ -41,10 +41,10 @@
 | Topic | 状态 | 核心目标 | 说明 |
 | --- | --- | --- | --- |
 | Topic 1: `ctp-live-connectivity` | 已完成 | 真实账户连通、MD/TD 基础登录、`rb2610` 行情与最小 smoke 入口 | Topic 2-5 的 live/bootstrap 基线已冻结 |
-| Topic 2: `nautilus-instrument-provider` | 进行中 | 合约查询、符号映射、InstrumentProvider 正式落地 | 当前第一优先级 topic |
-| Topic 3: `nautilus-live-marketdata` | 未开始 | LiveDataClient、订阅恢复、批量事件出桥、Nautilus 数据侧 smoke | 把 Topic 1 的行情链路接进正式 Nautilus adapter |
-| Topic 4: `nautilus-live-execution` | 未开始 | TD auth/login、下单/撤单、订单状态机、LiveExecutionClient | 从“能连”升级到“能交易” |
-| Topic 5: `live-ops-and-reconciliation` | 未开始 | 启动对账、失败诊断、重连、运维脚本与实盘验收矩阵 | 补齐实盘长期可运维性 |
+| Topic 2: `nautilus-instrument-provider` | 已完成 | 合约查询、符号映射、InstrumentProvider 正式落地 | Topic 3 已可继承真实合约定义与 instrument smoke baseline |
+| Topic 3: `nautilus-live-marketdata` | 已完成 | LiveDataClient、订阅恢复、批量事件出桥、Nautilus 数据侧 smoke | `rb2610` 正式 marketdata smoke baseline 已冻结 |
+| Topic 4: `nautilus-live-execution` | 已完成 | TD auth/login、下单/撤单、订单状态机、LiveExecutionClient | execution runtime contract 与 order lifecycle smoke 已冻结 |
+| Topic 5: `live-ops-and-reconciliation` | 已完成 | 启动对账、失败诊断、重连、运维脚本与实盘验收矩阵 | ops/recovery/audit/reconciliation 初版矩阵已冻结 |
 
 ## 五、Topic 切换门槛
 
@@ -115,15 +115,21 @@
 
 ## 十一、AI-TASK-QUEUE
 
-**当前活动 Topic**：`nautilus-instrument-provider`
+**当前活动 Topic**：`live-ops-and-reconciliation`（已完成）
 
 - [x] `docs/changes_topic/roadmap/nautilus_adapter/ctp-live-connectivity/README.md`
 - [x] `docs/changes_topic/roadmap/nautilus_adapter/nautilus-instrument-provider/README.md`
-- [ ] `docs/changes_topic/roadmap/nautilus_adapter/nautilus-live-marketdata/README.md`
-- [ ] `docs/changes_topic/roadmap/nautilus_adapter/nautilus-live-execution/README.md`
-- [ ] `docs/changes_topic/roadmap/nautilus_adapter/live-ops-and-reconciliation/README.md`
+- [x] `docs/changes_topic/roadmap/nautilus_adapter/nautilus-live-marketdata/README.md`
+- [x] `docs/changes_topic/roadmap/nautilus_adapter/nautilus-live-execution/README.md`
+- [x] `docs/changes_topic/roadmap/nautilus_adapter/live-ops-and-reconciliation/README.md`
 
-**当前 next action**：创建并推进 `20260402__nautilus-instrument-provider__instrument-query-runtime-contract`，冻结 instrument query contract 与 runtime/query 边界。
+**当前 next action**：初版 mainline 已完成；若继续扩展，请新开下一轮 roadmap 或扩展 topic。
+
+## 十二、初版完成结论
+
+1. Topic 1-5 已全部收口。
+2. 本仓已具备 Nautilus 方向的 live bootstrap、instrument、marketdata、execution、ops/recovery/audit 最小基线。
+3. 当前完成口径是“初版 completed”，不是“完整自动化实盘运维全部完成”。
 
 ## 十二、不在本层解决的内容
 
@@ -138,3 +144,23 @@
 2. [Platform-neutral CTP runtime](/D:/Nautilus/nautilus_ctp_adapter/docs/architecture/platform-neutral-ctp-runtime.md)
 3. [Rust / Python adapter split](/D:/Nautilus/nautilus_ctp_adapter/docs/architecture/rust-python-adapter-split.md)
 4. [Runtime performance guidelines](/D:/Nautilus/nautilus_ctp_adapter/docs/architecture/runtime-performance-guidelines.md)
+
+## 十四、下一轮候选 Topic
+
+若继续围绕真实账户 `025292` 做功能开发，当前最推荐的新 topic 是：
+
+1. [position-account-query-baseline](/D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/roadmap/nautilus_adapter/position-account-query-baseline/README.md)
+2. [rust-ctp-runtime-cutover](/D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/roadmap/rust_ctp/rust-ctp-runtime-cutover/README.md)
+
+推荐原因：
+
+1. 它直接补当前功能空白
+2. 它只需要只读查询，不新增交易风险
+3. 它是完整自动对账的前置能力
+
+对于 `rust-ctp-runtime-cutover`，补充说明：
+
+1. 它不是新的业务功能 topic，而是 ownership / runtime path 的二期切换 topic。
+2. 它应在当前 active topic 与 startup truth / session rebuild 收口后再激活。
+3. 它的正式目标是把主线路径收敛到 `Python adapter -> PyO3 bridge -> Rust runtime -> repo-owned ctp_native -> CTP vendor DLL`。
+4. 统一口径：长期目标选 `rust-ctp`；实施路径先走 `rust-py-ctp` 式过渡，再切到 `rust-ctp ownership`。

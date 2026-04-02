@@ -1,0 +1,36 @@
+{"evidence_version": "td-merged-evidence-v1", "captured_at_utc": "2026-04-02T08:17:00Z", "account_id": "025292", "disposition": "manual_review_required", "position_count": 73, "observed_callback_count": 9, "historical_callback_count": 9, "current_session_callback_count": 0, "available_ratio": 0.213352, "margin_ratio": 0.781532, "manual_review_codes": ["available_ratio_warn", "margin_ratio_warn"], "boundary_codes": ["historical_callbacks_present"], "evidence_only_codes": ["no_current_session_callbacks"], "bridge_command_kinds": ["connect", "connect", "query_positions", "connect", "query_account"], "bridge_event_kinds": ["login_succeeded", "order", "order", "order", "trade", "order", "order", "order", "settlement_confirmed", "order", "order", "login_succeeded", "settlement_confirmed", "login_succeeded", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "login_succeeded", "settlement_confirmed", "login_succeeded", "account"]}
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+CThostFtdcUserApiImplBase::OnSessionDisconnected[00000210A1F1EBF8][636289025][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[00000210A1F1E808][636682244][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[00000210A1F1EDB8][636944390][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[00000210A1F1EB18][637075464][ 4097]

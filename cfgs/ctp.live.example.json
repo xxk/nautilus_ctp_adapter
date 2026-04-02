@@ -18,6 +18,7 @@
     "MaxOrderQty": 1,
     "MaxNetPosition": 5,
     "MaxSubmitPerMinute": 10,
-    "PriceMode": "best_level_1"
+    "PriceMode": "best_level_1",
+    "AllowLiveOrderSmoke": false
   }
 }

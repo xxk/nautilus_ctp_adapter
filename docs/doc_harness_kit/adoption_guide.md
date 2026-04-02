@@ -1,7 +1,7 @@
 # 文档闭环执行套件接入指南 / Adoption Guide
 
 **创建日期**：2026-03-27
-**最后更新**：2026-03-27
+**最后更新**：2026-04-02
 **状态**：draft
 
 ---
@@ -59,13 +59,14 @@
 3. 当前仓库的 topic-id 或 change-id 示例
 4. 当前仓库的远端机房、路径、数据库前提
 
-### Step 4：建立 3 个最低入口
+### Step 4：建立 4 个最低入口
 
 新项目至少要有：
 
 1. 一个入口地图文件，例如 `AGENTS.md`
-2. 一套 change bundle 模板
-3. 一份正式导航索引或 architecture index
+2. 一套从 `templates/changes/` 复制出的 change bundle 模板
+3. 一套从 `templates/changes_topic/` 复制出的 topic index / roadmap 模板
+4. 一份正式导航索引或 architecture index
 
 ### Step 5：跑一个真实试点
 
@@ -74,6 +75,13 @@
 1. 一个真实 child change
 2. 一份真实 acceptance.md
 3. 一次真实验证和回填闭环
+
+建议复制顺序：
+
+1. 先复制 `templates/changes/plan.md`、`acceptance.md`、`ai_constraints.md`
+2. 若当前任务存在明显方案分叉，再复制 `templates/changes/design.md`
+3. 再复制 `templates/changes_topic/索引模板_Changes Topic Index Template.md`
+4. 最后复制 `templates/changes_topic/主题路线图模板_Topic Roadmap Template.md`
 
 ---
 
@@ -86,6 +94,7 @@
 | 已替换项目专属目录与入口 | ⬜ | |
 | 已建立入口地图文件 | ⬜ | |
 | 已建立 change bundle 模板 | ⬜ | |
+| 已建立 topic index / roadmap 模板 | ⬜ | |
 | 已完成至少一个真实试点 change | ⬜ | |
 | 已明确归档/弃用规则 | ⬜ | |
 
@@ -98,6 +107,7 @@
 3. 没有把验证命令替换成当前项目真实入口
 4. 只有模板，没有真实试点 change
 5. 把 topic roadmap 和 child change 混成一层
+6. 目标项目继续依赖来源仓 `docs/changes/_template/` 或私有绝对路径，而不是复制 kit 内模板
 
 ---
 
@@ -127,4 +137,4 @@
 3. topic / change 分层
 4. 文档归档收口
 
-当前 bootstrap 工作只是在这些已验证实践之上，再补一层“跨项目复用执行套件骨架”。
+当前 bootstrap 工作已经推进到“跨项目复用执行套件骨架 + 可复制模板正文”。

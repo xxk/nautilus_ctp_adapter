@@ -1,0 +1,9 @@
+{"baseline": "td-order-truth-v1", "flow_path": "D:\\Nautilus\\nautilus_ctp_adapter\\var\\td_flow_smoke", "flow_mode": "default_shared_flow", "ready": true, "login_success": true, "settlement_code": 0, "disconnect_count": 0, "disconnect_reasons": [], "observed_callback_count": 9, "observed_order_event_count": 8, "observed_trade_event_count": 1, "no_callbacks_observed": false, "first_order_id": "49456082", "first_order_ref": "20850", "first_session_id": 0, "first_front_id": 0, "first_is_trade": false, "bridge_command_kinds": ["connect"], "bridge_event_kinds": ["login_succeeded", "order", "order", "order", "trade", "order", "order", "order", "order", "order", "settlement_confirmed"]}
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+CThostFtdcUserApiImplBase::OnSessionDisconnected[000001BEEC2504F8][558825473][ 4097]

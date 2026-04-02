@@ -1,0 +1,9 @@
+{"evidence_version": "td-order-truth-evidence-v1", "captured_at_utc": "2026-04-02T08:06:41Z", "account_id": "025292", "disposition": "boundary_required", "observed_callback_count": 9, "historical_callback_count": 9, "delayed_callback_count": 0, "current_session_callback_count": 0, "first_historical_order_id": "49456082", "first_current_session_order_id": null, "manual_review_codes": [], "boundary_codes": ["historical_callbacks_present"], "evidence_only_codes": [], "bridge_command_kinds": ["connect"], "bridge_event_kinds": ["login_succeeded", "order", "order", "order", "trade", "order", "order", "settlement_confirmed", "order", "order", "order"]}
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+CThostFtdcUserApiImplBase::OnSessionDisconnected[000001B968080A08][596508673][ 4097]

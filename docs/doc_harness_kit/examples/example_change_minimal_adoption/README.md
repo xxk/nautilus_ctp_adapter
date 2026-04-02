@@ -58,6 +58,6 @@
 ## 五、配套文件
 
 1. `plan.md`：定义最小接入 5 步该怎么拆任务
-2. `acceptance.md`：定义怎样才算这 5 步真的做完
-3. `ai_constraints.md`：约束 AI 先建入口、再建模板、再跑真实 change
+2. `acceptance.md`：定义怎样才算这 5 步真的做完，并使用统一的正式验收规则
+3. `ai_constraints.md`：约束 AI 先建入口、再建模板、再跑真实 change，且不得把 test/mock/fake 写成验收通过
 4. `执行提示词_Execution Prompt.md`：给目标项目 AI 的可直接执行提示词

@@ -1,0 +1,28 @@
+{"baseline": "nautilus-query-adapter-v1", "positions": {"request_id": "query-positions-2", "query_code": 0, "completed": true, "timed_out": false, "no_positions": false, "position_count": 73}, "account": {"request_id": "query-account-4", "query_code": 0, "completed": true, "timed_out": false, "account_id": "025292", "balance": 1840245.5849496, "available": 393736.9397479998}, "bridge_command_kinds": ["connect", "query_positions", "connect", "query_account"], "bridge_event_kinds": ["login_succeeded", "settlement_confirmed", "login_succeeded", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "login_succeeded", "settlement_confirmed", "login_succeeded", "account"]}
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+CThostFtdcUserApiImplBase::OnSessionDisconnected[000001F3746B3B08][216924161][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[000001F3746B3868][217055235][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[000001F3746B3B78][217448454][ 4097]

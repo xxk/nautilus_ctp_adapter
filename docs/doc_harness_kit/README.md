@@ -1,7 +1,7 @@
 # 文档闭环执行套件 / Doc Harness Kit
 
 **创建日期**：2026-03-27
-**最后更新**：2026-04-01
+**最后更新**：2026-04-02
 **状态**：draft
 **定位**：把文档模板、验收样板、守卫接入点、校验入口、任务闭环示例与自动化约束机制收敛为可在其他项目复用的最小执行套件。
 
@@ -51,14 +51,15 @@ docs/doc_harness_kit/
 7. `角色与档位说明_Roles and Profiles.md`：解释谁负责接入、维护、执行与验收。
 8. `core/`：沉淀项目无关的第一批治理正文。
 9. `checks/`：提供最小守卫规范、接入检查清单与统一 runbook。
-10. `templates/`：提供 change、topic、archive 的最小模板入口。
-11. `examples/`：展示一个新项目第一次接入时应长什么样。
+  当前还包括 topic 切换治理清单：`checks/topic-transition-checklist.md`
+10. `templates/`：提供可直接复制的 child change bundle、topic index、topic roadmap 与 archive 模板。
+11. `examples/`：展示一个新项目第一次接入时应长什么样，以及模板复制后的真实填法。
 
 ---
 
 ## 三、当前版本边界
 
-当前版本是 **bootstrap v0**，先解决“可安装骨架”和“可执行闭环入口”，暂不追求：
+当前版本已经从“只给入口指针”推进到“骨架 + 可复制模板正文”，但暂不追求：
 
 1. 直接复制后零配置可用
 2. 提供完整脚本守卫实现
@@ -67,8 +68,9 @@ docs/doc_harness_kit/
 当前策略是：
 
 1. 先提供骨架与接入说明
-2. 再逐步把当前仓库中的通用规范提炼到 harness core
-3. 最后再补齐通用脚本守卫与检查入口
+2. 把当前仓库已稳定的 child/topic 模板同步进 `templates/`
+3. 再逐步把当前仓库中的通用规范提炼到 `core/`
+4. 最后再补齐通用脚本守卫与检查入口
 
 当前第二阶段已开始补：
 
@@ -79,6 +81,8 @@ docs/doc_harness_kit/
 
 1. `core/` 第一批 project-agnostic 正文
 2. `checks/` 中的首批 guard 接入映射
+3. `templates/changes/` 下的四件套正文同步
+4. `templates/changes_topic/` 下的索引模板与 roadmap 模板同步
 
 ---
 
@@ -92,7 +96,7 @@ docs/doc_harness_kit/
 4. 再读 `adoption_guide.md`，替换项目路径、入口地图与验证命令。
 5. 再读 `跨项目最小接入5步法_Minimal 5-Step Adoption.md`，优先按最短接入路径推进。
 6. 再按 `跨项目落地手册_Cross Project Rollout.md` 执行跨项目落地步骤。
-7. 根据 `kit_manifest.md` 复制需要的模板与文档。
+7. 根据 `kit_manifest.md` 优先复制 `templates/changes/` 与 `templates/changes_topic/` 的模板正文，再补充其余文档。
 8. 至少建立一个真实 `change bundle` 作为接入试点。
 
 ---
@@ -119,6 +123,14 @@ docs/doc_harness_kit/
 3. `docs/architecture/文档治理/BDD-lite开发规范.md`
 4. `docs/architecture/文档治理/系统代码分析知识沉淀规范.md`
 5. `docs/architecture/文档治理/高风险变更实现契约锚点规范.md`
-6. `docs/changes/_template/` 三件套模板
+6. `docs/changes/_template/` 四件套模板
+7. `docs/changes_topic/README.md` 与已落库 topic roadmap 的稳定结构
 
 这些文档目前仍是本仓正式口径；执行套件骨架是面向复用化的整理层，不替代原文。
+
+新增同步规则：
+
+1. `docs/changes/_template/` 是当前仓库本地执行模板源。
+2. `docs/doc_harness_kit/templates/changes/` 是跨项目复用模板源。
+3. 以后若本地 child change 模板字段发生稳定变更，应在同一次变更中同步更新这两个位置。
+4. topic index / roadmap 模板也采用同样规则，避免 harness kit 再次退化成“只有入口、没有正文”的指针包。

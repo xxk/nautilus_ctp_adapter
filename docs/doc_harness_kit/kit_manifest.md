@@ -1,7 +1,7 @@
 # 文档闭环执行套件清单 / Doc Harness Kit Manifest
 
 **创建日期**：2026-03-27
-**最后更新**：2026-03-27
+**最后更新**：2026-04-02
 **状态**：draft
 
 ---
@@ -18,26 +18,26 @@
 | `角色与档位说明_Roles and Profiles.md` | 推荐 | 定义不同角色的最小职责边界 |
 | `core/` | 推荐 | 沉淀项目无关的治理正文 |
 | `checks/` | 标准及以上 | 最小守卫规范与接入检查清单 |
-| `templates/changes/` | 必选 | child change 模板入口 |
-| `templates/changes_topic/` | 标准及以上 | topic 路线图模板入口 |
+| `templates/changes/` | 必选 | child change 四件套可复制模板 |
+| `templates/changes_topic/` | 标准及以上 | topic 索引模板与 roadmap 可复制模板 |
 | `templates/archive/` | 标准及以上 | 归档 / 弃用模板入口 |
 | `examples/` | 推荐 | 示例目录与最小样板 |
 
 ---
 
-## 二、模板来源策略
+## 二、模板同步策略
 
-当前 bootstrap 版本不复制整套模板正文，而采用“入口文件 + 来源说明”策略：
+当前版本不再停留在“入口文件 + 来源说明”，而采用“双源同步”策略：
 
-1. `templates/changes/` 指向当前仓库已验证的 `docs/changes/_template/`
-2. `templates/changes_topic/` 先提供约定说明，再在后续版本补正式模板
-3. `templates/archive/` 先提供归档头模板说明
+1. `templates/changes/` 同步当前仓库已验证的 `docs/changes/_template/` 四件套正文
+2. `templates/changes_topic/` 同步 topic index 与 topic roadmap 的稳定结构模板
+3. `templates/archive/` 继续保留归档入口模板
 
-这样做的原因：
+同步原则：
 
-1. 先把包结构稳定下来
-2. 避免过早复制尚未抽象干净的仓库专属字段
-3. 等第二版再抽离真正项目无关的模板正文
+1. 当前仓库本地执行模板更新时，应同步更新 harness kit 对应模板。
+2. 允许模板中保留占位符、字段说明与结构性注释，但不得保留来源仓私有绝对路径。
+3. 示例目录负责展示“填完以后是什么样”，模板目录负责展示“复制前的最小正文骨架”。
 
 ---
 
@@ -66,9 +66,18 @@
 8. `checks/接入检查清单_Adoption Checklist.md`
 9. `checks/任务类型到验证入口速查表_Task Verification Matrix.md`
 10. `checks/运行手册_Runbook.md`
-11. `examples/example_change/`
-12. `examples/example_topic/`
-13. `examples/example_archive/`
+11. `templates/changes/plan.md`
+12. `templates/changes/acceptance.md`
+13. `templates/changes/ai_constraints.md`
+14. `templates/changes/design.md`
+15. `templates/changes_topic/索引模板_Changes Topic Index Template.md`
+16. `templates/changes_topic/主题路线图模板_Topic Roadmap Template.md`
+17. `examples/example_change/`
+18. `examples/example_topic/`
+19. `examples/example_archive/`
+20. `examples/example_change/design.md`
+21. `examples/example_topic/Example Changes Topic Index.md`
+22. `examples/example_topic/README.md`
 
 后续仍可继续补充：
 

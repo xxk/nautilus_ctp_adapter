@@ -1,0 +1,12 @@
+{"baseline": "account-query-smoke-v1", "query_request_id": "query-account-2", "query_code": 0, "completed": true, "timed_out": false, "account": {"account_id": "025292", "balance": 1838035.5849496, "available": 391534.4397479998, "margin": 1437094.5400000003, "commission": 21.0050504, "close_profit": 0.0, "position_profit": -6549.999999999767}, "bootstrap_ready": true, "td_login_success": true, "td_settlement_code": 0, "disconnects": [], "bridge_command_kinds": ["connect", "query_account"], "bridge_event_kinds": ["login_succeeded", "settlement_confirmed", "login_succeeded", "account"]}
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+CThostFtdcUserApiImplBase::OnSessionDisconnected[0000019AD7AE20A8][179765250][ 4097]

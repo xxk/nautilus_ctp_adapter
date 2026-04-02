@@ -1,0 +1,27 @@
+{"baseline": "reconciliation-policy-v1", "disposition": "manual_review_required", "requires_manual_review": true, "account_id": "025292", "position_line_count": 73, "gross_position_qty": 183, "available_ratio": 0.213524, "margin_ratio": 0.781359, "dominant_exposure_symbol": "m2605-P-3000", "dominant_exposure_abs_net_qty": 10, "findings": [{"code": "available_ratio_warn", "severity": "warn", "action": "manual_review_required", "metric": "available_ratio", "metric_value": 0.213524, "threshold": 0.25, "message": "Available ratio is below the baseline comfort threshold."}, {"code": "margin_ratio_warn", "severity": "warn", "action": "manual_review_required", "metric": "margin_ratio", "metric_value": 0.781359, "threshold": 0.75, "message": "Margin ratio is above the baseline comfort threshold."}, {"code": "dominant_exposure_watch", "severity": "info", "action": "evidence_only", "metric": "dominant_exposure_abs_net_qty", "metric_value": 10, "threshold": 10, "message": "Dominant single-symbol exposure is large enough to keep in live evidence."}], "bridge_command_kinds": ["connect", "query_positions", "connect", "query_account"], "bridge_event_kinds": ["login_succeeded", "settlement_confirmed", "login_succeeded", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "login_succeeded", "settlement_confirmed", "login_succeeded", "account"]}
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+CThostFtdcUserApiImplBase::OnSessionDisconnected[00000190D4C198F8][311230465][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[00000190D4C18A88][311361539][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[00000190D4C19508][311754758][ 4097]

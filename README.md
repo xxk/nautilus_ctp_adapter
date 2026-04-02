@@ -117,3 +117,19 @@ It is expected to prove three things in one run:
 1. `MD` login and first subscribed tick
 2. `TD` auth/login plus settlement confirmation readiness
 3. Shared runtime bridge event flow inside the Nautilus-facing adapter stack
+
+## Validation Gates
+
+Run the repository validation gates in this order:
+
+```powershell
+python -m pytest
+python -m pip install -e .
+python scripts/check_rust_gate.py
+```
+
+`python scripts/check_rust_gate.py` is the canonical Rust validation entrypoint.
+It distinguishes between:
+
+1. toolchain missing on the machine
+2. Rust workspace metadata/check failures inside this repository

@@ -1,45 +1,17 @@
----
-title: "【主题路线图模板】"
-status: "草稿"
-owner: "@YourUsername"
-last_updated: "YYYY-MM-DD"
----
+# 主题路线图兼容模板 / Topic Roadmap Compatibility Template
 
-# 【主题路线图】
+**最后更新**：2026-04-02
+**状态**：兼容入口
 
-> **愿景/目标 (Vision/Goal)**:
-> (用一两句话清晰描述这个主题最终要达成的业务目标或技术愿景。)
+本文件保留是为了兼容历史引用。
 
----
+正式主题模板已经收敛到：
 
-## 阶段划分 (Phases)
+1. `templates/changes_topic/主题路线图模板_Topic Roadmap Template.md`
+2. `templates/changes_topic/索引模板_Changes Topic Index Template.md`
 
-| 阶段 (Phase) | 状态 (Status) | 核心目标 (Key Objective) | 关联 Change |
-| :--- | :--- | :--- | :--- |
-| **Phase 1: ...** | `Not Started` / `In Progress` / `Completed` | ... | `docs/changes/YYYYMMDD__<topic-id>__<slug>` |
-| **Phase 2: ...** | `Not Started` | ... | |
-| **Phase 3: ...** | `Not Started` | ... | |
+使用建议：
 
----
-
-## AI 任务队列 (AI-TASK-QUEUE)
-
-> **说明**: AI 将按此队列顺序自主执行。
-> **当前活动 Change**: `None`
-
-- [ ] `docs/changes/YYYYMMDD__<topic-id>__<slug-1>`
-- [ ] `docs/changes/YYYYMMDD__<topic-id>__<slug-2>`
-
----
-
-## Topic 级验收标准 (Topic-Level Acceptance Criteria)
-
-- [ ] **AC-1**: ...
-- [ ] **AC-2**: ...
-
----
-
-## 设计与架构文档 (Design & Architecture)
-
-- [架构决策记录 (ADR)](docs/architecture/...)
-- [详细设计文档](...)
+1. 新项目不要再只复制本文件。
+2. 请直接复制 `templates/changes_topic/` 下的正式模板正文。
+3. 若目标项目仍依赖本文件路径，可把它当成“迁移提示页”，然后跳转到正式模板继续操作。

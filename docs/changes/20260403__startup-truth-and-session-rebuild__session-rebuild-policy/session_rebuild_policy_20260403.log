@@ -1,0 +1,13 @@
+{"baseline": "td-session-rebuild-policy-v1", "disposition": "rebuild_required", "shared_flow_reuse_allowed": false, "session_rotated": true, "max_order_ref_reset": true, "shared_truth": {"flow_path": "D:\\Nautilus\\nautilus_ctp_adapter\\var\\td_flow_smoke", "flow_mode": "default_shared_flow", "ready": true, "login_success": true, "settlement_code": 0, "front_id": 11, "session_id": 419177899, "max_order_ref": 1, "disconnect_count": 0}, "isolated_truth": {"flow_path": "D:\\Nautilus\\nautilus_ctp_adapter\\output\\debug\\session_rebuild_truth_1775114494556816600", "flow_mode": "explicit_override", "ready": true, "login_success": true, "settlement_code": 0, "front_id": 11, "session_id": 419374511, "max_order_ref": 1, "disconnect_count": 0}, "findings": [{"code": "shared_flow_requires_isolated_rebuild", "severity": "warn", "action": "rebuild_required", "metric": "shared_flow_mode", "metric_value": "default_shared_flow", "threshold": "explicit_override", "message": "Shared default TD flow must not be treated as rebuild-safe truth for session-sensitive checks."}, {"code": "isolated_flow_verified", "severity": "info", "action": "evidence_only", "metric": "isolated_flow_mode", "metric_value": "explicit_override", "threshold": "explicit_override", "message": "Isolated override flow was used and can serve as rebuild-safe session truth."}, {"code": "fresh_session_identity_observed", "severity": "info", "action": "evidence_only", "metric": "session_id", "metric_value": 419374511, "threshold": "!= shared_session_id", "message": "A fresh session identity was observed after isolated rebuild bootstrap."}, {"code": "max_order_ref_reinitialized", "severity": "info", "action": "evidence_only", "metric": "max_order_ref", "metric_value": 1, "threshold": "<= shared_max_order_ref", "message": "Isolated rebuild bootstrap reinitialized max_order_ref, so old order-ref chains must not be inherited."}], "bridge_command_kinds": ["connect", "connect"], "bridge_event_kinds": ["login_succeeded", "settlement_confirmed", "login_succeeded", "settlement_confirmed"]}
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+CThostFtdcUserApiImplBase::OnSessionDisconnected[000002B92898F6D8][419168257][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[000002B92898F438][419299331][ 4097]

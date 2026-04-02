@@ -1,0 +1,4 @@
+{"baseline": "nautilus-order-lifecycle-smoke-v1", "dry_run": true, "bootstrap_ready": true, "connect_request_id": "td-connect-1", "td_session_identity": {"front_id": 11, "session_id": -528966286, "max_order_ref": 1}, "mapped_submit_error": null, "mapped_submit_order_ref": 2, "command_kinds": ["connect", "submit_order"], "submit_payload": {"channel": "td", "side": "BUY", "quantity": "1", "limit_price": "2241.0", "position_effect": "OPEN", "order_type": "LIMIT", "time_in_force": "GFD", "order_ref": "2", "front_id": "11", "session_id": "-528966286"}, "event_kinds": ["login_succeeded", "settlement_confirmed"]}
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login

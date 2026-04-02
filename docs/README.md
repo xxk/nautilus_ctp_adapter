@@ -20,11 +20,11 @@ This repository now aligns to the `DSLReserach` split:
 3. `docs/changes/` for executable child changes and evidence
 4. `docs/topics/` as temporary compatibility pointers only
 
-## Current Active Delivery
+## Current Delivery
 
 1. Master roadmap: [Nautilus CTP adapter mainline](/D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/roadmap/nautilus_adapter/nautilus-ctp-adapter-mainline/README.md)
-2. Current topic roadmap: [Nautilus instrument provider](/D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/roadmap/nautilus_adapter/nautilus-instrument-provider/README.md)
-3. Active change: [20260402__nautilus-instrument-provider__instrument-query-runtime-contract](/D:/Nautilus/nautilus_ctp_adapter/docs/changes/20260402__nautilus-instrument-provider__instrument-query-runtime-contract/plan.md)
+2. Current topic roadmap: [Live ops truth snapshot](/D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/roadmap/nautilus_adapter/live-ops-truth-snapshot/README.md)
+3. Active change: [20260403__live-ops-truth-snapshot__live-ops-policy-baseline](/D:/Nautilus/nautilus_ctp_adapter/docs/changes/20260403__live-ops-truth-snapshot__live-ops-policy-baseline/plan.md)
 4. Formal smoke baseline: [20260401__ctp-live-connectivity__nautilus-live-smoke-baseline](/D:/Nautilus/nautilus_ctp_adapter/docs/changes/20260401__ctp-live-connectivity__nautilus-live-smoke-baseline/acceptance.md)
 
 ## Official Validation Commands
@@ -32,6 +32,5 @@ This repository now aligns to the `DSLReserach` split:
 ```powershell
 python -m pytest
 python -m pip install -e .
-# run after installing Rust toolchain
-cargo check --manifest-path rust/Cargo.toml
+python scripts/check_rust_gate.py
 ```

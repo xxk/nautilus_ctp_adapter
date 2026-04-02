@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CtpCommandKind {
     Connect,
@@ -20,4 +22,5 @@ pub struct CtpCommand {
     pub exchange_id: Option<String>,
     pub client_order_id: Option<String>,
     pub request_id: Option<String>,
+    pub payload: HashMap<String, String>,
 }

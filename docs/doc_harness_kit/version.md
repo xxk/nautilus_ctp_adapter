@@ -1,8 +1,8 @@
 # 版本说明 / Versioning
 
 **创建日期**：2026-03-27
-**最后更新**：2026-03-27
-**当前版本**：v0.3-core-bootstrap
+**最后更新**：2026-04-02
+**当前版本**：v0.5-template-sync
 **状态**：draft
 **用途**：定义 `Doc Harness Kit` 的版本口径，让接入方知道自己当前使用的是哪一版、升级后应该同步什么。
 
@@ -79,15 +79,36 @@
 
 ## 四、下一阶段预期版本
 
-### 预期 v0.4-reusable-core
+### v0.4-topic-transition-guard
 
-目标：
+特点：
 
-1. 开始建立 `core/` 目录
-2. 抽出第一批 project-agnostic 正文
-3. 让接入方不必频繁回查本仓原始治理文档
+1. Change 表新增 `状态` 列（✅ 已完成 / 🔄 进行中 / ⬜ 未开始），AI 可机械扫描进度
+2. `roadmap/` 推荐按域分目录（如 `nautilus_adapter/`、`repo_governance/`），语义与主线分离
+3. 引入 Topic Transition Rule：topic 切换时，`AGENTS.md` step 5、`changes_topic/README.md` Current State、`docs/README.md` 三处必须同步更新
+4. 引入最小文档门禁脚本概念（`check_topic_docs.py`），6 项必填字段检验（含状态列守卫）
+5. `roadmap_template.md` 对齐实际使用格式，包含状态列示例
 
-### 预期 v0.5-stable-adoption
+适用判断：
+
+1. 适合"需要跨多 topic 维护、防止 AGENTS.md 入口陈旧"的项目
+2. 配套验证命令：`python scripts/check_topic_docs.py`
+
+### v0.5-template-sync（当前）
+
+特点：
+
+1. `templates/changes/` 现在直接包含 `plan.md / acceptance.md / ai_constraints.md / design.md` 四件套正文
+2. `templates/changes_topic/` 现在直接包含 `索引模板_Changes Topic Index Template.md` 与 `主题路线图模板_Topic Roadmap Template.md`
+3. `templates/roadmap_template.md` 退化为兼容入口，正式主题模板收敛到 `templates/changes_topic/`
+4. 接入方不再需要依赖来源仓 `docs/changes/_template/` 或 topic 私有路径，kit 本身即可承担跨项目复制入口
+
+适用判断：
+
+1. 适合“要把 topic / child 模板直接复制到其他仓”的项目
+2. 适合“需要把 harness kit 当作真正跨项目模板包，而不是说明包”的项目
+
+### 预期 v0.6-stable-adoption
 
 目标：
 

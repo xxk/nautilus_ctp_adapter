@@ -1,0 +1,15 @@
+{"baseline": "nautilus-marketdata-smoke-v1", "instrument_request_id": "instrument-query-1", "instrument_loaded": true, "source_instrument_count": 43, "selected_symbols": ["rb2610"], "bootstrap_started": true, "connect_request_id": "md-connect-1", "subscribe_request_ids": ["md-subscribe-2"], "md": {"init_code": 0, "login_request_code": 0, "subscribe_code": 0, "login_success": true, "login_error_id": 0, "first_tick_symbol": "rb2610", "first_tick_last": 3132.0, "first_tick_bid": 3131.0, "first_tick_ask": 3132.0, "first_tick_ts_epoch_us": 1775098260248668}, "marketdata_batch_event_kinds": ["login_succeeded", "tick"], "marketdata_batch_should_restore": false, "bridge_event_kinds": ["login_succeeded", "tick"], "bridge_tick_symbol": "rb2610"}
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+MD Front Connected
+MD Auto-login: 0155/025292
+MD OnRspUserLogin called: pRspInfo=0000009CD85AEF90, pRspUserLogin=0000009CD85AEFF0
+  ErrorID=0, ErrorMsg=CTP:No Error
+  FrontID=0, SessionID=0, MaxOrderRef=
+MD Login Success: FrontID=0, SessionID=0
+CThostFtdcUserApiImplBase::OnSessionDisconnected[000001F4552EFE78][-644874239][ 4097]

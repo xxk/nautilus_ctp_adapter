@@ -1,89 +1,72 @@
-# 示例主题路线图 / Example Topic Roadmap
+# 项目入口治理 / Project Entrypoint Governance
 
 **创建日期**：2026-03-27
-**最后更新**：2026-03-27
-**状态**：draft
-**用途**：展示一个 topic 级长期路线图在 harness engineering 语境下应如何组织，重点是 phase 进度、child change 顺序与 topic 级出口条件。
-
----
-
-## 一、这份示例解决什么问题
-
-它回答的是：
-
-1. 长期主题应该写在哪里
-2. topic 与 child change 如何分层
-3. topic 级文档应该写什么，不该写什么
-
----
-
-## 二、推荐结构
-
-一个最小 topic roadmap 应包含：
-
-1. 主题目标
-2. phase 级进度
-3. 当前 P0
-4. child change 顺序
-5. topic 级 acceptance
-6. AI 执行边界
-
-不建议写进 topic 的内容：
-
-1. task 级燃尽表
-2. 单次执行日志
-3. 本轮命令输出原文
-4. 与单个 child change 强绑定的细节修复记录
-
----
-
-## 三、示例骨架
-
-```text
-# <主题名称> / <Topic Name>
-
-**日期**：YYYY-MM-DD
+**最后更新**：2026-04-02
 **状态**：进行中
-**进度**：阶段 1 / 3（约 33%）
-**topic-id**：<topic-id>
+**进度**：40%
+**topic-id**：project-entry
+**用途**：用一个独立 topic 把“多个历史运行入口并存”的问题收口成唯一正式入口、清晰导航和稳定验证口径。
 
-## 目标
-1. 写清这个 topic 的长期目标。
+> 这是已经按 `templates/changes_topic/主题路线图模板_Topic Roadmap Template.md` 填完后的示例。
 
-## 当前阶段
-1. 当前在做哪个 phase。
-2. 当前 phase 的出口条件是什么。
+## 一、为什么这个 topic 应该优先
 
-## child change 顺序
-1. `<change-id-a>`：先解决什么。
-2. `<change-id-b>`：再解决什么。
+1. 项目当前存在多个历史入口，AI 和开发者都容易改错主落点。
+2. 入口不收口，后续任何 runbook、测试命令和 docs 首页都容易继续漂移。
+3. 这个问题适合作为独立 topic 推进，因为它需要连续几笔 child change 才能真正收口。
 
-## topic 级验收
-1. 至少 2-4 条长期完成判定。
+## 二、主题目标
 
-## 不在本层解决的内容
-1. 列出明确非目标。
-```
+1. 冻结唯一正式运行入口。
+2. 明确兼容入口的保留、弃用或转发策略。
+3. 把入口导航回写到 docs 首页和长期 architecture 文档。
 
----
+## 三、边界与限制（可选）
 
-## 四、topic 与 change 的边界
+1. 允许改入口文档、入口脚本和导航索引。
+2. 不允许顺手改与入口无关的业务逻辑。
+3. 不允许保留多个“临时正式入口”长期并存。
 
-一句话规则：
+## 四、进入条件
 
-**topic 负责长期方向与阶段顺序，change 负责单次执行与证据。**
+1. 当前项目已经识别出所有现存入口。
+2. 团队接受“只能保留一个正式入口”的治理目标。
 
-所以：
+## 五、Topic 级出口条件
 
-1. 如果你在写“本轮要改哪几个文件、跑什么命令”，那通常已经进入 child change 了。
-2. 如果你在写“这个主题接下来还有哪几个 phase”，那应该留在 topic。
+1. 项目只有一个正式运行入口。
+2. docs 首页、AGENTS 或 developer guide 都指向同一个正式入口。
+3. 至少有一笔真实 child change 留证说明这次收口是如何完成的。
+4. 兼容入口的行为不再和正式入口竞争。
 
----
+## 六、预期 Child Change 顺序
 
-## 五、复制后必须替换的内容
+> **状态标记**：✅ 已完成 | 🔄 进行中 | ⬜ 未开始
 
-1. `topic-id`
-2. phase 名称与进度
-3. child change 顺序
-4. topic 级出口条件
-5. 当前项目的正式入口与验证口径
+| 顺序 | 建议 change-id | 作用 | 状态 |
+| --- | --- | --- | --- |
+| C1 | `20260327__project-entry__unified-run-entrypoint` | 冻结唯一正式入口与兼容入口口径 | 🔄 进行中 |
+| C2 | `20260328__project-entry__compat-entrypoint-cleanup` | 收口兼容入口并清理导航漂移 | ⬜ 未开始 |
+| C3 | `20260329__project-entry__runbook-and-verify-sync` | 同步 runbook、验证命令和 docs 首页入口 | ⬜ 未开始 |
+
+## 七、AI-TASK-QUEUE
+
+**当前状态**：已激活；当前聚焦 `C1`。
+
+- [x] 创建 `C1` child change bundle
+- [ ] 完成 `C1`
+- [ ] 完成 `C2 -> C3`
+- [ ] 回写 docs 首页与长期入口文档
+
+**当前 first action**：推进 `20260327__project-entry__unified-run-entrypoint`
+
+## 八、成功信号
+
+1. 正式入口帮助命令稳定可执行。
+2. 兼容入口输出明确写出新的正式入口或弃用信息。
+3. docs 首页与长期 architecture 文档不再出现 competing entrypoint。
+
+## 九、与主线或其他 Topic 的关系（可选）
+
+1. 这是一个 project governance topic，不直接承载业务能力。
+2. 它完成后会降低后续业务 topic 的 AI 改错落点成本。

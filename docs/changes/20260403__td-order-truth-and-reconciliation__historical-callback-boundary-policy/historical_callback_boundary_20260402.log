@@ -1,0 +1,9 @@
+{"baseline": "td-historical-callback-boundary-v1", "disposition": "boundary_required", "observed_callback_count": 9, "historical_callback_count": 9, "delayed_callback_count": 0, "current_session_callback_count": 0, "first_historical_order_id": "49456082", "first_current_session_order_id": null, "login_front_id": 11, "login_session_id": 594882991, "login_max_order_ref": 1, "findings": [{"code": "historical_callbacks_present", "severity": "warn", "action": "boundary_required", "metric": "historical_callback_count", "metric_value": 9, "threshold": 0, "message": "Observed callbacks whose front/session identity does not match the current login truth."}], "bridge_command_kinds": ["connect"], "bridge_event_kinds": ["login_succeeded", "order", "order", "order", "trade", "order", "order", "order", "settlement_confirmed", "order", "order"]}
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+CThostFtdcUserApiImplBase::OnSessionDisconnected[000001C1C0F1CCB8][595591169][ 4097]

@@ -1,0 +1,6 @@
+{"baseline": "td-startup-truth-v1", "flow_path": "D:\\Nautilus\\nautilus_ctp_adapter\\var\\td_flow_smoke", "flow_mode": "default_shared_flow", "ready": true, "login_success": true, "settlement_code": 0, "front_id": 11, "session_id": 386081387, "max_order_ref": 1, "disconnect_count": 0, "disconnect_reasons": [], "bridge_command_kinds": ["connect"], "bridge_event_kinds": ["login_succeeded", "settlement_confirmed"]}
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+CThostFtdcUserApiImplBase::OnSessionDisconnected[000001F4F63CF128][386138113][ 4097]

@@ -1,0 +1,30 @@
+{"baseline": "reconciliation-snapshot-v1", "position_request_id": "query-positions-2", "account_request_id": "query-account-4", "account_id": "025292", "position_line_count": 73, "symbol_count": 73, "total_long_qty": 68, "total_short_qty": 115, "gross_position_qty": 183, "total_position_cost": 7159468.0, "account_balance": 1839925.5849496005, "account_available": 393799.43974800024, "account_margin": 1436719.5400000003, "available_ratio": 0.21403, "margin_ratio": 0.780857, "top_exposures": [{"venue_symbol": "CF609C15000", "exchange_id": null, "long_qty": 0, "short_qty": 1, "net_qty": -1, "position_cost": 4030.0}, {"venue_symbol": "CF609C16000", "exchange_id": null, "long_qty": 1, "short_qty": 0, "net_qty": 1, "position_cost": 2020.0}, {"venue_symbol": "HO2604-P-3050", "exchange_id": null, "long_qty": 0, "short_qty": 1, "net_qty": -1, "position_cost": 17760.0}, {"venue_symbol": "HO2609-P-2800", "exchange_id": null, "long_qty": 0, "short_qty": 1, "net_qty": -1, "position_cost": 12460.0}, {"venue_symbol": "HO2609-P-2900", "exchange_id": null, "long_qty": 0, "short_qty": 1, "net_qty": -1, "position_cost": 18300.0}, {"venue_symbol": "MA605C2700", "exchange_id": null, "long_qty": 0, "short_qty": 1, "net_qty": -1, "position_cost": 4770.0}, {"venue_symbol": "MA605P2350", "exchange_id": null, "long_qty": 0, "short_qty": 1, "net_qty": -1, "position_cost": 45.0}, {"venue_symbol": "MA605P2600", "exchange_id": null, "long_qty": 0, "short_qty": 1, "net_qty": -1, "position_cost": 130.0}, {"venue_symbol": "MA605P2900", "exchange_id": null, "long_qty": 0, "short_qty": 3, "net_qty": -3, "position_cost": 1590.0}, {"venue_symbol": "PK605", "exchange_id": null, "long_qty": 6, "short_qty": 0, "net_qty": 6, "position_cost": 241620.0}], "bridge_command_kinds": ["connect", "query_positions", "connect", "query_account"], "bridge_event_kinds": ["login_succeeded", "settlement_confirmed", "login_succeeded", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "login_succeeded", "settlement_confirmed", "login_succeeded", "account"]}
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+CThostFtdcUserApiImplBase::OnSessionDisconnected[00000144B0734FE8][260571137][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[00000144B0734C68][260702211][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[00000144B0734958][260964357][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[00000144B07345D8][261095431][ 4097]

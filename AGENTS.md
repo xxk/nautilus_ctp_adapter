@@ -1,6 +1,6 @@
 # AGENTS.md
 
-**Updated**: 2026-04-01  
+**Updated**: 2026-04-02  
 **Status**: Active
 
 ## Read First
@@ -11,7 +11,7 @@ Read these in order:
 2. [docs/README.md](/D:/Nautilus/nautilus_ctp_adapter/docs/README.md)
 3. [docs/doc_harness_kit/README.md](/D:/Nautilus/nautilus_ctp_adapter/docs/doc_harness_kit/README.md)
 4. [docs/architecture/runtime-performance-guidelines.md](/D:/Nautilus/nautilus_ctp_adapter/docs/architecture/runtime-performance-guidelines.md)
-5. [docs/changes_topic/roadmap/nautilus_adapter/ctp-live-connectivity/README.md](/D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/roadmap/nautilus_adapter/ctp-live-connectivity/README.md)
+5. [docs/changes_topic/roadmap/nautilus_adapter/live-ops-truth-snapshot/README.md](/D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/roadmap/nautilus_adapter/live-ops-truth-snapshot/README.md)
 6. The current change bundle under `docs/changes/<change-id>/`
 
 ## Repository Role
@@ -56,6 +56,16 @@ Governance layout is aligned toward `DSLReserach`:
 3. Executable child changes live under `docs/changes/<change-id>/`
 4. New child changes should start from the local `_template` bundle, including `design.md` when needed
 
+## Topic Transition Rule
+
+When a topic README `**状态**` changes from `进行中` to `已完成` and the next topic enters `in_progress`, the following updates are **mandatory** and must be done in the same commit:
+
+1. Update **this file** (`AGENTS.md`) read order step 5 to point to the new active topic README.
+2. Update `docs/changes_topic/README.md` Current State section to reflect the new active topic and active change.
+3. Update `docs/README.md` Current Active Delivery section to reflect the new active topic and active change.
+
+Verification: `python scripts/check_topic_docs.py`
+
 ## Official Entry Points
 
 1. Package metadata: [pyproject.toml](/D:/Nautilus/nautilus_ctp_adapter/pyproject.toml)
@@ -70,6 +80,6 @@ Current real verification commands:
 
 1. `python -m pytest`
 2. `python -m pip install -e .`
-3. `cargo check --manifest-path rust/Cargo.toml` after Rust toolchain installation
+3. `python scripts/check_rust_gate.py`
 
 Temporary outputs should stay out of the repository root.

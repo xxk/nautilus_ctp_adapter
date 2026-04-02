@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 
 from .market import CtpMarketRuntime
 from .models import CtpRuntimeCommand, CtpRuntimeEvent
+from .query import CtpQueryRuntime
 from .session import CtpSessionRuntime
 from .trading import CtpTradingRuntime
 
@@ -19,6 +20,7 @@ class CtpRuntimeBridge:
     backend: str = "ctp-runtime-core-placeholder"
     session: CtpSessionRuntime = field(default_factory=CtpSessionRuntime)
     market: CtpMarketRuntime = field(default_factory=CtpMarketRuntime)
+    query: CtpQueryRuntime = field(default_factory=CtpQueryRuntime)
     trading: CtpTradingRuntime = field(default_factory=CtpTradingRuntime)
     _commands: deque[CtpRuntimeCommand] = field(default_factory=deque)
     _events: deque[CtpRuntimeEvent] = field(default_factory=deque)
@@ -37,6 +39,7 @@ class CtpRuntimeBridge:
     def submit_command(self, command: CtpRuntimeCommand) -> None:
         self.session.on_command(command)
         self.market.on_command(command)
+        self.query.on_command(command)
         self.trading.on_command(command)
         self._commands.append(command)
 
@@ -52,6 +55,7 @@ class CtpRuntimeBridge:
 
     def push_event(self, event: CtpRuntimeEvent) -> None:
         self.session.on_event(event)
+        self.query.on_event(event)
         self.trading.on_event(event)
         self._events.append(event)
 

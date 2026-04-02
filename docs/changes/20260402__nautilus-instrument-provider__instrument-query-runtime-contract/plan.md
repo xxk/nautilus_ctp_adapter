@@ -11,8 +11,8 @@ dependencies:
 
 # Instrument Query Runtime Contract 开发计划
 
-**状态**：draft
-**进度**：0%
+**状态**：completed
+**进度**：100%
 **日期**：2026-04-02
 **范围**：`rust/ctp_runtime_core/`、`src/nautilus_ctp_adapter/runtime/`、`src/nautilus_ctp_adapter/adapters/ctp/`、当前 change 三件套
 **topic-id**：nautilus-instrument-provider
@@ -50,6 +50,28 @@ dependencies:
 
 | 步骤 | 任务 | 来源 | 修改文件 | 产出 | 验证动作 | 回写目标 | 完成定义 | 状态 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| P1 | 冻结 instrument query command/event 边界 | topic C1 | runtime / adapter files | 稳定 query contract | `python -m pytest` | topic README | 后续 change 不再重定义 query interface | 未开始 |
-| P2 | 定义最小 query bootstrap 入口 | acceptance | adapter / scripts / docs | 最小 query 验证入口 | `python -m pytest` | architecture doc | 后续 C2/C3 可直接复用 | 未开始 |
-| P3 | 回写 topic 队列与长期规则 | governance | 当前 change 三件套 / topic README | 可交接结论 | 文档检查 | mainline roadmap | Topic 2 可继续推 C2 | 未开始 |
+| P1 | 冻结 instrument query command/event 边界 | topic C1 | runtime / adapter files | 稳定 query contract | `python -m pytest` | topic README | 后续 change 不再重定义 query interface | 已完成 |
+| P2 | 定义最小 query bootstrap 入口 | acceptance | adapter / scripts / docs | 最小 query 验证入口 | `python -m pytest` | architecture doc | 后续 C2/C3 可直接复用 | 已完成 |
+| P3 | 回写 topic 队列与长期规则 | governance | 当前 change 三件套 / topic README | 可交接结论 | 文档检查 | mainline roadmap | Topic 2 可继续推 C2 | 已完成 |
+
+## 八、执行结果
+
+1. 新增 Python query runtime：`/D:/Nautilus/nautilus_ctp_adapter/src/nautilus_ctp_adapter/runtime/query.py`
+2. 共享 `runtime_bridge` 已接入 query state
+3. `CtpInstrumentProvider` 已具备最小 query bootstrap 与 callback 语义
+4. Rust placeholder 已对齐 `QUERY_INSTRUMENTS -> INSTRUMENT -> INSTRUMENT_END`
+
+## 九、验证记录
+
+1. `python -m pytest`
+2. `python -m pip install -e .`
+
+## 十、长期规则增量摘要 / Long-Term Rule Delta Summary
+
+1. Topic 2 后续 change 必须继承 `QUERY_INSTRUMENTS -> INSTRUMENT* -> INSTRUMENT_END` 这条 contract
+2. `INSTRUMENT_END` 是正式结束语义，后续不得退回隐式结束
+3. Query bootstrap 必须复用共享 `runtime_bridge`
+
+## 十一、证据
+
+1. `./evidence_20260402_instrument_query_runtime_contract.md`

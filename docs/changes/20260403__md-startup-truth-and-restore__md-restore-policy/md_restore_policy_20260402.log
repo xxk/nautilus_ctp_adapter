@@ -1,0 +1,13 @@
+{"baseline": "md-restore-policy-v1", "disposition": "evidence_only", "restore_triggered": true, "restore_succeeded": true, "startup_truth": {"flow_path": "D:\\Nautilus\\nautilus_ctp_adapter\\var\\md_flow_smoke", "flow_mode": "default_shared_flow", "selected_symbols": ["rb2610"], "ready": true, "first_tick_symbol": "rb2610", "first_tick_ts_epoch_us": 1775116027696317}, "restored_truth": {"flow_path": "D:\\Nautilus\\nautilus_ctp_adapter\\var\\md_flow_smoke", "flow_mode": "default_shared_flow", "selected_symbols": ["rb2610"], "ready": true, "first_tick_symbol": "rb2610", "first_tick_ts_epoch_us": 1775116029658351}, "restored_symbols": ["rb2610"], "findings": [{"code": "restore_resubscribe_triggered", "severity": "info", "action": "evidence_only", "metric": "restored_symbols", "metric_value": "rb2610", "threshold": "non-empty", "message": "MD restore re-submitted the tracked symbols."}], "bridge_command_kinds": ["connect", "subscribe_market_data", "connect", "subscribe_market_data"], "bridge_event_kinds": ["login_succeeded", "tick", "login_succeeded", "tick"]}
+MD Front Connected
+MD Auto-login: 0155/025292
+MD OnRspUserLogin called: pRspInfo=000000B983FAF5A0, pRspUserLogin=000000B983FAF600
+  ErrorID=0, ErrorMsg=CTP:No Error
+  FrontID=0, SessionID=0, MaxOrderRef=
+MD Login Success: FrontID=0, SessionID=0
+MD Front Connected
+MD Auto-login: 0155/025292
+MD OnRspUserLogin called: pRspInfo=000000B983FAF390, pRspUserLogin=000000B983FAF3F0
+  ErrorID=0, ErrorMsg=CTP:No Error
+  FrontID=0, SessionID=0, MaxOrderRef=
+MD Login Success: FrontID=0, SessionID=0

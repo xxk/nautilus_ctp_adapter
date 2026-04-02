@@ -19,7 +19,7 @@ Use the local project templates:
 
 ## Current Active Change
 
-1. [20260402__nautilus-instrument-provider__instrument-query-runtime-contract](/D:/Nautilus/nautilus_ctp_adapter/docs/changes/20260402__nautilus-instrument-provider__instrument-query-runtime-contract/plan.md)
+1. [20260403__live-ops-truth-snapshot__live-ops-policy-baseline](/D:/Nautilus/nautilus_ctp_adapter/docs/changes/20260403__live-ops-truth-snapshot__live-ops-policy-baseline/plan.md)
 
 ## Governance Note
 

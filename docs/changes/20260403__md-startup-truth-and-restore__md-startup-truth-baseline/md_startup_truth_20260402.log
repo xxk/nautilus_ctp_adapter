@@ -1,0 +1,7 @@
+{"baseline": "md-startup-truth-v1", "flow_path": "D:\\Nautilus\\nautilus_ctp_adapter\\var\\md_flow_smoke", "flow_mode": "default_shared_flow", "selected_symbols": ["rb2610"], "ready": true, "login_success": true, "login_error_id": 0, "subscribe_code": 0, "first_tick_symbol": "rb2610", "first_tick_last": 3137.0, "first_tick_bid": 3136.0, "first_tick_ask": 3138.0, "first_tick_ts_epoch_us": 1775115509127070, "disconnect_count": 0, "disconnect_reasons": [], "bridge_command_kinds": ["connect", "subscribe_market_data"], "bridge_event_kinds": ["login_succeeded", "tick"]}
+MD Front Connected
+MD Auto-login: 0155/025292
+MD OnRspUserLogin called: pRspInfo=000000D5A5DAF310, pRspUserLogin=000000D5A5DAF370
+  ErrorID=0, ErrorMsg=CTP:No Error
+  FrontID=0, SessionID=0, MaxOrderRef=
+MD Login Success: FrontID=0, SessionID=0

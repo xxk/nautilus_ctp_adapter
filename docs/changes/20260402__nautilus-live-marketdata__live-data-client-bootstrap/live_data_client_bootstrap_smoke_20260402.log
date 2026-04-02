@@ -1,0 +1,9 @@
+{"instrument_request_id": "instrument-query-1", "instrument_loaded": true, "instrument_count": 43, "instrument_symbols": ["rb2610.SHFE", "rb2610c3550.SHFE", "rb2610p2850.SHFE", "rb2610c2850.SHFE", "rb2610p3550.SHFE"], "selected_symbols": ["rb2610"], "bootstrap_started": true, "connect_request_id": "md-connect-1", "subscribe_request_ids": ["md-subscribe-2"], "bootstrap_command_kinds": ["connect", "subscribe_market_data"], "bootstrap_subscribe_symbols": ["rb2610"], "instrument_event_kinds_tail": ["instrument", "instrument", "instrument", "instrument", "instrument_end"]}
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+CThostFtdcUserApiImplBase::OnSessionDisconnected[000001E4BCBE8E98][-670826495][ 4097]

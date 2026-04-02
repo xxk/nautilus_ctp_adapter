@@ -1,0 +1,13 @@
+{"evidence_version": "md-truth-evidence-v1", "captured_at_utc": "2026-04-02T07:47:27Z", "account_id": "025292", "symbol": "rb2610", "disposition": "evidence_only", "startup_ready": true, "restore_triggered": true, "restore_succeeded": true, "startup_flow_path": "D:\\Nautilus\\nautilus_ctp_adapter\\var\\md_flow_smoke", "restored_flow_path": "D:\\Nautilus\\nautilus_ctp_adapter\\var\\md_flow_smoke", "startup_first_tick_ts_epoch_us": 1775116043461648, "restored_first_tick_ts_epoch_us": 1775116045418864, "manual_review_codes": [], "restore_required_codes": [], "evidence_only_codes": ["restore_resubscribe_triggered"], "bridge_command_kinds": ["connect", "subscribe_market_data", "connect", "subscribe_market_data"], "bridge_event_kinds": ["login_succeeded", "tick", "login_succeeded", "tick"]}
+MD Front Connected
+MD Auto-login: 0155/025292
+MD OnRspUserLogin called: pRspInfo=0000002C751AEF50, pRspUserLogin=0000002C751AEFB0
+  ErrorID=0, ErrorMsg=CTP:No Error
+  FrontID=0, SessionID=0, MaxOrderRef=
+MD Login Success: FrontID=0, SessionID=0
+MD Front Connected
+MD Auto-login: 0155/025292
+MD OnRspUserLogin called: pRspInfo=0000002C751AF1C0, pRspUserLogin=0000002C751AF220
+  ErrorID=0, ErrorMsg=CTP:No Error
+  FrontID=0, SessionID=0, MaxOrderRef=
+MD Login Success: FrontID=0, SessionID=0

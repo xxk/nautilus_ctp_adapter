@@ -1,0 +1,17 @@
+{"evidence_version": "startup-truth-evidence-v1", "captured_at_utc": "2026-04-02T07:33:04Z", "account_id": "025292", "disposition": "rebuild_required", "shared_flow_reuse_allowed": false, "session_rotated": true, "max_order_ref_reset": true, "shared_flow_path": "D:\\Nautilus\\nautilus_ctp_adapter\\var\\td_flow_smoke", "isolated_flow_path": "D:\\Nautilus\\nautilus_ctp_adapter\\output\\debug\\session_rebuild_truth_1775115182827587500", "shared_session_id": 464398689, "isolated_session_id": 464529764, "shared_max_order_ref": 1, "isolated_max_order_ref": 1, "shared_disconnect_count": 0, "isolated_disconnect_count": 0, "manual_review_codes": [], "rebuild_required_codes": ["shared_flow_requires_isolated_rebuild"], "evidence_only_codes": ["isolated_flow_verified", "fresh_session_identity_observed", "max_order_ref_reinitialized"], "bridge_command_kinds": ["connect", "connect"], "bridge_event_kinds": ["login_succeeded", "settlement_confirmed", "login_succeeded", "settlement_confirmed"]}
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+CThostFtdcUserApiImplBase::OnSessionDisconnected[000002C4491B8BF8][464257025][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[000002C4491B9608][464388099][ 4097]
