@@ -23,8 +23,9 @@ This repository now aligns to the `DSLReserach` split:
 ## Current Active Delivery
 
 1. Master roadmap: [Nautilus CTP adapter mainline](/D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/roadmap/nautilus_adapter/nautilus-ctp-adapter-mainline/README.md)
-2. Current topic roadmap: [CTP live connectivity](/D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/roadmap/nautilus_adapter/ctp-live-connectivity/README.md)
-3. Active change: [20260401__ctp-live-connectivity__login-025292-and-subscribe-rb2610](/D:/Nautilus/nautilus_ctp_adapter/docs/changes/20260401__ctp-live-connectivity__login-025292-and-subscribe-rb2610/plan.md)
+2. Current topic roadmap: [Nautilus instrument provider](/D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/roadmap/nautilus_adapter/nautilus-instrument-provider/README.md)
+3. Active change: [20260402__nautilus-instrument-provider__instrument-query-runtime-contract](/D:/Nautilus/nautilus_ctp_adapter/docs/changes/20260402__nautilus-instrument-provider__instrument-query-runtime-contract/plan.md)
+4. Formal smoke baseline: [20260401__ctp-live-connectivity__nautilus-live-smoke-baseline](/D:/Nautilus/nautilus_ctp_adapter/docs/changes/20260401__ctp-live-connectivity__nautilus-live-smoke-baseline/acceptance.md)
 
 ## Official Validation Commands
 

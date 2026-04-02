@@ -19,7 +19,7 @@ Use the local project templates:
 
 ## Current Active Change
 
-1. [20260401__ctp-live-connectivity__login-025292-and-subscribe-rb2610](/D:/Nautilus/nautilus_ctp_adapter/docs/changes/20260401__ctp-live-connectivity__login-025292-and-subscribe-rb2610/plan.md)
+1. [20260402__nautilus-instrument-provider__instrument-query-runtime-contract](/D:/Nautilus/nautilus_ctp_adapter/docs/changes/20260402__nautilus-instrument-provider__instrument-query-runtime-contract/plan.md)
 
 ## Governance Note
 

@@ -16,5 +16,5 @@ def build_ctp_stack(config: CtpAdapterConfig) -> dict[str, object]:
         "runtime_bridge": runtime_bridge,
         "instrument_provider": CtpInstrumentProvider(),
         "data_client": CtpDataClient(config, runtime_bridge),
-        "execution_client": CtpExecutionClient(config),
+        "execution_client": CtpExecutionClient(config, runtime_bridge),
     }

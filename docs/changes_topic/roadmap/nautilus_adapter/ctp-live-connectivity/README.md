@@ -2,7 +2,7 @@
 
 **创建日期**：2026-04-01
 **最后更新**：2026-04-02
-**状态**：进行中
+**状态**：已完成
 **进度**：Topic 1 / 5
 **topic-id**：ctp-live-connectivity
 **用途**：作为 `nautilus_ctp_adapter` 的长期主题路线图，管理 CTP 实盘连通、Nautilus 接线、以及后续运行时加固的 phase 顺序与 child change 队列。
@@ -58,14 +58,14 @@
 | C1 | `20260401__ctp-live-connectivity__login-025292-and-subscribe-rb2610` | 进行中 | 冻结 live config、native pack、`rb2610` 行情证据 |
 | C2 | `20260401__ctp-live-connectivity__repo-owned-ctpnative-wrapper-bootstrap` | 已完成 | 把仓内维护的 `ctpnative` C wrapper 边界定下来，摆脱临时宿主依赖 |
 | C3 | `20260401__ctp-live-connectivity__python-rust-md-login-path` | 已完成 | 把真实 MD 登录与订阅从临时 smoke 路径迁回 Python/Rust 主线 |
-| C4 | `20260401__ctp-live-connectivity__td-auth-and-login-readiness` | 未开始 | 解决 TD `AuthCode/AppID/front` 组合问题，明确 login-ready 条件 |
-| C5 | `20260401__ctp-live-connectivity__nautilus-live-smoke-baseline` | 未开始 | 给 Nautilus 方向建立正式 smoke 入口与证据包 |
+| C4 | `20260401__ctp-live-connectivity__td-auth-and-login-readiness` | 已完成 | 冻结 TD auth/login 正确输入顺序，并把历史 `ErrorID=63` 收敛成可复现的错误顺序问题 |
+| C5 | `20260401__ctp-live-connectivity__nautilus-live-smoke-baseline` | 已完成 | 冻结正式 baseline 入口 `ctp_nautilus_live_smoke.py`，统一 `MD tick + TD readiness + bridge events` 通过口径 |
 
 ## 五、队列执行规则
 
 1. `C1` 是本 topic 的 anchor evidence change；它允许在 `C2-C5` 推进期间保持 `in_progress`，因为它承载整条 Topic 1 的 live bootstrap 证据收口。
 2. 除 `C1` 外，同一时刻只允许一个 implementation change 处于 `in_progress`。
-3. 当前可执行 next action 是 `C4`，随后严格按 `C4 -> C5` 顺序推进。
+3. `C1-C5` 已全部完成，本 topic 不再存在 implementation next action。
 4. `C5` 完成后，必须回到 `C1` 补齐剩余 acceptance 空洞，随后整个 topic 才能标记为 completed。
 5. 若 `C2-C5` 任一 change 发现需要新增长期规则，必须先回写当前 topic README，再继续后续 child change。
 
@@ -73,13 +73,13 @@
 
 **当前活动 Change**：`20260401__ctp-live-connectivity__login-025292-and-subscribe-rb2610`
 
-**当前 implementation next action**：`20260401__ctp-live-connectivity__td-auth-and-login-readiness`
+**当前 implementation next action**：无；等待 mainline 切换到 `nautilus-instrument-provider`
 
 - [x] `docs/changes/20260401__ctp-live-connectivity__login-025292-and-subscribe-rb2610`
 - [x] `docs/changes/20260401__ctp-live-connectivity__repo-owned-ctpnative-wrapper-bootstrap`
 - [x] `docs/changes/20260401__ctp-live-connectivity__python-rust-md-login-path`
-- [ ] `docs/changes/20260401__ctp-live-connectivity__td-auth-and-login-readiness`
-- [ ] `docs/changes/20260401__ctp-live-connectivity__nautilus-live-smoke-baseline`
+- [x] `docs/changes/20260401__ctp-live-connectivity__td-auth-and-login-readiness`
+- [x] `docs/changes/20260401__ctp-live-connectivity__nautilus-live-smoke-baseline`
 
 ---
 
@@ -102,18 +102,20 @@
 
 ## 八、Topic 级验收
 
-1. 存在安全、可复现的 live-config 路径，且敏感值不进入 tracked 文件
-2. 仓内维护的 `ctpnative` 依赖包、loader 规则和运行时边界足以复现真实行情接收
-3. Python/Rust 主线能够接住真实 MD 登录与 `rb2610` 订阅
-4. TD 登录 readiness 的缺口被明确收敛，而不是继续停留在“可能是配置问题”的模糊状态
-5. Nautilus-targeted adapter 路径成为正式方向，临时诊断工具不再承担长期实现职责
-6. 托管 C# 层只允许保留为历史证据，不再作为新实现的允许落点
+1. 已存在安全、可复现的 live-config 路径，且敏感值不进入 tracked 文件
+2. 仓内维护的 `ctpnative` 依赖包、loader 规则和运行时边界已足以复现真实行情接收
+3. Python/Rust 主线已能接住真实 MD 登录与 `rb2610` 订阅
+4. TD 登录 readiness 的缺口已被明确收敛，不再停留在“可能是配置问题”的模糊状态
+5. Nautilus-targeted adapter 路径已成为正式方向，临时诊断工具不再承担长期实现职责
+6. 托管 C# 层只保留为历史证据，不再作为新实现的允许落点
+7. 正式 smoke baseline 已冻结为 `ctp_nautilus_live_smoke.py`
 
 当前已知最关键的 TD readiness 结论：
 
 1. `MD` 已通过真实前置 `106.75.173.28:51213` 收到 `rb2610` 行情
-2. `TD` 当前卡在 `ErrorID=63`
-3. 本地样例证据显示 `AppID` 应为 `client_iq_3.6.2`，而不是缺省为空
+2. `TD` 已通过本仓本地 `c wrapper` 主线完成鉴权、登录与结算确认 smoke
+3. 历史 `ErrorID=63` 已确认由错误的 `TdAuthenticate` 参数顺序触发
+4. 冻结后的正确顺序为 `AppID -> AuthCode -> ProductInfo`
 
 ---
 

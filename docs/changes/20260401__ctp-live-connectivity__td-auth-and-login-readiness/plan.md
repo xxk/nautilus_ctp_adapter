@@ -14,8 +14,8 @@ dependencies:
 
 # TD 鉴权与登录就绪 开发计划
 
-**状态**：draft
-**进度**：0%
+**状态**：completed
+**进度**：100%
 **日期**：2026-04-01
 **范围**：`rust/ctp_runtime_core/`、`src/nautilus_ctp_adapter/runtime/`、live config docs、当前 change 三件套
 **topic-id**：ctp-live-connectivity
@@ -44,11 +44,34 @@ dependencies:
 2. 禁止修改：完整下单撤单实现；本 change 只聚焦 readiness。
 3. 改完后至少执行：`python -m pytest`，以及 TD readiness 相关最小验证。
 
+## 四、已收敛的核心结论
+
+1. 本仓维护的本地 `c wrapper` 已可完成 `TD` 鉴权、登录与结算确认 smoke。
+2. `TdAuthenticate` 的正确参数顺序已经冻结为 `app_id -> auth_code -> product_info`。
+3. 历史 `ErrorID=63` 已通过错误顺序复现实验被明确解释，不再是模糊配置问题。
+4. 本 change 只证明 `TD readiness`，不代表 execution 已 ready。
+
 ## 七、任务清单
 
 | 步骤 | 任务 | 来源 | 修改文件 | 产出 | 验证动作 | 回写目标 | 完成定义 | 状态 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| P1 | 收集并冻结 TD 缺失参数口径 | ErrorID=63 evidence | config/runtime docs | 明确缺项清单 | 文档检查 | topic roadmap | 不再停留在“可能配置不对” | 未开始 |
-| P2 | 对齐 TD auth/login 输入模型 | runtime session | runtime/config 文件 | 就绪输入模型 | `python -m pytest` | architecture doc | 输入字段与实际样例一致 | 未开始 |
-| P3 | 留证 TD readiness 结果 | acceptance | 当前 change 三件套 | pass/fail 解释证据 | 最小 smoke | topic roadmap | 后续 Topic 4 可直接接力 | 未开始 |
+| P1 | 收集并冻结 TD 缺失参数口径 | ErrorID=63 evidence | config/runtime docs | 明确缺项清单 | 文档检查 | topic roadmap | 不再停留在“可能配置不对” | 已完成 |
+| P2 | 对齐 TD auth/login 输入模型 | runtime session | runtime/config 文件 | 就绪输入模型 | `python -m pytest` | architecture doc | 输入字段与实际样例一致 | 已完成 |
+| P3 | 留证 TD readiness 结果 | acceptance | 当前 change 三件套 | pass/fail 解释证据 | 最小 smoke | topic roadmap | 后续 Topic 4 可直接接力 | 已完成 |
 
+## 八、执行结果
+
+1. 新增本仓 Python 主线 TD smoke：`/D:/Nautilus/nautilus_ctp_adapter/scripts/ctp_td_login_smoke.py`
+2. 新增本仓 TD `ctypes` 边界：`/D:/Nautilus/nautilus_ctp_adapter/src/nautilus_ctp_adapter/native/td_ctypes.py`
+3. 新增仓内验证测试：`/D:/Nautilus/nautilus_ctp_adapter/tests/test_smoke_import.py`
+4. 正向结果：`TD` 鉴权、登录、结算确认成功
+5. 反向结果：错误顺序调用可稳定复现 `ErrorID=63`
+
+## 九、验证记录
+
+1. `python scripts\ctp_td_login_smoke.py --config D:\Nautilus\nautilus_ctp_adapter\cfgs\local\ctp.live.025292.rb2610.10675.json --timeout-seconds 20`
+2. `python -m pytest`
+
+## 十、证据
+
+1. `./evidence_20260402_td_login_readiness.md`

@@ -42,6 +42,7 @@ def test_factory_builds_minimal_stack() -> None:
     assert "data_client" in stack
     assert "execution_client" in stack
     assert stack["data_client"].runtime_bridge is stack["runtime_bridge"]
+    assert stack["execution_client"].runtime_bridge is stack["runtime_bridge"]
 
 
 def test_runtime_models_are_platform_neutral() -> None:
@@ -402,3 +403,42 @@ def test_data_client_live_callbacks_push_bridge_events() -> None:
     ]
     assert events[1].venue_symbol == "rb2610"
     assert events[1].payload["last"] == "3127.0"
+
+
+def test_execution_client_live_callbacks_push_bridge_events() -> None:
+    config = CtpAdapterConfig.from_dict(
+        {
+            "BrokerID": "0155",
+            "UserID": "025292",
+            "Password": "secret",
+            "AppID": "client_iq_3.6.2",
+            "AuthCode": "RFLEXUGHCKIKWGPC",
+            "ProductInfo": "iQuant",
+            "Pricer": "tcp://106.75.173.28:51213",
+            "Host": "tcp://106.75.173.28:51205",
+            "Instruments": ["rb2610"],
+        }
+    )
+    stack = build_ctp_stack(config)
+    execution_client = stack["execution_client"]
+    bridge = stack["runtime_bridge"]
+    state: dict[str, object] = {"disconnects": []}
+
+    class LoginResponse:
+        success = True
+        error_id = 0
+        error_message = ""
+        front_id = 11
+        session_id = 22
+        max_order_ref = 1
+
+    execution_client._on_td_login_callback(LoginResponse(), state)
+    execution_client._on_td_disconnect(4097, state)
+    events = bridge.drain_events()
+
+    assert [event.kind for event in events] == [
+        CtpRuntimeEventKind.LOGIN_SUCCEEDED,
+        CtpRuntimeEventKind.DISCONNECTED,
+    ]
+    assert events[0].payload["channel"] == "td"
+    assert events[1].message == "td_disconnected:4097"

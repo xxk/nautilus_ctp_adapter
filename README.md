@@ -103,3 +103,17 @@ C# smoke tooling may exist temporarily for live-path verification, but it is not
 7. Add Python `LiveExecutionClient`
 8. Replace temporary smoke tooling with Nautilus-facing live smoke flows
 9. Add playback/mock/live smoke tests
+
+## Current Formal Smoke
+
+The current formal Nautilus-facing live smoke baseline is:
+
+```powershell
+python scripts/ctp_nautilus_live_smoke.py --config <path>
+```
+
+It is expected to prove three things in one run:
+
+1. `MD` login and first subscribed tick
+2. `TD` auth/login plus settlement confirmation readiness
+3. Shared runtime bridge event flow inside the Nautilus-facing adapter stack

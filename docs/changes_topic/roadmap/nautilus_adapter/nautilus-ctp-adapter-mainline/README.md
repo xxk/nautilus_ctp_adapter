@@ -3,7 +3,7 @@
 **创建日期**：2026-04-01
 **最后更新**：2026-04-02
 **状态**：进行中
-**进度**：Topic 1 / 5
+**进度**：Topic 2 / 5
 **topic-id**：nautilus-ctp-adapter-mainline
 **用途**：作为 `nautilus_ctp_adapter` 的总 roadmap，按多个 topic 推进“使用真实 CTP 账户、集中适配 Nautilus”的正式开发计划。
 
@@ -40,8 +40,8 @@
 
 | Topic | 状态 | 核心目标 | 说明 |
 | --- | --- | --- | --- |
-| Topic 1: `ctp-live-connectivity` | 进行中 | 真实账户连通、MD/TD 基础登录、`rb2610` 行情与最小 smoke 入口 | 当前第一优先级 topic |
-| Topic 2: `nautilus-instrument-provider` | 未开始 | 合约查询、符号映射、InstrumentProvider 正式落地 | 解决 Nautilus 识别 CTP 合约的问题 |
+| Topic 1: `ctp-live-connectivity` | 已完成 | 真实账户连通、MD/TD 基础登录、`rb2610` 行情与最小 smoke 入口 | Topic 2-5 的 live/bootstrap 基线已冻结 |
+| Topic 2: `nautilus-instrument-provider` | 进行中 | 合约查询、符号映射、InstrumentProvider 正式落地 | 当前第一优先级 topic |
 | Topic 3: `nautilus-live-marketdata` | 未开始 | LiveDataClient、订阅恢复、批量事件出桥、Nautilus 数据侧 smoke | 把 Topic 1 的行情链路接进正式 Nautilus adapter |
 | Topic 4: `nautilus-live-execution` | 未开始 | TD auth/login、下单/撤单、订单状态机、LiveExecutionClient | 从“能连”升级到“能交易” |
 | Topic 5: `live-ops-and-reconciliation` | 未开始 | 启动对账、失败诊断、重连、运维脚本与实盘验收矩阵 | 补齐实盘长期可运维性 |
@@ -115,15 +115,15 @@
 
 ## 十一、AI-TASK-QUEUE
 
-**当前活动 Topic**：`ctp-live-connectivity`
+**当前活动 Topic**：`nautilus-instrument-provider`
 
 - [x] `docs/changes_topic/roadmap/nautilus_adapter/ctp-live-connectivity/README.md`
-- [ ] `docs/changes_topic/roadmap/nautilus_adapter/nautilus-instrument-provider/README.md`
+- [x] `docs/changes_topic/roadmap/nautilus_adapter/nautilus-instrument-provider/README.md`
 - [ ] `docs/changes_topic/roadmap/nautilus_adapter/nautilus-live-marketdata/README.md`
 - [ ] `docs/changes_topic/roadmap/nautilus_adapter/nautilus-live-execution/README.md`
 - [ ] `docs/changes_topic/roadmap/nautilus_adapter/live-ops-and-reconciliation/README.md`
 
-**当前 next action**：按 `ctp-live-connectivity` README 中声明的 child-change 顺序完成 Topic 1；Topic 1 关闭前不得切到 Topic 2。
+**当前 next action**：创建并推进 `20260402__nautilus-instrument-provider__instrument-query-runtime-contract`，冻结 instrument query contract 与 runtime/query 边界。
 
 ## 十二、不在本层解决的内容
 

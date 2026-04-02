@@ -2,7 +2,7 @@
 
 **创建日期**：2026-04-02
 **最后更新**：2026-04-02
-**状态**：未开始
+**状态**：进行中
 **进度**：Topic 2 / 5
 **topic-id**：nautilus-instrument-provider
 **用途**：承接 `ctp-live-connectivity` 的已验证 live/bootstrap 口径，建立 CTP 合约查询、符号归一化和 Nautilus `InstrumentProvider` 的正式主线。
@@ -38,13 +38,15 @@
 
 ## 五、AI-TASK-QUEUE
 
-**当前状态**：等待 Topic 1 完成后激活。
+**当前状态**：已激活。
 
-- [ ] 创建 `C1` child change bundle
+- [x] 创建 `C1` child change bundle
 - [ ] 完成 `C1 -> C2 -> C3 -> C4`
 - [ ] 回写 mainline roadmap 与 Topic 3 进入条件
 
-**激活规则**：当 Topic 1 标记为 completed 时，先从模板创建 `C1` 的 `plan.md`、`acceptance.md`、`ai_constraints.md`，再将本 topic 标记为 `in_progress`。
+**当前 first action**：推进 `20260402__nautilus-instrument-provider__instrument-query-runtime-contract`
+
+**激活规则**：Topic 1 已 completed；当前 topic 已进入 `in_progress`。
 
 **可并行预备范围**：只允许 docs-only 工作，例如预创建 `C1-C4` 的 change bundle、冻结 acceptance 结构、整理 symbol/exchange 映射输入；不允许提前写 `InstrumentProvider`、runtime query 或正式 adapter 代码。
 
