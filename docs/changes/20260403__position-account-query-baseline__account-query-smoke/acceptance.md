@@ -8,7 +8,7 @@
 **change-id**：20260403__position-account-query-baseline__account-query-smoke
 **关联 plan**：./plan.md
 **关联 ai_constraints**：./ai_constraints.md
-**长期归宿 / Long-Term Target**：/D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/roadmap/nautilus_adapter/position-account-query-baseline/README.md
+**长期归宿 / Long-Term Target**：/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/position-account-query-baseline/README.md
 
 <!-- AI-STATUS-BEGIN -->
 ```yaml
@@ -51,4 +51,3 @@ scenarios:
 | A4 | Failure 1: 治理状态未漂移 | 运行 `python scripts/check_topic_docs.py` | 返回 0 | `failures=0` | topic/active change 漂移 | [evidence_20260402_account_query_smoke.md](./evidence_20260402_account_query_smoke.md) |
 | A5 | Failure 2: 回归未破坏 | 运行 `python -m pytest` | 回归通过 | `58 passed` | 新 query 主线破坏既有能力 | [evidence_20260402_account_query_smoke.md](./evidence_20260402_account_query_smoke.md) |
 | A6 | Boundary 1: 不宣告交易动作 | 检查 change 结论 | 仅宣告只读 query | 没有新增真实交易动作 | 把只读 query 写成交易能力 | [evidence_20260402_account_query_smoke.md](./evidence_20260402_account_query_smoke.md) |
-

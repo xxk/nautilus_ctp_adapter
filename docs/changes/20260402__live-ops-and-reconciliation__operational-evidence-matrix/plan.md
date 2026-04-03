@@ -31,9 +31,9 @@ dependencies:
 ```text
 - capability_id: ops.operational_evidence_matrix
 - capability_name: Operational Evidence Matrix
-- long_term_target: D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/roadmap/nautilus_adapter/nautilus-ctp-adapter-mainline/README.md
-- secondary_targets: D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/roadmap/nautilus_adapter/live-ops-and-reconciliation/README.md; D:/Nautilus/nautilus_ctp_adapter/docs/README.md
-- decision_target: D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/roadmap/nautilus_adapter/nautilus-ctp-adapter-mainline/README.md
+- long_term_target: D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/nautilus-ctp-adapter-mainline/README.md
+- secondary_targets: D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/live-ops-and-reconciliation/README.md; D:/Nautilus/nautilus_ctp_adapter/docs/README.md
+- decision_target: D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/nautilus-ctp-adapter-mainline/README.md
 - affects_long_term_rules: 是
 - change_type: 新增规则
 ```

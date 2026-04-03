@@ -1,7 +1,7 @@
 # 文档闭环执行套件清单 / Doc Harness Kit Manifest
 
 **创建日期**：2026-03-27
-**最后更新**：2026-04-02
+**最后更新**：2026-04-03
 **状态**：draft
 
 ---
@@ -19,7 +19,7 @@
 | `core/` | 推荐 | 沉淀项目无关的治理正文 |
 | `checks/` | 标准及以上 | 最小守卫规范与接入检查清单 |
 | `templates/changes/` | 必选 | child change 四件套可复制模板 |
-| `templates/changes_topic/` | 标准及以上 | topic 索引模板与 roadmap 可复制模板 |
+| `templates/topics/` | 标准及以上 | topic 索引模板与 roadmap 可复制模板 |
 | `templates/archive/` | 标准及以上 | 归档 / 弃用模板入口 |
 | `examples/` | 推荐 | 示例目录与最小样板 |
 
@@ -30,7 +30,7 @@
 当前版本不再停留在“入口文件 + 来源说明”，而采用“双源同步”策略：
 
 1. `templates/changes/` 同步当前仓库已验证的 `docs/changes/_template/` 四件套正文
-2. `templates/changes_topic/` 同步 topic index 与 topic roadmap 的稳定结构模板
+2. `templates/topics/` 同步 topic index 与 topic roadmap 的稳定结构模板
 3. `templates/archive/` 继续保留归档入口模板
 
 同步原则：
@@ -70,13 +70,13 @@
 12. `templates/changes/acceptance.md`
 13. `templates/changes/ai_constraints.md`
 14. `templates/changes/design.md`
-15. `templates/changes_topic/索引模板_Changes Topic Index Template.md`
-16. `templates/changes_topic/主题路线图模板_Topic Roadmap Template.md`
+15. `templates/topics/索引模板_Topic Index Template.md`
+16. `templates/topics/主题路线图模板_Topic Roadmap Template.md`
 17. `examples/example_change/`
 18. `examples/example_topic/`
 19. `examples/example_archive/`
 20. `examples/example_change/design.md`
-21. `examples/example_topic/Example Changes Topic Index.md`
+21. `examples/example_topic/Example Topic Index.md`
 22. `examples/example_topic/README.md`
 
 后续仍可继续补充：

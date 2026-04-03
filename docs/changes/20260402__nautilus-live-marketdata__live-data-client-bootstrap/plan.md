@@ -30,7 +30,7 @@ dependencies:
 ```text
 - capability_id: live-data-client-bootstrap
 - capability_name: LiveDataClient 启动主线 / LiveDataClient bootstrap
-- long_term_target: /D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/roadmap/nautilus_adapter/nautilus-live-marketdata/README.md
+- long_term_target: /D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/nautilus-live-marketdata/README.md
 - secondary_targets: /D:/Nautilus/nautilus_ctp_adapter/README.md
 - decision_target: /D:/Nautilus/nautilus_ctp_adapter/docs/architecture/rust-python-adapter-split.md
 - affects_long_term_rules: 是

@@ -5,7 +5,7 @@ Stable architecture and long-lived design decisions live here.
 ## Directory Rule
 
 1. `docs/architecture/` stores durable design conclusions.
-2. `docs/changes_topic/roadmap/` stores long-running topic roadmaps.
+2. `docs/topics/roadmap/` stores long-running topic roadmaps.
 3. `docs/changes/` stores one execution bundle at a time.
 
 ## Current Architecture Documents

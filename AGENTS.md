@@ -1,6 +1,6 @@
 # AGENTS.md
 
-**Updated**: 2026-04-02  
+**Updated**: 2026-04-03
 **Status**: Active
 
 ## Read First
@@ -11,7 +11,7 @@ Read these in order:
 2. [docs/README.md](/D:/Nautilus/nautilus_ctp_adapter/docs/README.md)
 3. [docs/doc_harness_kit/README.md](/D:/Nautilus/nautilus_ctp_adapter/docs/doc_harness_kit/README.md)
 4. [docs/architecture/runtime-performance-guidelines.md](/D:/Nautilus/nautilus_ctp_adapter/docs/architecture/runtime-performance-guidelines.md)
-5. [docs/changes_topic/roadmap/nautilus_adapter/live-ops-truth-snapshot/README.md](/D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/roadmap/nautilus_adapter/live-ops-truth-snapshot/README.md)
+5. [docs/topics/roadmap/nautilus_adapter/live-ops-truth-snapshot/README.md](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/live-ops-truth-snapshot/README.md)
 6. The current change bundle under `docs/changes/<change-id>/`
 
 ## Repository Role
@@ -39,9 +39,9 @@ Primary responsibilities:
 | `tests/` | Package tests and smoke validation |
 | `scripts/` | Local diagnostics and runnable helpers |
 | `docs/architecture/` | Stable design and architecture conclusions |
-| `docs/changes_topic/` | Long-running topic roadmap governance |
+| `docs/topics/` | Long-running topic roadmap governance |
 | `docs/changes/` | Executable child changes, acceptance, and evidence |
-| `docs/topics/` | Legacy compatibility pointers only |
+| `docs/archive/` | Archived docs and historical evidence |
 
 ## Change Governance
 
@@ -51,7 +51,7 @@ This repository adopts the `Doc Harness Kit` at:
 
 Governance layout is aligned toward `DSLReserach`:
 
-1. Long-running topic roadmaps live under `docs/changes_topic/roadmap/`
+1. Long-running topic roadmaps live under `docs/topics/roadmap/`
 2. Stable architecture docs live under `docs/architecture/`
 3. Executable child changes live under `docs/changes/<change-id>/`
 4. New child changes should start from the local `_template` bundle, including `design.md` when needed
@@ -61,7 +61,7 @@ Governance layout is aligned toward `DSLReserach`:
 When a topic README `**状态**` changes from `进行中` to `已完成` and the next topic enters `in_progress`, the following updates are **mandatory** and must be done in the same commit:
 
 1. Update **this file** (`AGENTS.md`) read order step 5 to point to the new active topic README.
-2. Update `docs/changes_topic/README.md` Current State section to reflect the new active topic and active change.
+2. Update `docs/topics/README.md` Current State section to reflect the new active topic and active change.
 3. Update `docs/README.md` Current Active Delivery section to reflect the new active topic and active change.
 
 Verification: `python scripts/check_topic_docs.py`

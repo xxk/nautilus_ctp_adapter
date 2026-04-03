@@ -7,7 +7,7 @@ This directory is the documentation and governance home for `nautilus_ctp_adapte
 1. [Repository map](/D:/Nautilus/nautilus_ctp_adapter/AGENTS.md)
 2. [Harness kit entry](/D:/Nautilus/nautilus_ctp_adapter/docs/doc_harness_kit/README.md)
 3. [Architecture index](/D:/Nautilus/nautilus_ctp_adapter/docs/architecture/README.md)
-4. [Changes topic index](/D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/README.md)
+4. [Topic index](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/README.md)
 5. [Changes index](/D:/Nautilus/nautilus_ctp_adapter/docs/changes/README.md)
 6. [Archive index](/D:/Nautilus/nautilus_ctp_adapter/docs/archive/README.md)
 
@@ -16,14 +16,14 @@ This directory is the documentation and governance home for `nautilus_ctp_adapte
 This repository now aligns to the `DSLReserach` split:
 
 1. `docs/architecture/` for durable design conclusions
-2. `docs/changes_topic/roadmap/` for long-running topic roadmaps
+2. `docs/topics/roadmap/` for long-running topic roadmaps
 3. `docs/changes/` for executable child changes and evidence
-4. `docs/topics/` as temporary compatibility pointers only
+4. `docs/archive/` for archived docs and historical snapshots
 
 ## Current Delivery
 
-1. Master roadmap: [Nautilus CTP adapter mainline](/D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/roadmap/nautilus_adapter/nautilus-ctp-adapter-mainline/README.md)
-2. Current topic roadmap: [Live ops truth snapshot](/D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/roadmap/nautilus_adapter/live-ops-truth-snapshot/README.md)
+1. Master roadmap: [Nautilus CTP adapter mainline](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/nautilus-ctp-adapter-mainline/README.md)
+2. Current topic roadmap: [Live ops truth snapshot](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/live-ops-truth-snapshot/README.md)
 3. Active change: [20260403__live-ops-truth-snapshot__live-ops-policy-baseline](/D:/Nautilus/nautilus_ctp_adapter/docs/changes/20260403__live-ops-truth-snapshot__live-ops-policy-baseline/plan.md)
 4. Formal smoke baseline: [20260401__ctp-live-connectivity__nautilus-live-smoke-baseline](/D:/Nautilus/nautilus_ctp_adapter/docs/changes/20260401__ctp-live-connectivity__nautilus-live-smoke-baseline/acceptance.md)
 

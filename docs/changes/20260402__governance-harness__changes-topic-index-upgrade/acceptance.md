@@ -6,7 +6,7 @@
 
 ## 继承事实
 
-1. `docs/changes_topic/README.md` 当前只列出 2 个 topic：mainline 和 `ctp-live-connectivity`。
+1. `docs/topics/README.md` 当前只列出 2 个 topic：mainline 和 `ctp-live-connectivity`。
 2. `nautilus-instrument-provider`（已完成）、`nautilus-live-marketdata`（进行中）均已存在 README，但未出现在索引里。
 3. 本 governance topic（`nautilus-ctp-adapter-governance-harness`）也需要加入索引。
 
@@ -14,7 +14,7 @@
 
 ### SC-1：Current State 节存在且准确
 
-`docs/changes_topic/README.md` 顶部（Layering Rule 之前）有 `## Current State` 节，节内容显示：
+`docs/topics/README.md` 顶部（Layering Rule 之前）有 `## Current State` 节，节内容显示：
 - Active topic = `nautilus-live-marketdata`
 - Active change = `20260402__nautilus-live-marketdata__live-data-client-bootstrap`
 

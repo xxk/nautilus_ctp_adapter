@@ -30,6 +30,8 @@ Current planned entrypoints:
 24. `python scripts/ctp_td_merged_reconciliation_policy_smoke.py --config <path>`
 25. `python scripts/ctp_td_merged_evidence_matrix_smoke.py --config <path>`
 26. `python scripts/ctp_live_ops_snapshot_smoke.py --config <path>`
+27. `python scripts/ctp_live_ops_policy_smoke.py --config <path>`
+28. `python scripts/ctp_live_ops_evidence_matrix_smoke.py --config <path>`
 
 ## Formal Baseline
 

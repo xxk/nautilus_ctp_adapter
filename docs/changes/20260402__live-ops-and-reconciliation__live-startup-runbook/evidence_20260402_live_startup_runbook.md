@@ -1,7 +1,7 @@
 # Live Startup Runbook Evidence
 
-**日期**：2026-04-02  
-**topic-id**：`live-ops-and-reconciliation`  
+**日期**：2026-04-02
+**topic-id**：`live-ops-and-reconciliation`
 **change-id**：`20260402__live-ops-and-reconciliation__live-startup-runbook`
 
 ## 一、runbook 产物
@@ -23,7 +23,7 @@
 已回写：
 
 1. [scripts/README.md](/D:/Nautilus/nautilus_ctp_adapter/scripts/README.md)
-2. [live-ops-and-reconciliation README](/D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/roadmap/nautilus_adapter/live-ops-and-reconciliation/README.md)
+2. [live-ops-and-reconciliation README](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/live-ops-and-reconciliation/README.md)
 
 ## 三、验证结果
 

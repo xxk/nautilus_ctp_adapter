@@ -13,7 +13,7 @@
 1. 新建文件只放在 `docs/doc_harness_kit/checks/`，文件名为 `topic-transition-checklist.md`（英文，符合目录已有文件命名风格）。
 2. checklist 必须包含的 3 项更新目标（按优先级）：
    - `AGENTS.md` → read order step → 改为新活动 topic README 的绝对链接
-   - `docs/changes_topic/README.md` → Current State 节 → 改为新 active topic + active change
+   - `docs/topics/README.md` → Current State 节 → 改为新 active topic + active change
    - `docs/README.md` → Current Active Delivery 节 → 改为新 active topic + active change
 3. 触发时机措辞必须是强制义务（"必须"），触发条件是 topic `**状态**` 从 `进行中` 变为 `已完成` 且下一 topic 进入 `in_progress`。
 

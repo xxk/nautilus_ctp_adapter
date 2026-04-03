@@ -6,11 +6,11 @@
 
 ## 目标
 
-将 `docs/changes_topic/README.md` 从"仅列出 2 个 topic 的静态目录"升级为"列出所有 topic、显示 current state 的实时索引页"。
+将 `docs/topics/README.md` 从"仅列出 2 个 topic 的静态目录"升级为"列出所有 topic、显示 current state 的实时索引页"。
 
 ## 范围
 
-- 修改文件：`docs/changes_topic/README.md`
+- 修改文件：`docs/topics/README.md`
 
 ## 步骤
 

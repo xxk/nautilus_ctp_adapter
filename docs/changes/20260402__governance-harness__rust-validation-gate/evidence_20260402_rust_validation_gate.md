@@ -33,4 +33,4 @@ NEXT rust-gate: install Rust toolchain and ensure cargo is available on PATH
 2. [AGENTS.md](/D:/Nautilus/nautilus_ctp_adapter/AGENTS.md)
 3. [docs/README.md](/D:/Nautilus/nautilus_ctp_adapter/docs/README.md)
 4. [scripts/README.md](/D:/Nautilus/nautilus_ctp_adapter/scripts/README.md)
-5. [repo-governance-hardening README](/D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/roadmap/repo_governance/repo-governance-hardening/README.md)
+5. [repo-governance-hardening README](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/repo_governance/repo-governance-hardening/README.md)

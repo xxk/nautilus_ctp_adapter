@@ -19,7 +19,7 @@ def repository_root() -> Path:
 
 
 def topic_readmes(root: Path) -> list[Path]:
-    return sorted((root / "docs" / "changes_topic" / "roadmap").glob("*/*/README.md"))
+    return sorted((root / "docs" / "topics" / "roadmap").glob("*/*/README.md"))
 
 
 def extract_topic_id(text: str, fallback: str) -> str:
@@ -52,7 +52,7 @@ def validate_repo_sync(root: Path) -> list[str]:
     failures: list[str] = []
     agents_text = (root / "AGENTS.md").read_text(encoding="utf-8")
     docs_index_text = (root / "docs" / "README.md").read_text(encoding="utf-8")
-    topic_index_text = (root / "docs" / "changes_topic" / "README.md").read_text(encoding="utf-8")
+    topic_index_text = (root / "docs" / "topics" / "README.md").read_text(encoding="utf-8")
 
     active_topic_match = re.search(r"Current topic roadmap: \[(.+?)\]\((.+?)\)", docs_index_text)
     active_change_match = re.search(r"Active change: \[(.+?)\]\((.+?)\)", docs_index_text)
@@ -70,9 +70,9 @@ def validate_repo_sync(root: Path) -> list[str]:
     if active_topic_link not in agents_text:
         failures.append("FAIL repo-sync: AGENTS.md step 5 未指向 docs/README.md 当前活动 topic")
     if active_topic_link not in topic_index_text:
-        failures.append("FAIL repo-sync: docs/changes_topic/README.md 未指向当前活动 topic")
+        failures.append("FAIL repo-sync: docs/topics/README.md 未指向当前活动 topic")
     if active_change_label not in topic_index_text and active_change_link not in topic_index_text:
-        failures.append("FAIL repo-sync: docs/changes_topic/README.md 未反映当前 active change")
+        failures.append("FAIL repo-sync: docs/topics/README.md 未反映当前 active change")
 
     return failures
 

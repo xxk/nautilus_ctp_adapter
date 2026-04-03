@@ -8,7 +8,7 @@
 **change-id**：20260403__startup-truth-and-session-rebuild__td-session-truth-baseline
 **关联 plan**：./plan.md
 **关联 ai_constraints**：./ai_constraints.md
-**长期归宿 / Long-Term Target**：/D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/roadmap/nautilus_adapter/startup-truth-and-session-rebuild/README.md
+**长期归宿 / Long-Term Target**：/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/startup-truth-and-session-rebuild/README.md
 
 <!-- AI-STATUS-BEGIN -->
 ```yaml

@@ -18,7 +18,7 @@
 文档必须包含以下 3 个更新项，每项须给出"改什么文件 → 改哪个字段 → 改为什么"的具体操作：
 
 1. `AGENTS.md` read order step 5 → 改为新 topic 的 README 链接
-2. `docs/changes_topic/README.md` Current State 节 → 改为新 topic 名 + 新 active change-id
+2. `docs/topics/README.md` Current State 节 → 改为新 topic 名 + 新 active change-id
 3. `docs/README.md` Current Active Delivery 节 → 改为新 topic + 新 active change
 
 文档末尾必须包含验证命令：`python scripts/check_topic_docs.py`

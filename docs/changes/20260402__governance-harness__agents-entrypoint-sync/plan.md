@@ -15,8 +15,8 @@
 ## 步骤
 
 1. 将 `AGENTS.md` 顶部 `**Updated**` 字段改为 `2026-04-02`。
-2. 将 read order step 5 链接路径从 `ctp-live-connectivity/README.md` 改为 `nautilus-live-marketdata/README.md`，链接文字改为 `[docs/changes_topic/roadmap/nautilus_adapter/nautilus-live-marketdata/README.md]`。
-3. 在 `## Change Governance` 节末尾追加 `## Topic Transition Rule` 子节，内容：topic 切换后必须在 24 小时内更新 read order step 5 和 `docs/changes_topic/README.md` current state。
+2. 将 read order step 5 链接路径从 `ctp-live-connectivity/README.md` 改为 `nautilus-live-marketdata/README.md`，链接文字改为 `[docs/topics/roadmap/nautilus_adapter/nautilus-live-marketdata/README.md]`。
+3. 在 `## Change Governance` 节末尾追加 `## Topic Transition Rule` 子节，内容：topic 切换后必须在 24 小时内更新 read order step 5 和 `docs/topics/README.md` current state。
 
 ## 不在范围内
 

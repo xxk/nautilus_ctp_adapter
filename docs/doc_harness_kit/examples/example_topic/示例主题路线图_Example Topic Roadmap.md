@@ -7,7 +7,7 @@
 **topic-id**：project-entry
 **用途**：用一个独立 topic 把“多个历史运行入口并存”的问题收口成唯一正式入口、清晰导航和稳定验证口径。
 
-> 这是已经按 `templates/changes_topic/主题路线图模板_Topic Roadmap Template.md` 填完后的示例。
+> 这是已经按 `templates/topics/主题路线图模板_Topic Roadmap Template.md` 填完后的示例。
 
 ## 一、为什么这个 topic 应该优先
 

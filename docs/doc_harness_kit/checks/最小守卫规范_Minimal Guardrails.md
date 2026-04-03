@@ -102,7 +102,7 @@
 最低要求：
 
 1. `AGENTS.md` 存在指向当前活动 topic 的显式链接
-2. `docs/changes_topic/README.md` 存在 `## Current State` 节，列出当前活动 topic 和 active change
+2. `docs/topics/README.md` 存在 `## Current State` 节，列出当前活动 topic 和 active change
 3. Topic README 的 Change 表包含 `状态` 列，AI 能无歧义扫描进度
 4. 存在可运行的 topic 文档门禁脚本（如 `check_topic_docs.py`），或等效机械校验
 

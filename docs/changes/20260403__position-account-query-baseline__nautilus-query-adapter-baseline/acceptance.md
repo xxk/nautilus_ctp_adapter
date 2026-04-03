@@ -8,7 +8,7 @@
 **change-id**：20260403__position-account-query-baseline__nautilus-query-adapter-baseline
 **关联 plan**：./plan.md
 **关联 ai_constraints**：./ai_constraints.md
-**长期归宿 / Long-Term Target**：/D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/roadmap/nautilus_adapter/position-account-query-baseline/README.md
+**长期归宿 / Long-Term Target**：/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/position-account-query-baseline/README.md
 
 <!-- AI-STATUS-BEGIN -->
 ```yaml

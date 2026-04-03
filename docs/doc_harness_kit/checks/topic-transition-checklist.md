@@ -13,8 +13,8 @@
    改哪个字段：`Read First` 第 5 步
    改为什么：改成新的活动 topic README 链接，确保进入仓库后的第一跳不指向已完成 topic。
 
-2. `docs/changes_topic/README.md`
-   改什么文件：目标项目的 `docs/changes_topic/README.md`
+2. `docs/topics/README.md`
+   改什么文件：目标项目的 `docs/topics/README.md`
    改哪个字段：`Current State` 节中的 `Active topic` 与 `Active change`
    改为什么：让 topic 索引反映新的活动 topic 名称、状态和当前 active change。
 
@@ -27,9 +27,9 @@
 
 1. `docs/changes/README.md`
    同步新的 active change 链接。
-2. `docs/changes_topic/roadmap/<domain>/<topic-id>/README.md`
+2. `docs/topics/roadmap/<domain>/<topic-id>/README.md`
    更新前一个 topic 的 `状态`、当前 topic 的 `当前 first action` 和 AI-TASK-QUEUE。
-3. `docs/changes_topic/roadmap/nautilus_adapter/nautilus-ctp-adapter-mainline/README.md`
+3. `docs/topics/roadmap/nautilus_adapter/nautilus-ctp-adapter-mainline/README.md`
    同步 master roadmap 当前活动 topic 与 next action。
 
 ## 验证命令

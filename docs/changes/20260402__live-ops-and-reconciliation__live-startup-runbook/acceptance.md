@@ -8,7 +8,7 @@
 **change-id**：20260402__live-ops-and-reconciliation__live-startup-runbook
 **关联 plan**：./plan.md
 **关联 ai_constraints**：./ai_constraints.md
-**长期归宿 / Long-Term Target**：/D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/roadmap/nautilus_adapter/live-ops-and-reconciliation/README.md
+**长期归宿 / Long-Term Target**：/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/live-ops-and-reconciliation/README.md
 
 <!-- AI-STATUS-BEGIN -->
 ```yaml
@@ -61,7 +61,7 @@ scenarios:
 | A1 | Success 1: Topic 5 已激活 | 读取 Topic 5 README | 状态为 `进行中` | active topic 已切换 | 仍为未开始 | |
 | A2 | Success 2: `C1` bundle 已创建 | 检查当前 change 目录 | 三件套与 runbook 存在 | `plan/acceptance/ai_constraints` 和 `live_startup_runbook.md` 可读 | 缺少 bundle | [evidence_20260402_live_startup_runbook.md](./evidence_20260402_live_startup_runbook.md) |
 | A3 | Success 3: mainline 已切到 Topic 5 | 读取 mainline README | 当前活动 topic 为 Topic 5 | mainline 口径同步 | 仍停在 Topic 4 | [evidence_20260402_live_startup_runbook.md](./evidence_20260402_live_startup_runbook.md) |
-| A4 | Failure 1: AGENTS/docs 索引未切换 | 读取入口文档 | 入口都指向 Topic 5 | `AGENTS/docs/changes_topic` 一致 | 入口漂移 | [evidence_20260402_live_startup_runbook.md](./evidence_20260402_live_startup_runbook.md) |
+| A4 | Failure 1: AGENTS/docs 索引未切换 | 读取入口文档 | 入口都指向 Topic 5 | `AGENTS/docs/topics` 一致 | 入口漂移 | [evidence_20260402_live_startup_runbook.md](./evidence_20260402_live_startup_runbook.md) |
 | A5 | Failure 2: topic 治理门禁失败 | `python scripts/check_topic_docs.py` | 返回 0 | `failures=0` | topic docs 漂移 | [evidence_20260402_live_startup_runbook.md](./evidence_20260402_live_startup_runbook.md) |
 | A6 | Boundary 1: 测试入口未受影响 | `python -m pytest` | 通过 | 现有回归通过 | 文档切换破坏测试 | [evidence_20260402_live_startup_runbook.md](./evidence_20260402_live_startup_runbook.md) |
 

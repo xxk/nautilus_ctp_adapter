@@ -6,13 +6,13 @@
 ## 启动前提
 
 1. 读取当前 `AGENTS.md` 全文，确认 step 5 的当前链接文字和路径，再动手。
-2. 读取 `docs/changes_topic/roadmap/nautilus_adapter/nautilus-live-marketdata/README.md` 文件头，确认 `**状态**` = `进行中`，再动手。
+2. 读取 `docs/topics/roadmap/nautilus_adapter/nautilus-live-marketdata/README.md` 文件头，确认 `**状态**` = `进行中`，再动手。
 
 ## 边界
 
 1. 只改 `AGENTS.md`，不改其他文件。
 2. step 5 目标路径必须是绝对路径格式（与文件内其他链接一致），指向 `nautilus-live-marketdata/README.md`。
-3. 新增的 Topic Transition Rule 段落必须用"必须"而非"建议"表述，且明确列出两个必须更新项：AGENTS.md step 5 + `docs/changes_topic/README.md` current state。
+3. 新增的 Topic Transition Rule 段落必须用"必须"而非"建议"表述，且明确列出两个必须更新项：AGENTS.md step 5 + `docs/topics/README.md` current state。
 
 ## 禁止
 

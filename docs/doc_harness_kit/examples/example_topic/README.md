@@ -3,16 +3,16 @@
 **创建日期**：2026-04-02
 **最后更新**：2026-04-02
 **状态**：draft
-**用途**：展示 `docs/changes_topic/README.md` 与单个 topic roadmap 在填完后分别应长什么样。
+**用途**：展示 `docs/topics/README.md` 与单个 topic roadmap 在填完后分别应长什么样。
 
 ## 一、这个目录包含什么
 
-1. `Example Changes Topic Index.md`：目标项目的 `docs/changes_topic/README.md` 填写样例。
+1. `Example Topic Index.md`：目标项目的 `docs/topics/README.md` 填写样例。
 2. `示例主题路线图_Example Topic Roadmap.md`：单个 topic roadmap 的填写样例。
 
 ## 二、推荐使用方式
 
-1. 先复制 `templates/changes_topic/` 下的模板正文。
+1. 先复制 `templates/topics/` 下的模板正文。
 2. 再对照本目录里的索引样例和 roadmap 样例填写真实内容。
 3. 不要直接复用示例里的 `topic-id`、`change-id`、状态和路径。
 

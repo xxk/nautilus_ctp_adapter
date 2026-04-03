@@ -31,7 +31,7 @@ dependencies:
 ```text
 - capability_id: ctp-td-login-readiness
 - capability_name: TD 鉴权与登录就绪 / TD auth and login readiness
-- long_term_target: /D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/roadmap/nautilus_adapter/ctp-live-connectivity/README.md
+- long_term_target: /D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/ctp-live-connectivity/README.md
 - secondary_targets: /D:/Nautilus/nautilus_ctp_adapter/docs/architecture/platform-neutral-ctp-runtime.md
 - decision_target: /D:/Nautilus/nautilus_ctp_adapter/README.md
 - affects_long_term_rules: 是

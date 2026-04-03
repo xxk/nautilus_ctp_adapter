@@ -8,7 +8,7 @@
 **change-id**：20260403__td-position-account-truth-merge__merged-reconciliation-policy
 **关联 plan**：./plan.md
 **关联 ai_constraints**：./ai_constraints.md
-**长期归宿 / Long-Term Target**：/D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/roadmap/nautilus_adapter/td-position-account-truth-merge/README.md
+**长期归宿 / Long-Term Target**：/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/td-position-account-truth-merge/README.md
 
 <!-- AI-STATUS-BEGIN -->
 ```yaml
@@ -51,4 +51,3 @@ scenarios:
 | A4 | Success 4: live 指标与风险信号一致 | 检查 smoke JSON | `available_ratio`、`margin_ratio` 和 findings 对齐 | policy 结论可解释 | 指标与 findings 不一致 | [evidence_20260402_merged_reconciliation_policy.md](./evidence_20260402_merged_reconciliation_policy.md) |
 | A5 | Boundary 1: real-only evidence | 检查 evidence 口径 | 不用 test/mock/fake 宣告通过 | evidence 只基于真实 live smoke | 用 test/mock/fake 冒充验收证据 | [evidence_20260402_merged_reconciliation_policy.md](./evidence_20260402_merged_reconciliation_policy.md) |
 | A6 | Boundary 2: 只读边界保持 | 检查脚本与结论 | 无真实交易动作 | 仅执行 TD callback observation 与 query | 出现真实交易动作 | [evidence_20260402_merged_reconciliation_policy.md](./evidence_20260402_merged_reconciliation_policy.md) |
-

@@ -31,9 +31,9 @@ dependencies:
 ```text
 - capability_id: ops.audit_and_reconciliation_baseline
 - capability_name: Audit And Reconciliation Baseline
-- long_term_target: D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/roadmap/nautilus_adapter/live-ops-and-reconciliation/README.md
+- long_term_target: D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/live-ops-and-reconciliation/README.md
 - secondary_targets: D:/Nautilus/nautilus_ctp_adapter/docs/README.md
-- decision_target: D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/roadmap/nautilus_adapter/nautilus-ctp-adapter-mainline/README.md
+- decision_target: D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/nautilus-ctp-adapter-mainline/README.md
 - affects_long_term_rules: 是
 - change_type: 新增规则
 ```

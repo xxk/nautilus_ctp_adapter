@@ -20,7 +20,7 @@
 
 checklist 包含以下 3 项，每项有"改什么文件 → 改哪个字段 → 改为什么值"的具体操作说明：
 - AGENTS.md read order step 5
-- `docs/changes_topic/README.md` Current State 节
+- `docs/topics/README.md` Current State 节
 - `docs/README.md` Current Active Delivery 节
 
 ### SC-3：触发时机明确

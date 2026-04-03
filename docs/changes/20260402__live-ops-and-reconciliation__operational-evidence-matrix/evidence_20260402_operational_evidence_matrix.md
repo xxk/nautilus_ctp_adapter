@@ -1,7 +1,7 @@
 # Operational Evidence Matrix Evidence
 
-**日期**：2026-04-02  
-**topic-id**：`live-ops-and-reconciliation`  
+**日期**：2026-04-02
+**topic-id**：`live-ops-and-reconciliation`
 **change-id**：`20260402__live-ops-and-reconciliation__operational-evidence-matrix`
 
 ## 一、matrix 产物
@@ -14,8 +14,8 @@
 
 已回写：
 
-1. [live-ops-and-reconciliation README](/D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/roadmap/nautilus_adapter/live-ops-and-reconciliation/README.md)
-2. [nautilus-ctp-adapter-mainline README](/D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/roadmap/nautilus_adapter/nautilus-ctp-adapter-mainline/README.md)
+1. [live-ops-and-reconciliation README](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/live-ops-and-reconciliation/README.md)
+2. [nautilus-ctp-adapter-mainline README](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/nautilus-ctp-adapter-mainline/README.md)
 
 ## 三、验证结果
 

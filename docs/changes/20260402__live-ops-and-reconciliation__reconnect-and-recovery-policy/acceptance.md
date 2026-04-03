@@ -8,7 +8,7 @@
 **change-id**：20260402__live-ops-and-reconciliation__reconnect-and-recovery-policy
 **关联 plan**：./plan.md
 **关联 ai_constraints**：./ai_constraints.md
-**长期归宿 / Long-Term Target**：/D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/roadmap/nautilus_adapter/live-ops-and-reconciliation/README.md
+**长期归宿 / Long-Term Target**：/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/live-ops-and-reconciliation/README.md
 
 <!-- AI-STATUS-BEGIN -->
 ```yaml
@@ -45,7 +45,7 @@ scenarios:
 | # | 场景 | 执行命令/步骤 | 预期结果 | 成功信号 | 失败口径 | 证据路径 |
 | --- | --- | --- | --- | --- | --- | --- |
 | A1 | Success 1: `C2` bundle 已创建 | 检查当前 change 目录 | 三件套与 policy 文档存在 | `plan/acceptance/ai_constraints/reconnect_recovery_policy.md` 可读 | 缺少 bundle | [evidence_20260402_reconnect_and_recovery_policy.md](./evidence_20260402_reconnect_and_recovery_policy.md) |
-| A2 | Success 2: Topic 5 active change 已切到 `C2` | 读取 docs 入口 | active change 正确 | `docs/README` 与 `changes_topic/README` 一致 | 仍停在 `C1` | [evidence_20260402_reconnect_and_recovery_policy.md](./evidence_20260402_reconnect_and_recovery_policy.md) |
+| A2 | Success 2: Topic 5 active change 已切到 `C2` | 读取 docs 入口 | active change 正确 | `docs/README` 与 `docs/topics/README` 一致 | 仍停在 `C1` | [evidence_20260402_reconnect_and_recovery_policy.md](./evidence_20260402_reconnect_and_recovery_policy.md) |
 | A3 | Success 3: 恢复边界已冻结 | 读取 policy 文档 | 自动恢复 / 人工介入边界明确 | MD/TD/runtime/flow 四层规则成文 | 仍是零散结论 | [evidence_20260402_reconnect_and_recovery_policy.md](./evidence_20260402_reconnect_and_recovery_policy.md) |
 | A4 | Failure 1: topic 治理门禁失败 | `python scripts/check_topic_docs.py` | 返回 0 | `failures=0` | topic docs 漂移 | [evidence_20260402_reconnect_and_recovery_policy.md](./evidence_20260402_reconnect_and_recovery_policy.md) |
 | A5 | Failure 2: 文档切换破坏回归 | `python -m pytest` | 测试继续通过 | 回归通过 | 索引切换破坏测试 | [evidence_20260402_reconnect_and_recovery_policy.md](./evidence_20260402_reconnect_and_recovery_policy.md) |

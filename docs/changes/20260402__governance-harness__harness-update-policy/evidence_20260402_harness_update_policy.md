@@ -1,6 +1,6 @@
 # Evidence: harness-update-policy
 
-**change-id**: `20260402__governance-harness__harness-update-policy`  
+**change-id**: `20260402__governance-harness__harness-update-policy`
 **日期**: 2026-04-02
 
 ## 产出
@@ -11,6 +11,6 @@
 ## Checklist 覆盖内容
 
 1. `AGENTS.md` Read First step 5 更新
-2. `docs/changes_topic/README.md` Current State 更新
+2. `docs/topics/README.md` Current State 更新
 3. `docs/README.md` Current Active Delivery 更新
 4. 验证命令：`python scripts/check_topic_docs.py`

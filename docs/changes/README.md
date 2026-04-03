@@ -4,7 +4,7 @@ This directory stores executable child changes.
 
 ## Layering Rule
 
-1. `docs/changes_topic/roadmap/` describes the long-running topic.
+1. `docs/topics/roadmap/` describes the long-running topic.
 2. `docs/changes/` describes one concrete execution unit.
 3. Acceptance, evidence, and AI status close at the child change layer.
 
@@ -26,5 +26,5 @@ Use the local project templates:
 Templates and directory structure are aligned toward the `DSLReserach` governance style:
 
 1. richer child change templates
-2. separate `changes_topic` roadmap layer
+2. separate topic roadmap layer
 3. `architecture` as the stable design home

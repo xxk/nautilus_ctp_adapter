@@ -28,7 +28,7 @@ dependencies:
 ```text
 - capability_id: nautilus-live-smoke-baseline
 - capability_name: Nautilus 实盘 smoke 基线 / Nautilus live smoke baseline
-- long_term_target: /D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/roadmap/nautilus_adapter/ctp-live-connectivity/README.md
+- long_term_target: /D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/ctp-live-connectivity/README.md
 - secondary_targets: /D:/Nautilus/nautilus_ctp_adapter/README.md
 - decision_target: /D:/Nautilus/nautilus_ctp_adapter/docs/README.md
 - affects_long_term_rules: 是

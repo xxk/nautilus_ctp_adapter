@@ -31,7 +31,7 @@ dependencies:
 - capability_name: Rust Validation Gate
 - long_term_target: D:/Nautilus/nautilus_ctp_adapter/AGENTS.md
 - secondary_targets: D:/Nautilus/nautilus_ctp_adapter/README.md; D:/Nautilus/nautilus_ctp_adapter/docs/README.md; D:/Nautilus/nautilus_ctp_adapter/scripts/README.md
-- decision_target: D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/roadmap/repo_governance/repo-governance-hardening/README.md
+- decision_target: D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/repo_governance/repo-governance-hardening/README.md
 - affects_long_term_rules: 是
 - change_type: 新增规则
 ```
@@ -55,7 +55,7 @@ dependencies:
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | P1 | 新增正式 Rust gate 脚本 | capability:governance.rust_validation_gate | `scripts/check_rust_gate.py` | 统一脚本入口 | `python scripts/check_rust_gate.py` | `README.md` | 无 cargo 时清晰失败；有 cargo 时执行 metadata + check | 已完成 |
 | P2 | 为 Rust gate 补定向测试 | capability:governance.rust_validation_gate | `tests/test_smoke_import.py` | 缺 toolchain / fake cargo 双场景锁定 | `python -m pytest` | 无 | 至少覆盖缺 cargo 和成功路径 | 已完成 |
-| P3 | 回写官方验证入口与治理口径 | capability:governance.rust_validation_gate | `README.md` `AGENTS.md` `docs/README.md` `scripts/README.md` `docs/changes_topic/...` | 正式口径统一 | `python scripts/check_topic_docs.py` | governance topic README | Rust gate 成为官方入口之一 | 已完成 |
+| P3 | 回写官方验证入口与治理口径 | capability:governance.rust_validation_gate | `README.md` `AGENTS.md` `docs/README.md` `scripts/README.md` `docs/topics/...` | 正式口径统一 | `python scripts/check_topic_docs.py` | governance topic README | Rust gate 成为官方入口之一 | 已完成 |
 | P4 | 留证并关账当前 change | capability:governance.rust_validation_gate | 当前 change bundle | evidence + acceptance | `python -m pip install -e .` | 当前 change bundle | 证据、结论、长期规则回写完成 | 已完成 |
 
 ## 六、完成定义

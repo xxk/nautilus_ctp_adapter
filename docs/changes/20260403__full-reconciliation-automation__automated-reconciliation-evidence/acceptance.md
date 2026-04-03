@@ -8,7 +8,7 @@
 **change-id**：20260403__full-reconciliation-automation__automated-reconciliation-evidence
 **关联 plan**：./plan.md
 **关联 ai_constraints**：./ai_constraints.md
-**长期归宿 / Long-Term Target**：/D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/roadmap/nautilus_adapter/full-reconciliation-automation/README.md
+**长期归宿 / Long-Term Target**：/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/full-reconciliation-automation/README.md
 
 <!-- AI-STATUS-BEGIN -->
 ```yaml

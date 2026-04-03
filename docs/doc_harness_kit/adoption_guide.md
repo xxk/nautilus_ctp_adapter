@@ -1,7 +1,7 @@
 # 文档闭环执行套件接入指南 / Adoption Guide
 
 **创建日期**：2026-03-27
-**最后更新**：2026-04-02
+**最后更新**：2026-04-03
 **状态**：draft
 
 ---
@@ -65,7 +65,7 @@
 
 1. 一个入口地图文件，例如 `AGENTS.md`
 2. 一套从 `templates/changes/` 复制出的 change bundle 模板
-3. 一套从 `templates/changes_topic/` 复制出的 topic index / roadmap 模板
+3. 一套从 `templates/topics/` 复制出的 topic index / roadmap 模板
 4. 一份正式导航索引或 architecture index
 
 ### Step 5：跑一个真实试点
@@ -80,8 +80,8 @@
 
 1. 先复制 `templates/changes/plan.md`、`acceptance.md`、`ai_constraints.md`
 2. 若当前任务存在明显方案分叉，再复制 `templates/changes/design.md`
-3. 再复制 `templates/changes_topic/索引模板_Changes Topic Index Template.md`
-4. 最后复制 `templates/changes_topic/主题路线图模板_Topic Roadmap Template.md`
+3. 再复制 `templates/topics/索引模板_Topic Index Template.md`
+4. 最后复制 `templates/topics/主题路线图模板_Topic Roadmap Template.md`
 
 ---
 

@@ -5,8 +5,8 @@
 
 ## 启动前提
 
-1. 读取 `docs/changes_topic/README.md` 当前全文，确认当前 topic 列表存在哪几条，再动手。
-2. 确认以下 topic README 文件实际存在（各 `docs/changes_topic/roadmap/nautilus_adapter/<topic-id>/README.md`）：
+1. 读取 `docs/topics/README.md` 当前全文，确认当前 topic 列表存在哪几条，再动手。
+2. 确认以下 topic README 文件实际存在（各 `docs/topics/roadmap/nautilus_adapter/<topic-id>/README.md`）：
    - `nautilus-ctp-adapter-mainline` ✓
    - `ctp-live-connectivity` ✓
    - `nautilus-instrument-provider` ✓
@@ -15,7 +15,7 @@
 
 ## 边界
 
-1. 只改 `docs/changes_topic/README.md`，不改其他文件。
+1. 只改 `docs/topics/README.md`，不改其他文件。
 2. topic 状态标签必须与对应 topic README 的 `**状态**` 字段完全一致（已完成 / 进行中 / 未开始）。
 3. 若某个 topic README 不存在（如 `nautilus-live-execution`），在列表中注明"（README 待创建）"，不要伪造链接。
 4. Current State 节必须放在 Layering Rule 节之前（即文件顶部），而不是底部。

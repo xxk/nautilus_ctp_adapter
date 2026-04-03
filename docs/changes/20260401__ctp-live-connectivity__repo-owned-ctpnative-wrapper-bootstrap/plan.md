@@ -29,7 +29,7 @@ dependencies:
 - capability_id: ctp-repo-owned-native-boundary
 - capability_name: 仓内维护 ctpnative 边界 / Repository-owned ctpnative boundary
 - long_term_target: /D:/Nautilus/nautilus_ctp_adapter/docs/architecture/platform-neutral-ctp-runtime.md
-- secondary_targets: /D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/roadmap/nautilus_adapter/ctp-live-connectivity/README.md
+- secondary_targets: /D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/ctp-live-connectivity/README.md
 - decision_target: /D:/Nautilus/nautilus_ctp_adapter/README.md
 - affects_long_term_rules: 是
 - change_type: 新增规则

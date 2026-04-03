@@ -30,7 +30,7 @@ dependencies:
 ```text
 - capability_id: marketdata-runtime-event-contract
 - capability_name: 市场数据事件契约 / Marketdata runtime event contract
-- long_term_target: /D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/roadmap/nautilus_adapter/nautilus-live-marketdata/README.md
+- long_term_target: /D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/nautilus-live-marketdata/README.md
 - secondary_targets: /D:/Nautilus/nautilus_ctp_adapter/docs/architecture/runtime-performance-guidelines.md
 - decision_target: /D:/Nautilus/nautilus_ctp_adapter/docs/architecture/rust-python-adapter-split.md
 - affects_long_term_rules: 是

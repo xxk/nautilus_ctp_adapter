@@ -1,6 +1,6 @@
 # Evidence: check-topic-docs-script
 
-**change-id**: `20260402__governance-harness__check-topic-docs-script`  
+**change-id**: `20260402__governance-harness__check-topic-docs-script`
 **日期**: 2026-04-02
 
 ## 产出
@@ -9,7 +9,7 @@
 2. 新增脚本入口说明：`/D:/Nautilus/nautilus_ctp_adapter/scripts/README.md`
 3. 同步修复治理索引陈旧：
    - `/D:/Nautilus/nautilus_ctp_adapter/AGENTS.md`
-   - `/D:/Nautilus/nautilus_ctp_adapter/docs/changes_topic/README.md`
+   - `/D:/Nautilus/nautilus_ctp_adapter/docs/topics/README.md`
 
 ## 验证结果
 
