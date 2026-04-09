@@ -1,9 +1,9 @@
 # Rust 接管 CTP Runtime 切换 / Rust-Owned CTP Runtime Cutover
 
 **创建日期**：2026-04-02
-**最后更新**：2026-04-02
+**最后更新**：2026-04-10
 **状态**：规划中
-**进度**：0%
+**进度**：15%（repo-owned `ctp_native` scaffold build 与 error contract 已落地，live mainline cutover 尚未开始）
 **topic-id**：rust-ctp-runtime-cutover
 **用途**：作为 `nautilus_ctp_adapter` 二期规划 topic，收口“从当前 Python native wrapper 主路径，迁移到 Rust-owned runtime 主路径”的正式阶段拆分、边界和切换门槛。
 
@@ -43,6 +43,11 @@
 2. 当前正式 smoke baseline、startup truth baseline 与 session rebuild policy 已冻结，不再因运行真相收口而频繁改口径。
 3. [Platform-neutral CTP runtime](/D:/Nautilus/nautilus_ctp_adapter/docs/architecture/platform-neutral-ctp-runtime.md)、[Rust / Python adapter split](/D:/Nautilus/nautilus_ctp_adapter/docs/architecture/rust-python-adapter-split.md) 与 [Runtime performance guidelines](/D:/Nautilus/nautilus_ctp_adapter/docs/architecture/runtime-performance-guidelines.md) 继续作为继承规则，不在本 topic 重定义。
 4. `python -m pytest`、`python -m pip install -e .`、`python scripts/check_rust_gate.py` 维持可执行。
+
+当前已完成的 prework：
+
+1. 仓内 Rust workspace 已能直接构建 repo-owned `ctp_native` scaffold artifact，不再依赖外部项目“生成 DLL”。
+2. 当前 scaffold 已冻结第一版导出面、artifact guard 与最小 error contract，尚未接管真实 vendor DLL loading、callback bridge 或 live smoke 主路径。
 
 ## 五、Topic 级出口条件
 

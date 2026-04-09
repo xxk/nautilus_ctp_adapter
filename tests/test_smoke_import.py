@@ -76,13 +76,21 @@ from nautilus_ctp_adapter.native.loader import (
     BOOTSTRAP_MANAGED_DLLS,
     REQUIRED_NATIVE_DLLS,
     candidate_managed_paths,
+    candidate_native_dll_paths,
     candidate_native_paths,
+    find_native_pack_dir,
+    find_repo_owned_native_dll,
 )
 from nautilus_ctp_adapter.native.md_ctypes import CtpMdApi
 from nautilus_ctp_adapter.native.td_ctypes import CtpTdApi, NativeExecView
 from nautilus_ctp_adapter.native.td_ctypes import NativePositionView, NativeTradingAccountView
 from nautilus_ctp_adapter.native.manifest import (
+    CTP_NATIVE_INVALID_HANDLE_CODE,
+    CTP_NATIVE_INVALID_HANDLE_MESSAGE,
+    CTP_NATIVE_SCAFFOLD_NOT_IMPLEMENTED_CODE,
+    CTP_NATIVE_SCAFFOLD_NOT_IMPLEMENTED_MESSAGE,
     OPTIONAL_COMPAT_DLLS,
+    REPO_OWNED_CTP_NATIVE_ERROR_CONTRACTS,
     REPO_OWNED_CTP_NATIVE_EXPORTS,
     describe_native_pack,
 )
@@ -745,12 +753,34 @@ def test_instrument_provider_load_result_for_request_exposes_stable_shape() -> N
 def test_native_loader_candidates_cover_repo_owned_pack() -> None:
     root = Path(__file__).resolve().parents[1]
     native_paths = candidate_native_paths(root)
+    native_dll_paths = candidate_native_dll_paths(root)
     managed_paths = candidate_managed_paths(root)
 
+    assert root / "rust" / "target" / "debug" in native_paths
+    assert root / "rust" / "target" / "release" in native_paths
+    assert root / "rust" / "target" / "debug" / "ctp_native.dll" in native_dll_paths
     assert root / "vendor" / "ctp" / "bin" in native_paths
     assert root / "vendor" / "ctp" / "bin" in managed_paths
     assert "ctp_native.dll" in REQUIRED_NATIVE_DLLS
     assert "CTPProviderSwig.dll" in BOOTSTRAP_MANAGED_DLLS
+
+
+def test_native_loader_prefers_repo_built_ctp_native_before_vendor_pack(tmp_path: Path) -> None:
+    debug_artifact = tmp_path / "rust" / "target" / "debug" / "ctp_native.dll"
+    vendor_dir = tmp_path / "vendor" / "ctp" / "bin"
+    vendor_artifact = vendor_dir / "ctp_native.dll"
+    runtime_md = vendor_dir / "thostmduserapi_se.dll"
+    runtime_td = vendor_dir / "thosttraderapi_se.dll"
+
+    debug_artifact.parent.mkdir(parents=True, exist_ok=True)
+    vendor_dir.mkdir(parents=True, exist_ok=True)
+    debug_artifact.write_bytes(b"repo-owned")
+    vendor_artifact.write_bytes(b"vendor-copy")
+    runtime_md.write_bytes(b"md-runtime")
+    runtime_td.write_bytes(b"td-runtime")
+
+    assert find_repo_owned_native_dll(tmp_path) == debug_artifact  # [CONTRACT-LOCK: loader must prefer rust/target repo-built ctp_native.dll before vendor/bin fallback copies]
+    assert find_native_pack_dir(tmp_path) == vendor_dir  # [CONTRACT-LOCK: vendor/bin remains the dependency root for thost runtime DLL resolution even after repo-owned ctp_native cutover]
 
 
 def test_native_manifest_tracks_repo_owned_abi_and_pack_layout() -> None:
@@ -4626,19 +4656,44 @@ def test_check_rust_gate_runs_metadata_and_check_with_fake_cargo(tmp_path: Path)
     script = root / "scripts" / "check_rust_gate.py"
     fake_bin = tmp_path / "bin"
     fake_bin.mkdir()
+    fake_target_dir = tmp_path / "rust-target"
+    metadata_json = json.dumps(
+        {
+            "workspace_members": [
+                "ctp_runtime_core 0.1.0 (path+file:///D:/Nautilus/nautilus_ctp_adapter/rust/ctp_runtime_core)"
+            ],
+            "target_directory": fake_target_dir.as_posix(),
+            "version": 1,
+        }
+    )
     fake_cargo_py = fake_bin / "fake_cargo.py"
     fake_cargo_py.write_text(
         "\n".join(
             [
                 "from __future__ import annotations",
+                "from pathlib import Path",
                 "import sys",
                 "",
+                f"target_dir = Path(r'{fake_target_dir.as_posix()}')",
+                f"metadata = r'''{metadata_json}'''",
                 "command = sys.argv[1] if len(sys.argv) > 1 else ''",
                 "if command == 'metadata':",
-                "    print('{\"workspace_members\":[\"ctp_runtime_core 0.1.0 (path+file:///D:/Nautilus/nautilus_ctp_adapter/rust/ctp_runtime_core)\"],\"version\":1}')",
+                "    print(metadata)",
                 "    raise SystemExit(0)",
                 "if command == 'check':",
                 "    print('Finished dev [unoptimized + debuginfo] target(s) in 0.01s')",
+                "    raise SystemExit(0)",
+                "if command == 'build':",
+                "    artifact = target_dir / 'debug' / 'ctp_native.dll'",
+                "    artifact.parent.mkdir(parents=True, exist_ok=True)",
+                "    artifact.write_bytes(b'fake-dll')",
+                "    print(f'Finished dev [unoptimized + debuginfo] target(s) with artifact={artifact}')",
+                "    raise SystemExit(0)",
+                "if command == 'test':",
+                "    print('running 2 tests')",
+                "    print('test ffi::tests::md_scaffold_error_contract_is_frozen ... ok')",
+                "    print('test ffi::tests::td_scaffold_error_contract_is_frozen ... ok')",
+                "    print('test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out')",
                 "    raise SystemExit(0)",
                 "print('unsupported cargo command', file=sys.stderr)",
                 "raise SystemExit(1)",
@@ -4674,6 +4729,63 @@ def test_check_rust_gate_runs_metadata_and_check_with_fake_cargo(tmp_path: Path)
     assert "PASS rust-gate: cargo-found" in result.stdout
     assert "PASS rust-gate: workspace-members=1" in result.stdout
     assert "PASS rust-gate: cargo-check" in result.stdout
+    assert "PASS rust-gate: cargo-build artifact=" in result.stdout
+    assert "PASS rust-gate: cargo-test" in result.stdout
+    assert "ctp_native.dll" in result.stdout  # [CONTRACT-LOCK: rust gate must validate the repo-owned ctp_native artifact path instead of stopping at cargo check]
+
+
+def test_repo_owned_native_export_manifest_covers_python_ctypes_entrypoints() -> None:
+    export_symbols = {export.symbol for export in REPO_OWNED_CTP_NATIVE_EXPORTS}
+
+    assert {
+        "MdCreate",
+        "MdDispose",
+        "MdInit",
+        "MdLogin",
+        "MdSubscribe",
+        "MdSetCallback",
+        "MdSetLoginCallback",
+        "MdSetFrontDisconnectedCallback",
+        "TdCreate",
+        "TdDispose",
+        "TdInit",
+        "TdAuthenticate",
+        "TdLogin",
+        "TdConfirmSettlement",
+        "TdOrderSend",
+        "TdOrderAction",
+        "TdQryInstrument",
+        "TdQryPosition",
+        "TdQryAccount",
+        "TdSetCallback",
+        "TdSetLoginCallback",
+        "TdSetFrontDisconnectedCallback",
+        "TdSetInstrumentCallback",
+        "TdSetPositionCallback",
+        "TdSetAccountCallback",
+    } <= export_symbols  # [CONTRACT-LOCK: repo-owned export manifest must cover every Python ctypes entrypoint required for a self-built ctp_native scaffold]
+
+
+def test_repo_owned_native_scaffold_error_contract_is_frozen() -> None:
+    error_contracts = {contract.name: contract for contract in REPO_OWNED_CTP_NATIVE_ERROR_CONTRACTS}
+    description = describe_native_pack("D:/Nautilus/nautilus_ctp_adapter")
+
+    assert CTP_NATIVE_SCAFFOLD_NOT_IMPLEMENTED_CODE == -9000
+    assert CTP_NATIVE_INVALID_HANDLE_CODE == -9001
+    assert error_contracts["scaffold_not_implemented"].message == CTP_NATIVE_SCAFFOLD_NOT_IMPLEMENTED_MESSAGE
+    assert error_contracts["invalid_handle"].message == CTP_NATIVE_INVALID_HANDLE_MESSAGE
+    assert description["repo_owned_error_contracts"] == [
+        {
+            "name": "scaffold_not_implemented",
+            "code": -9000,
+            "message": "repo-owned ctp_native scaffold only; live vendor bridge not implemented",
+        },
+        {
+            "name": "invalid_handle",
+            "code": -9001,
+            "message": "function received a null or invalid repo-owned ctp_native session handle",
+        },
+    ]  # [CONTRACT-LOCK: self-built ctp_native scaffold error codes and meanings must stay frozen until the live vendor bridge explicitly replaces them]
 
 
 def test_read_only_smokes_report_structured_config_load_failure() -> None:

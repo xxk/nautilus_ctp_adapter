@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
-from .loader import add_windows_dll_directories, find_native_pack_dir
+from .loader import add_windows_dll_directories, find_native_pack_dir, find_repo_owned_native_dll
 
 
 @dataclass(slots=True)
@@ -213,11 +213,15 @@ class CtpTdApi:
     @classmethod
     def load(cls, base_dir: str | Path) -> "CtpTdApi":
         root = Path(base_dir)
+        native_dll = find_repo_owned_native_dll(root)
+        if native_dll is None:
+            raise FileNotFoundError(f"unable to locate repo-owned ctp_native.dll under {root}")
         native_dir = find_native_pack_dir(root)
-        if native_dir is None:
-            raise FileNotFoundError(f"unable to locate native pack under {root}")
-        add_windows_dll_directories(native_dir)
-        dll = ctypes.CDLL(str(native_dir / "ctp_native.dll"))
+        dll_dirs = [native_dll.parent]
+        if native_dir is not None and native_dir != native_dll.parent:
+            dll_dirs.append(native_dir)
+        add_windows_dll_directories(*dll_dirs)
+        dll = ctypes.CDLL(str(native_dll))
         return cls(dll)
 
     def create(self, flow_path: str | Path) -> int:

@@ -6,8 +6,9 @@ license = "MIT"
 description = "Platform-neutral Rust runtime core for CTP adapters."
 
 [lib]
-name = "ctp_runtime_core"
+name = "ctp_native"
 path = "src/lib.rs"
+crate-type = ["rlib", "cdylib"]
 
 [features]
 default = []
@@ -15,3 +16,6 @@ python = []
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
+
+[build-dependencies]
+cc = "1.2"

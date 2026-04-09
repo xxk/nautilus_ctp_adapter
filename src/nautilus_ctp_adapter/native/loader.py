@@ -11,11 +11,17 @@ def candidate_native_paths(base_dir: str | Path) -> list[Path]:
     """Return probable directories for CTP native DLL resolution."""
     root = Path(base_dir)
     return [
+        root / "rust" / "target" / "debug",
+        root / "rust" / "target" / "release",
         root / "native",
         root / "native" / "bin",
         root / "vendor" / "ctp",
         root / "vendor" / "ctp" / "bin",
     ]
+
+
+def candidate_native_dll_paths(base_dir: str | Path) -> list[Path]:
+    return [path / "ctp_native.dll" for path in candidate_native_paths(base_dir)]
 
 
 def candidate_managed_paths(base_dir: str | Path) -> list[Path]:
@@ -34,9 +40,14 @@ def first_existing_path(paths: Iterable[Path]) -> Path | None:
     return None
 
 
+def find_repo_owned_native_dll(base_dir: str | Path) -> Path | None:
+    return first_existing_path(candidate_native_dll_paths(base_dir))
+
+
 def find_native_pack_dir(base_dir: str | Path) -> Path | None:
+    runtime_dlls = tuple(name for name in REQUIRED_NATIVE_DLLS if name != "ctp_native.dll")
     for path in candidate_native_paths(base_dir):
-        if all((path / name).exists() for name in REQUIRED_NATIVE_DLLS):
+        if all((path / name).exists() for name in runtime_dlls):
             return path
     return None
 

@@ -55,6 +55,24 @@ Current ABI direction is intentionally thin:
 
 See `src/nautilus_ctp_adapter/native/manifest.py` for the current tracked export list.
 
+## Current Build Boundary
+
+The repository now owns a local `ctp_native` build target under `rust/`.
+
+Current rule:
+
+1. the repository must be able to build a repo-owned `ctp_native` dynamic library without depending on an external generator
+2. that self-built artifact is currently a scaffold export surface, not the finished live vendor bridge
+3. external bootstrap packs may still be used for real live smoke until Rust-owned native loading, callback registration, and vendor DLL bridging are fully implemented
+4. future cutover work must replace the external bootstrap runtime path, not reintroduce it as a hidden build dependency
+
+Current scaffold error contract is frozen as:
+
+1. `-9000`: scaffold export exists, but the real live vendor bridge is not implemented yet
+2. `-9001`: the caller supplied a null or invalid session handle
+
+These codes are part of the repository-owned self-build contract and must not be silently repurposed while the scaffold remains the formal repo-owned `ctp_native` artifact.
+
 ## Shared Runtime API Shape
 
 The runtime should revolve around:

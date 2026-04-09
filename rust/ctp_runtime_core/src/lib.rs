@@ -1,6 +1,7 @@
 pub mod commands;
 pub mod config;
 pub mod events;
+pub mod ffi;
 pub mod market;
 pub mod native;
 pub mod python;

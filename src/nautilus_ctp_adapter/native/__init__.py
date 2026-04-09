@@ -5,9 +5,11 @@ from .loader import (
     REQUIRED_NATIVE_DLLS,
     add_windows_dll_directories,
     candidate_managed_paths,
+    candidate_native_dll_paths,
     candidate_native_paths,
     find_managed_assembly_dir,
     find_native_pack_dir,
+    find_repo_owned_native_dll,
 )
 from .md_ctypes import CtpMdApi, NativeLoginResponseView, NativeTickView
 from .td_ctypes import (
@@ -42,8 +44,10 @@ __all__ = [
     "CtpNativeExport",
     "add_windows_dll_directories",
     "candidate_managed_paths",
+    "candidate_native_dll_paths",
     "candidate_native_paths",
     "describe_native_pack",
     "find_managed_assembly_dir",
     "find_native_pack_dir",
+    "find_repo_owned_native_dll",
 ]
