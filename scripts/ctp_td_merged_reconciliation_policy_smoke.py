@@ -14,6 +14,27 @@ from nautilus_ctp_adapter.adapters.ctp.config import CtpAdapterConfig
 from nautilus_ctp_adapter.adapters.ctp.factory import build_ctp_stack
 
 
+BASELINE = "td-merged-reconciliation-policy-v1"
+
+
+def _emit_payload(payload: dict[str, object]) -> None:
+    print(json.dumps(payload, ensure_ascii=False))
+
+
+def _emit_exception(*, stage: str, exc: Exception) -> int:
+    _emit_payload(
+        {
+            "baseline": BASELINE,
+            "success": False,
+            "failure_reason": "exception",
+            "error_stage": stage,
+            "error_type": type(exc).__name__,
+            "error_message": str(exc),
+        }
+    )
+    return 1
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run the TD merged reconciliation policy live smoke.")
     parser.add_argument("--config", type=Path, required=True)
@@ -23,22 +44,37 @@ def main() -> int:
     parser.add_argument("--completion-grace-seconds", type=float, default=1.0)
     args = parser.parse_args()
 
-    config = CtpAdapterConfig.from_json_file(args.config)
-    stack = build_ctp_stack(config)
-    adapter = stack["truth_merge_adapter"]
-    runtime_bridge = stack["runtime_bridge"]
+    try:
+        config = CtpAdapterConfig.from_json_file(args.config)
+    except Exception as exc:
+        return _emit_exception(stage="config_load", exc=exc)
 
-    result = adapter.capture_merged_reconciliation_policy_mainline(
-        timeout_seconds=args.timeout_seconds,
-        flow_path=args.flow_path,
-        observation_grace_seconds=args.observation_grace_seconds,
-        completion_grace_seconds=args.completion_grace_seconds,
-    )
-    events = runtime_bridge.drain_events()
-    commands = runtime_bridge.drain_submitted_commands()
+    try:
+        stack = build_ctp_stack(config)
+        adapter = stack["truth_merge_adapter"]
+        runtime_bridge = stack["runtime_bridge"]
+
+        result = adapter.capture_merged_reconciliation_policy_mainline(
+            timeout_seconds=args.timeout_seconds,
+            flow_path=args.flow_path,
+            observation_grace_seconds=args.observation_grace_seconds,
+            completion_grace_seconds=args.completion_grace_seconds,
+        )
+        events = runtime_bridge.drain_events()
+        commands = runtime_bridge.drain_submitted_commands()
+    except Exception as exc:
+        return _emit_exception(stage="run_smoke", exc=exc)
+
+    failure_reason = None
+    if result.snapshot.account.account is None:
+        failure_reason = "account_missing"
+    elif result.disposition not in {"clear", "manual_review_required", "boundary_required", "evidence_only"}:
+        failure_reason = "unexpected_disposition"
 
     payload = {
-        "baseline": "td-merged-reconciliation-policy-v1",
+        "baseline": BASELINE,
+        "success": failure_reason is None,
+        "failure_reason": failure_reason,
         "account_id": result.snapshot.order_truth.account_id,
         "disposition": result.disposition,
         "position_count": result.snapshot.positions.position_count,
@@ -62,9 +98,8 @@ def main() -> int:
         "bridge_command_kinds": [command.kind.value for command in commands],
         "bridge_event_kinds": [event.kind.value for event in events],
     }
-    print(json.dumps(payload, ensure_ascii=False))
-
-    return 0 if result.snapshot.account.account is not None else 1
+    _emit_payload(payload)
+    return 0 if failure_reason is None else 1
 
 
 if __name__ == "__main__":

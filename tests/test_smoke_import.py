@@ -4674,3 +4674,56 @@ def test_check_rust_gate_runs_metadata_and_check_with_fake_cargo(tmp_path: Path)
     assert "PASS rust-gate: cargo-found" in result.stdout
     assert "PASS rust-gate: workspace-members=1" in result.stdout
     assert "PASS rust-gate: cargo-check" in result.stdout
+
+
+def test_read_only_smokes_report_structured_config_load_failure() -> None:
+    root = Path(__file__).resolve().parents[1]
+    missing_config = root / "output" / "debug" / "missing-live-config.json"
+    cases = {
+        "ctp_query_adapter_smoke.py": "nautilus-query-adapter-v1",
+        "ctp_position_query_smoke.py": "position-query-smoke-v1",
+        "ctp_account_query_smoke.py": "account-query-smoke-v1",
+        "ctp_reconciliation_snapshot_smoke.py": "reconciliation-snapshot-v1",
+        "ctp_td_truth_merge_snapshot_smoke.py": "td-truth-merge-snapshot-v1",
+        "ctp_td_merged_reconciliation_policy_smoke.py": "td-merged-reconciliation-policy-v1",
+    }
+
+    for script_name, baseline in cases.items():
+        script = root / "scripts" / script_name
+        result = subprocess.run(
+            [sys.executable, str(script), "--config", str(missing_config)],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+        )
+
+        assert result.returncode == 1, script_name
+        payload = json.loads(result.stdout)
+        assert payload["baseline"] == baseline, script_name
+        assert payload["success"] is False, script_name
+        assert payload["failure_reason"] == "exception", script_name
+        assert payload["error_stage"] == "config_load", script_name
+        assert payload["error_type"] == "FileNotFoundError", script_name
+        assert "missing-live-config.json" in payload["error_message"], script_name
+
+
+def test_query_adapter_smoke_rejects_live_send_argument() -> None:
+    root = Path(__file__).resolve().parents[1]
+    script = root / "scripts" / "ctp_query_adapter_smoke.py"
+    config = root / "cfgs" / "ctp.live.example.json"
+
+    result = subprocess.run(
+        [sys.executable, str(script), "--config", str(config), "--live-send"],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+    )
+
+    assert result.returncode == 2
+    assert "unrecognized arguments: --live-send" in result.stderr

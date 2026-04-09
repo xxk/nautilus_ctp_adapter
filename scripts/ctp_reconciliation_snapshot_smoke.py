@@ -14,6 +14,27 @@ from nautilus_ctp_adapter.adapters.ctp.config import CtpAdapterConfig
 from nautilus_ctp_adapter.adapters.ctp.factory import build_ctp_stack
 
 
+BASELINE = "reconciliation-snapshot-v1"
+
+
+def _emit_payload(payload: dict[str, object]) -> None:
+    print(json.dumps(payload, ensure_ascii=False))
+
+
+def _emit_exception(*, stage: str, exc: Exception) -> int:
+    _emit_payload(
+        {
+            "baseline": BASELINE,
+            "success": False,
+            "failure_reason": "exception",
+            "error_stage": stage,
+            "error_type": type(exc).__name__,
+            "error_message": str(exc),
+        }
+    )
+    return 1
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run the reconciliation snapshot smoke.")
     parser.add_argument("--config", type=Path, required=True)
@@ -21,20 +42,35 @@ def main() -> int:
     parser.add_argument("--completion-grace-seconds", type=float, default=1.0)
     args = parser.parse_args()
 
-    config = CtpAdapterConfig.from_json_file(args.config)
-    stack = build_ctp_stack(config)
-    adapter = stack["reconciliation_adapter"]
-    runtime_bridge = stack["runtime_bridge"]
+    try:
+        config = CtpAdapterConfig.from_json_file(args.config)
+    except Exception as exc:
+        return _emit_exception(stage="config_load", exc=exc)
 
-    summary = adapter.capture_summary_mainline(
-        timeout_seconds=args.timeout_seconds,
-        completion_grace_seconds=args.completion_grace_seconds,
-    )
-    events = runtime_bridge.drain_events()
-    commands = runtime_bridge.drain_submitted_commands()
+    try:
+        stack = build_ctp_stack(config)
+        adapter = stack["reconciliation_adapter"]
+        runtime_bridge = stack["runtime_bridge"]
+
+        summary = adapter.capture_summary_mainline(
+            timeout_seconds=args.timeout_seconds,
+            completion_grace_seconds=args.completion_grace_seconds,
+        )
+        events = runtime_bridge.drain_events()
+        commands = runtime_bridge.drain_submitted_commands()
+    except Exception as exc:
+        return _emit_exception(stage="run_smoke", exc=exc)
+
+    failure_reason = None
+    if summary.account_id is None:
+        failure_reason = "account_id_missing"
+    elif summary.account_balance is None:
+        failure_reason = "account_balance_missing"
 
     payload = {
-        "baseline": "reconciliation-snapshot-v1",
+        "baseline": BASELINE,
+        "success": failure_reason is None,
+        "failure_reason": failure_reason,
         "position_request_id": summary.position_request_id,
         "account_request_id": summary.account_request_id,
         "account_id": summary.account_id,
@@ -68,15 +104,8 @@ def main() -> int:
         "bridge_command_kinds": [command.kind.value for command in commands],
         "bridge_event_kinds": [event.kind.value for event in events],
     }
-    print(json.dumps(payload, ensure_ascii=False))
-
-    success = (
-        summary.account_id is not None
-        and summary.position_line_count >= 0
-        and summary.symbol_count >= 0
-        and summary.account_balance is not None
-    )
-    return 0 if success else 1
+    _emit_payload(payload)
+    return 0 if failure_reason is None else 1
 
 
 if __name__ == "__main__":
