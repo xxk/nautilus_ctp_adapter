@@ -5,6 +5,7 @@ import subprocess
 import sys
 
 from nautilus_ctp_adapter import __version__
+from nautilus_ctp_adapter.repo_debug_smoke import collect_repo_debug_smoke_snapshot
 from nautilus_ctp_adapter.adapters.ctp import (
     CtpAccountQuerySmokeResult,
     CtpAccountQueryBaseline,
@@ -4687,6 +4688,9 @@ def test_check_rust_gate_runs_metadata_and_check_with_fake_cargo(tmp_path: Path)
                 "    artifact = target_dir / 'debug' / 'ctp_native.dll'",
                 "    artifact.parent.mkdir(parents=True, exist_ok=True)",
                 "    artifact.write_bytes(b'fake-dll')",
+                "    if '-p' in sys.argv and 'ctp_py' in sys.argv:",
+                "        pyo3_art = target_dir / 'debug' / '_ctp_runtime.dll'",
+                "        pyo3_art.write_bytes(b'fake-pyo3-dll')",
                 "    print(f'Finished dev [unoptimized + debuginfo] target(s) with artifact={artifact}')",
                 "    raise SystemExit(0)",
                 "if command == 'test':",
@@ -4839,3 +4843,207 @@ def test_query_adapter_smoke_rejects_live_send_argument() -> None:
 
     assert result.returncode == 2
     assert "unrecognized arguments: --live-send" in result.stderr
+
+
+# ─── PyO3 bridge scaffold contracts (C1: bridge-and-cutover-design) ───────────
+
+def test_pyo3_bridge_module_is_importable() -> None:
+    """PyO3 ctp_runtime bridge must be importable after maturin develop."""
+    import ctp_runtime
+
+    assert hasattr(ctp_runtime, "CtpMdSession")
+    assert hasattr(ctp_runtime, "CtpTdSession")
+    assert ctp_runtime.SCAFFOLD_NOT_IMPLEMENTED == -9000  # [CONTRACT-LOCK: PyO3 SCAFFOLD_NOT_IMPLEMENTED constant must equal -9000 to match ctypes manifest]
+    assert ctp_runtime.INVALID_HANDLE == -9001  # [CONTRACT-LOCK: PyO3 INVALID_HANDLE constant must equal -9001 to match ctypes manifest]
+
+
+def test_pyo3_bridge_md_session_scaffold_contract() -> None:
+    """CtpMdSession scaffold must return SCAFFOLD_NOT_IMPLEMENTED until C2 wires live CTP."""
+    from ctp_runtime import CtpMdSession, SCAFFOLD_NOT_IMPLEMENTED
+
+    md = CtpMdSession(front="tcp://md.example:51213", broker="0155", user="025292", password="secret")
+    assert md.init() == SCAFFOLD_NOT_IMPLEMENTED  # [CONTRACT-LOCK: CtpMdSession.init() scaffold must return -9000 until C2 live wiring replaces it]
+    assert md.login() == SCAFFOLD_NOT_IMPLEMENTED  # [CONTRACT-LOCK: CtpMdSession.login() scaffold must return -9000 until C2 live wiring replaces it]
+    assert md.subscribe(["rb2610"]) == SCAFFOLD_NOT_IMPLEMENTED  # [CONTRACT-LOCK: CtpMdSession.subscribe() scaffold must return -9000 until C2 live wiring replaces it]
+
+
+def test_pyo3_bridge_td_session_scaffold_contract() -> None:
+    """CtpTdSession scaffold must return SCAFFOLD_NOT_IMPLEMENTED until C3 wires live CTP."""
+    from ctp_runtime import CtpTdSession, SCAFFOLD_NOT_IMPLEMENTED
+
+    td = CtpTdSession(
+        front="tcp://td.example:51205",
+        broker="0155",
+        user="025292",
+        password="secret",
+        appid="client_iq_3.6.2",
+        auth_code="RFLEXUGHCKIKWGPC",
+    )
+    assert td.init() == SCAFFOLD_NOT_IMPLEMENTED  # [CONTRACT-LOCK: CtpTdSession.init() scaffold must return -9000 until C3 live wiring replaces it]
+    assert td.authenticate() == SCAFFOLD_NOT_IMPLEMENTED  # [CONTRACT-LOCK: CtpTdSession.authenticate() scaffold must return -9000 until C3 live wiring replaces it]
+    assert td.login() == SCAFFOLD_NOT_IMPLEMENTED  # [CONTRACT-LOCK: CtpTdSession.login() scaffold must return -9000 until C3 live wiring replaces it]
+
+
+def test_pyo3_bridge_invalid_handle_after_dispose() -> None:
+    """Disposed session must return INVALID_HANDLE on any further call."""
+    from ctp_runtime import CtpMdSession, INVALID_HANDLE
+
+    md = CtpMdSession(front="tcp://md.example:51213", broker="0155", user="025292", password="secret")
+    md.dispose()
+    assert md.init() == INVALID_HANDLE  # [CONTRACT-LOCK: disposed CtpMdSession must return -9001 (INVALID_HANDLE) on all subsequent calls]
+    assert md.login() == INVALID_HANDLE  # [CONTRACT-LOCK: disposed CtpMdSession.login() must also return INVALID_HANDLE after dispose]
+
+
+def test_repo_only_debug_smoke_contract_is_stable() -> None:
+    snapshot = collect_repo_debug_smoke_snapshot()
+
+    assert snapshot["has_internal_md_live_session"] is True  # [CONTRACT-LOCK: repo-only debug smoke depends on the internal CtpMdLiveSession symbol being present after editable install]
+    assert snapshot["scaffold_not_implemented"] == -9000  # [CONTRACT-LOCK: repo-only debug smoke must continue to see scaffold code -9000 from the public PyO3 sessions]
+    assert snapshot["invalid_handle"] == -9001  # [CONTRACT-LOCK: repo-only debug smoke must continue to see invalid-handle code -9001 after dispose]
+    assert snapshot["md_init_code"] == -9000  # [CONTRACT-LOCK: repo-only debug smoke uses public CtpMdSession scaffold init returning -9000 on a fresh machine]
+    assert snapshot["md_login_code"] == -9000  # [CONTRACT-LOCK: repo-only debug smoke uses public CtpMdSession scaffold login returning -9000 on a fresh machine]
+    assert snapshot["md_subscribe_code"] == -9000  # [CONTRACT-LOCK: repo-only debug smoke uses public CtpMdSession scaffold subscribe returning -9000 on a fresh machine]
+    assert snapshot["td_init_code"] == -9000  # [CONTRACT-LOCK: repo-only debug smoke uses public CtpTdSession scaffold init returning -9000 before C3 live cutover]
+    assert snapshot["td_authenticate_code"] == -9000  # [CONTRACT-LOCK: repo-only debug smoke uses public CtpTdSession scaffold authenticate returning -9000 before C3 live cutover]
+    assert snapshot["td_login_code"] == -9000  # [CONTRACT-LOCK: repo-only debug smoke uses public CtpTdSession scaffold login returning -9000 before C3 live cutover]
+    assert snapshot["md_init_after_dispose_code"] == -9001  # [CONTRACT-LOCK: repo-only debug smoke must observe INVALID_HANDLE after disposing the public MD scaffold session]
+
+
+def test_pyo3_internal_md_live_session_symbol_is_available() -> None:
+    import ctp_runtime._ctp_runtime as native_runtime
+
+    assert hasattr(native_runtime, "CtpMdLiveSession")  # [CONTRACT-LOCK: data_client MD mainline depends on the internal PyO3 CtpMdLiveSession symbol remaining importable]
+
+
+def test_run_live_md_smoke_uses_pyo3_md_live_session_mainline(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    import nautilus_ctp_adapter.adapters.ctp.data_client as data_client_module
+
+    records: dict[str, object] = {}
+
+    class FailIfCtypesMdApiUsed:
+        @classmethod
+        def load(cls, base_dir):
+            raise AssertionError("run_live_md_smoke must not fall back to ctypes CtpMdApi")
+
+    class FakeMdLiveSession:
+        def __init__(self, flow_path: str) -> None:
+            records["flow_path"] = Path(flow_path)
+            records["session_factory_used"] = True
+            self._login_callback = None
+            self._tick_callback = None
+            self._disconnect_callback = None
+
+        def set_login_callback(self, callback) -> None:
+            self._login_callback = callback
+
+        def set_tick_callback(self, callback) -> None:
+            self._tick_callback = callback
+
+        def set_front_disconnected_callback(self, callback) -> None:
+            self._disconnect_callback = callback
+
+        def init(self, front: str) -> int:
+            records["front"] = front
+            return 0
+
+        def login(self, broker: str, user: str, password: str) -> int:
+            records["login_args"] = (broker, user, password)
+
+            class LoginResponse:
+                success = True
+                error_id = 0
+                error_message = ""
+                front_id = 1
+                session_id = 2
+                max_order_ref = 3
+
+            assert self._login_callback is not None
+            self._login_callback(LoginResponse())
+            return 0
+
+        def subscribe(self, symbols: list[str]) -> int:
+            records["symbols"] = list(symbols)
+
+            class Tick:
+                symbol = "rb2610"
+                last = 3137.0
+                bid = 3136.0
+                ask = 3137.0
+                ts_epoch_us = 1775052501781380
+                bid_size = 1
+                ask_size = 1
+                volume = 1
+                open_interest = 2.0
+
+            assert self._tick_callback is not None
+            self._tick_callback(Tick())
+            return 0
+
+        def dispose(self) -> None:
+            records["disposed"] = True
+
+    monkeypatch.setattr(data_client_module, "CtpMdApi", FailIfCtypesMdApiUsed, raising=False)
+    monkeypatch.setattr(
+        data_client_module,
+        "_create_md_live_session",
+        lambda flow_path: FakeMdLiveSession(str(flow_path)),
+    )
+
+    config = CtpAdapterConfig.from_dict(
+        {
+            "BrokerID": "0155",
+            "UserID": "025292",
+            "Password": "secret",
+            "Pricer": "tcp://106.75.173.28:51213",
+            "Host": "tcp://106.75.173.28:51205",
+            "Instruments": ["rb2610"],
+        }
+    )
+    data_client = build_ctp_stack(config)["data_client"]
+
+    result = data_client.run_live_md_smoke(timeout_seconds=1, flow_path=tmp_path / "md_flow")
+    events = data_client.runtime_bridge.drain_events()
+
+    assert records["session_factory_used"] is True  # [CONTRACT-LOCK: run_live_md_smoke must construct the PyO3 MD live session mainline instead of ctypes CtpMdApi]
+    assert records["symbols"] == ["rb2610"]
+    assert records["disposed"] is True
+    assert result.init_code == 0
+    assert result.login_request_code == 0
+    assert result.subscribe_code == 0
+    assert result.login_success is True
+    assert result.first_tick_symbol == "rb2610"
+    assert [event.kind for event in events] == [
+        CtpRuntimeEventKind.LOGIN_SUCCEEDED,
+        CtpRuntimeEventKind.TICK,
+    ]  # [CONTRACT-LOCK: PyO3 MD mainline must still feed the same runtime bridge event kinds as the old ctypes smoke path]
+
+
+def test_run_live_md_smoke_fails_fast_when_pyo3_md_bridge_unavailable(monkeypatch) -> None:
+    import nautilus_ctp_adapter.adapters.ctp.data_client as data_client_module
+
+    monkeypatch.setattr(
+        data_client_module,
+        "_create_md_live_session",
+        lambda flow_path: (_ for _ in ()).throw(RuntimeError("PyO3 MD bridge unavailable")),
+    )
+
+    config = CtpAdapterConfig.from_dict(
+        {
+            "BrokerID": "0155",
+            "UserID": "025292",
+            "Password": "secret",
+            "Pricer": "tcp://106.75.173.28:51213",
+            "Host": "tcp://106.75.173.28:51205",
+            "Instruments": ["rb2610"],
+        }
+    )
+    data_client = build_ctp_stack(config)["data_client"]
+
+    try:
+        data_client.run_live_md_smoke(timeout_seconds=1)
+        assert False, "expected PyO3 MD bridge failure to propagate"
+    except RuntimeError as exc:
+        assert "PyO3 MD bridge unavailable" in str(exc)  # [CONTRACT-LOCK: MD smoke must fail fast when the PyO3 bridge is unavailable instead of silently falling back to ctypes]

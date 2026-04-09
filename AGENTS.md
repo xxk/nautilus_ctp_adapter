@@ -1,6 +1,6 @@
 # AGENTS.md
 
-**Updated**: 2026-04-03
+**Updated**: 2026-04-10
 **Status**: Active
 
 ## Read First
@@ -78,8 +78,9 @@ Verification: `python scripts/check_topic_docs.py`
 
 Current real verification commands:
 
-1. `python -m pytest`
-2. `python -m pip install -e .`
-3. `python scripts/check_rust_gate.py`
+1. `python -m pip install -e ".[dev]"`
+2. `python scripts/check_rust_gate.py`
+3. `python scripts/ctp_repo_debug_smoke.py`
+4. `python -m pytest`
 
 Temporary outputs should stay out of the repository root.

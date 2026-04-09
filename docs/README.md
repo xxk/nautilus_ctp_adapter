@@ -23,14 +23,15 @@ This repository now aligns to the `DSLReserach` split:
 ## Current Delivery
 
 1. Master roadmap: [Nautilus CTP adapter mainline](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/nautilus-ctp-adapter-mainline/README.md)
-2. Current topic roadmap: [Live ops truth snapshot](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/live-ops-truth-snapshot/README.md)
-3. Active change: [20260403__live-ops-truth-snapshot__live-ops-policy-baseline](/D:/Nautilus/nautilus_ctp_adapter/docs/changes/20260403__live-ops-truth-snapshot__live-ops-policy-baseline/plan.md)
-4. Formal smoke baseline: [20260401__ctp-live-connectivity__nautilus-live-smoke-baseline](/D:/Nautilus/nautilus_ctp_adapter/docs/changes/20260401__ctp-live-connectivity__nautilus-live-smoke-baseline/acceptance.md)
+2. Current topic roadmap: [Rust-owned CTP runtime cutover](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/rust_ctp/rust-ctp-runtime-cutover/README.md)
+3. Active change: [20260410__rust-ctp-runtime-cutover__rust-owned-td-bootstrap-runtime](/D:/Nautilus/nautilus_ctp_adapter/docs/changes/20260410__rust-ctp-runtime-cutover__rust-owned-td-bootstrap-runtime/plan.md)
+4. Parallel blocked topic: [Live ops truth snapshot](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/live-ops-truth-snapshot/README.md)
 
-## Official Validation Commands
+## Official Bootstrap And Validation Commands
 
 ```powershell
-python -m pytest
-python -m pip install -e .
+python -m pip install -e ".[dev]"
 python scripts/check_rust_gate.py
+python scripts/ctp_repo_debug_smoke.py
+python -m pytest
 ```

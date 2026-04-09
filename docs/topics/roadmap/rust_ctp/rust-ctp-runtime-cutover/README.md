@@ -2,8 +2,8 @@
 
 **创建日期**：2026-04-02
 **最后更新**：2026-04-10
-**状态**：规划中
-**进度**：15%（repo-owned `ctp_native` scaffold build 与 error contract 已落地，live mainline cutover 尚未开始）
+**状态**：进行中
+**进度**：55%（C1/C2 已完成并验收；C3 TD bootstrap runtime bundle 已创建并进入实现）
 **topic-id**：rust-ctp-runtime-cutover
 **用途**：作为 `nautilus_ctp_adapter` 二期规划 topic，收口“从当前 Python native wrapper 主路径，迁移到 Rust-owned runtime 主路径”的正式阶段拆分、边界和切换门槛。
 
@@ -35,7 +35,8 @@
 2. 不允许推进：把 `InstrumentProvider`、`LiveDataClient`、`LiveExecutionClient` 的 host integration 逻辑整体下沉到 Rust。
 3. 不允许把 symbol/exchange normalization 从 adapter side 挪进 runtime raw record 层。
 4. 不允许因为迁移 runtime ownership 而扩大真实交易副作用；execution guardrails 必须继续生效。
-5. 在当前 active topic 完成前，本 topic 只允许做 docs/design/prework，不进入主线实现。
+5. 原规则：在当前 active topic 完成前，本 topic 只允许做 docs/design/prework。
+2026-04-10 激活说明：live-ops-truth-snapshot C2 因外部连通性（4097 断线）阻塞，startup-truth-and-session-rebuild 已完成，用户明确推进，本 topic 现已激活进入主线实现。
 
 ## 四、进入条件
 
@@ -64,22 +65,26 @@
 
 | 顺序 | 建议 change-id | 作用 | 状态 |
 | --- | --- | --- | --- |
-| C1 | `2026040X__rust-ctp-runtime-cutover__bridge-and-cutover-design` | 冻结 cutover gate、bridge API、consumer 切换顺序与 diagnostics parity 口径 | ⬜ 未开始 |
-| C2 | `2026040X__rust-ctp-runtime-cutover__rust-owned-md-runtime-bridge` | 先把 MD path 迁到 Rust-owned runtime + PyO3 bridge，保留 Python host glue | ⬜ 未开始 |
-| C3 | `2026040X__rust-ctp-runtime-cutover__rust-owned-td-bootstrap-runtime` | 再把 TD auth/login/settlement readiness 迁到 Rust-owned runtime | ⬜ 未开始 |
+| C1 | `20260410__rust-ctp-runtime-cutover__bridge-and-cutover-design` | 冻结 cutover gate、bridge API、consumer 切换顺序与 diagnostics parity 口径 | ✅ 已完成 |
+| C2 | `20260410__rust-ctp-runtime-cutover__rust-owned-md-runtime-bridge` | 先把 MD path 迁到 Rust-owned runtime + PyO3 bridge，保留 Python host glue | ✅ 已完成 |
+| C3 | `20260410__rust-ctp-runtime-cutover__rust-owned-td-bootstrap-runtime` | 再把 TD auth/login/settlement readiness 迁到 Rust-owned runtime | 🔄 进行中 |
 | C4 | `2026040X__rust-ctp-runtime-cutover__python-native-path-retirement` | 让 adapter consumer 全量切到 bridge，并退休 Python ctypes 主路径 | ⬜ 未开始 |
 
 ## 七、AI-TASK-QUEUE
 
-**当前状态**：未激活；当前只完成 topic 规划，不进入实现。
+**当前状态**：已激活（2026-04-10）；live-ops-truth-snapshot C2 受外部连通性阻塞，并行推进本 topic。
 
 - [x] 创建 topic roadmap
-- [ ] 创建 `C1` child change bundle
-- [ ] 完成 `C1`
-- [ ] 完成 `C2 -> C4`
+- [x] 创建 `C1` child change bundle
+- [x] 完成 `C1`（85 tests pass, gate pass, acceptance 已验收）
+- [x] 创建 `C2` child change bundle
+- [x] 完成 `C2`（PyO3 MD mainline cutover, rust gate pass, 88 tests pass）
+- [x] 创建 `C3` child change bundle
+- [ ] 完成 `C3`  ← 当前聚焦
+- [ ] 完成 `C4`
 - [ ] 回写主线、topic index、docs/README 与相关 architecture 文档
 
-**当前 first action**：等待 [startup-truth-and-session-rebuild](../../nautilus_adapter/startup-truth-and-session-rebuild/README.md) 完成后，创建 `2026040X__rust-ctp-runtime-cutover__bridge-and-cutover-design`。
+**当前 first action**：让 execution bootstrap/readiness 主路径切到 internal TD live session，并锁住不 fallback 到 `CtpTdApi`。
 
 ## 八、成功信号
 

@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["maturin>=1.4,<2.0"]
+build-backend = "maturin"
 
 [project]
 name = "nautilus-ctp-adapter"
@@ -13,11 +13,16 @@ authors = [
 ]
 dependencies = []
 
-[tool.setuptools]
-package-dir = {"" = "src"}
+[project.optional-dependencies]
+dev = ["pytest>=8,<9"]
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.maturin]
+# Python packages under src/ are included alongside the Rust extension module.
+python-source = "src"
+# Build the PyO3 bridge crate.
+manifest-path = "rust/ctp_py/Cargo.toml"
+# Install extension as ctp_runtime/_ctp_runtime.pyd (pydantic-core convention).
+module-name = "ctp_runtime._ctp_runtime"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

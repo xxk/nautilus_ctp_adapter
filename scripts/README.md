@@ -33,6 +33,13 @@ Current planned entrypoints:
 27. `python scripts/ctp_live_ops_policy_smoke.py --config <path>`
 28. `python scripts/ctp_live_ops_evidence_matrix_smoke.py --config <path>`
 
+## Repo-Only Bootstrap And Debug
+
+1. `python scripts/ctp_repo_debug_smoke.py` is the repo-only debug entry for a fresh clone after `python -m pip install -e .`.
+2. It verifies `_ctp_runtime` import, public scaffold return codes, and internal `CtpMdLiveSession` symbol availability without `vendor/ctp/bin` or `cfgs/local`.
+3. If you also want to run the repository tests on a fresh machine, install `python -m pip install -e ".[dev]"` first so `pytest` is present.
+4. Live smoke scripts remain separate and still require a local vendor runtime pack plus a local config file.
+
 ## Formal Baseline
 
 The formal Nautilus-facing live smoke baseline is:

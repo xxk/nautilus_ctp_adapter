@@ -15,6 +15,40 @@ def rust_manifest(root: Path) -> Path:
     return root / "rust" / "Cargo.toml"
 
 
+def expected_pyo3_extension_name() -> str:
+    """Return the expected basename prefix for the _ctp_runtime PyO3 extension."""
+    # maturin builds _ctp_runtime.cpython-3NN-<platform>.pyd / .so
+    if sys.platform == "win32":
+        return "_ctp_runtime"
+    return "_ctp_runtime"
+
+
+def find_pyo3_extension(build_target_dir: Path) -> Path | None:
+    """Locate the built _ctp_runtime cdylib artifact in the debug target directory.
+
+    ``cargo build`` produces a platform-native shared library (``_ctp_runtime.dll``
+    on Windows, ``lib_ctp_runtime.so`` on Linux).  The ``.pyd`` renaming only
+    happens during ``maturin develop``/``maturin build``.  We therefore accept
+    whichever artifact cargo actually produces.
+    """
+    debug_dir = build_target_dir / "debug"
+    if not debug_dir.exists():
+        return None
+    prefix = expected_pyo3_extension_name()
+    # On Windows cargo produces _ctp_runtime.dll; on Linux lib_ctp_runtime.so
+    candidate_exts = (".dll", ".pyd", ".so")
+    for ext in candidate_exts:
+        p = debug_dir / f"{prefix}{ext}"
+        if p.exists():
+            return p
+    # Also accept ABI-tagged names (cpython-3NN-...) produced by maturin
+    for p in debug_dir.glob(f"{prefix}*.pyd"):
+        return p
+    for p in debug_dir.glob(f"{prefix}*.so"):
+        return p
+    return None
+
+
 def expected_dynamic_library_name() -> str:
     if sys.platform == "win32":
         return "ctp_native.dll"
@@ -125,6 +159,30 @@ def main() -> int:
     print(f"PASS rust-gate: cargo-build artifact={artifact_path}")
     print_block("STDOUT rust-gate: ", build_result.stdout)
 
+    # ── ctp_py PyO3 extension build check ─────────────────────────────────
+    ctp_py_manifest = root / "rust" / "ctp_py" / "Cargo.toml"
+    if ctp_py_manifest.exists():
+        ctp_py_build_command = [cargo, "build", "-p", "ctp_py", "--manifest-path", str(manifest)]
+        ctp_py_build_result = run_command(ctp_py_build_command)
+        if ctp_py_build_result.returncode != 0:
+            print("FAIL rust-gate: cargo-build-ctp_py")
+            print(f"INFO rust-gate: command={' '.join(ctp_py_build_command)}")
+            print_block("STDOUT rust-gate: ", ctp_py_build_result.stdout)
+            print_block("STDERR rust-gate: ", ctp_py_build_result.stderr)
+            return 1
+
+        pyo3_ext = find_pyo3_extension(build_target_dir)
+        if pyo3_ext is None:
+            print("FAIL rust-gate: ctp_py-extension-missing")
+            print(f"INFO rust-gate: searched {build_target_dir / 'debug'} for _ctp_runtime.*")
+            return 1
+
+        print(f"PASS rust-gate: ctp_py-build extension={pyo3_ext}")
+        print_block("STDOUT rust-gate: ", ctp_py_build_result.stdout)
+    else:
+        print("WARN rust-gate: ctp_py-not-found (skipping PyO3 bridge check)")
+
+    # ── cargo test ────────────────────────────────────────────────────────
     test_command = [cargo, "test", "--manifest-path", str(manifest)]
     test_result = run_command(test_command)
     if test_result.returncode != 0:

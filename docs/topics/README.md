@@ -4,8 +4,9 @@
 
 ## Current State
 
-- **Active topic**: [live-ops-truth-snapshot](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/live-ops-truth-snapshot/README.md)（进行中，post-mainline）
-- **Active change**: [20260403__live-ops-truth-snapshot__live-ops-policy-baseline](/D:/Nautilus/nautilus_ctp_adapter/docs/changes/20260403__live-ops-truth-snapshot__live-ops-policy-baseline/plan.md)
+- **Active topic 1**: [live-ops-truth-snapshot](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/live-ops-truth-snapshot/README.md)（进行中，C2 受外部连通性阻塞挂起）
+- **Active topic 2**: [rust-ctp-runtime-cutover](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/rust_ctp/rust-ctp-runtime-cutover/README.md)（进行中，C1/C2 已完成，C3 进行中）
+- **Active change**: [20260410__rust-ctp-runtime-cutover__rust-owned-td-bootstrap-runtime](/D:/Nautilus/nautilus_ctp_adapter/docs/changes/20260410__rust-ctp-runtime-cutover__rust-owned-td-bootstrap-runtime/plan.md)
 - **Governance topic**: [repo-governance-hardening](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/repo_governance/repo-governance-hardening/README.md)（治理辅线，已完成）
 
 ## Layering Rule
@@ -52,7 +53,7 @@ docs/
 | topic-id | 状态 | 说明 |
 | --- | --- | --- |
 | [live-session-order-query-hardening](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/live-session-order-query-hardening/README.md) | 规划中 | 利用可直连 CTP 的时间窗口，把交易时段 `c2609` 一手下单开发与非交易时段 query 开发整理成正式 topic |
-| [rust-ctp-runtime-cutover](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/rust_ctp/rust-ctp-runtime-cutover/README.md) | 规划中 | 二期候选 topic：把当前 Python native wrapper 主路径迁到 Rust-owned runtime + PyO3 bridge，不改变当前 active delivery |
+| [rust-ctp-runtime-cutover](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/rust_ctp/rust-ctp-runtime-cutover/README.md) | 进行中 | 二期 topic：把当前 Python native wrapper 主路径迁到 Rust-owned runtime + PyO3 bridge；C1/C2 已完成，C3 进行中 |
 
 ## Governance Note
 

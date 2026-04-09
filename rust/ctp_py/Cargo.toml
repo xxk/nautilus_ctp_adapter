@@ -1,0 +1,14 @@
+[package]
+name = "ctp_py"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "PyO3 bridge exposing the CTP runtime to Python adapters."
+
+[lib]
+name = "_ctp_runtime"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.23", features = ["extension-module"] }
+ctp_native = { package = "ctp_runtime_core", path = "../ctp_runtime_core" }

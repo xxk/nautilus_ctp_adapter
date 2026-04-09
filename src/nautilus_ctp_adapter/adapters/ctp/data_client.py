@@ -8,7 +8,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 import time
 
-from nautilus_ctp_adapter.native import CtpMdApi
 from nautilus_ctp_adapter.runtime import (
     CtpRuntimeBridge,
     CtpRuntimeCommand,
@@ -19,6 +18,16 @@ from nautilus_ctp_adapter.runtime import (
 
 from .config import CtpAdapterConfig
 from .instrument_provider import CtpInstrumentProviderLoadResult
+
+
+def _create_md_live_session(flow_path: Path):
+    try:
+        from ctp_runtime._ctp_runtime import CtpMdLiveSession
+    except ImportError as exc:
+        raise RuntimeError(
+            "PyO3 MD bridge unavailable; run maturin develop or pip install -e . before MD smoke"
+        ) from exc
+    return CtpMdLiveSession(str(flow_path))
 
 
 @dataclass(slots=True)
@@ -390,10 +399,9 @@ class CtpDataClient:
         if missing:
             raise ValueError(f"missing config fields: {missing}")
 
-        api = CtpMdApi.load(self._repository_root())
         effective_flow_path = Path(flow_path) if flow_path else self._default_flow_path()
         effective_flow_path.mkdir(parents=True, exist_ok=True)
-        handle = api.create(effective_flow_path)
+        session = _create_md_live_session(effective_flow_path)
         state: dict[str, object] = {
             "login_success": False,
             "login_error_id": -1,
@@ -402,10 +410,9 @@ class CtpDataClient:
         }
 
         try:
-            api.set_login_callback(handle, lambda resp: self._on_md_login_callback(resp, state))
-            api.set_tick_callback(handle, lambda tick: self._on_md_tick_callback(tick, state))
-            api.set_front_disconnected_callback(
-                handle,
+            session.set_login_callback(lambda resp: self._on_md_login_callback(resp, state))
+            session.set_tick_callback(lambda tick: self._on_md_tick_callback(tick, state))
+            session.set_front_disconnected_callback(
                 lambda reason: self._emit_marketdata_event(
                     CtpRuntimeEvent(
                         kind=CtpRuntimeEventKind.DISCONNECTED,
@@ -415,12 +422,11 @@ class CtpDataClient:
                             "reason": str(reason),
                         },
                     )
-                ),
+                )
             )
 
-            init_code = api.init(handle, self._config.md_front)
-            login_request_code = api.login(
-                handle,
+            init_code = session.init(self._config.md_front)
+            login_request_code = session.login(
                 self._config.broker_id,
                 self._config.user_id,
                 self._config.password,
@@ -432,7 +438,7 @@ class CtpDataClient:
 
             subscribe_code = -1
             if state["login_success"]:
-                subscribe_code = api.subscribe(handle, self._config.instruments)
+                subscribe_code = session.subscribe(self._config.instruments)
                 while time.time() < deadline and state["tick"] is None:
                     time.sleep(0.1)
 
@@ -451,7 +457,7 @@ class CtpDataClient:
                 first_tick_ts_epoch_us=None if tick is None else tick["ts_epoch_us"],
             )
         finally:
-            api.dispose(handle)
+            session.dispose()
 
     def capture_md_startup_truth_mainline(
         self,

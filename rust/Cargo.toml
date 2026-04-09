@@ -1,3 +1,3 @@
 [workspace]
-members = ["ctp_runtime_core"]
+members = ["ctp_runtime_core", "ctp_py"]
 resolver = "2"

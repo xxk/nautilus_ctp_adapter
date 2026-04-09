@@ -118,14 +118,43 @@ It is expected to prove three things in one run:
 2. `TD` auth/login plus settlement confirmation readiness
 3. Shared runtime bridge event flow inside the Nautilus-facing adapter stack
 
-## Validation Gates
+## Repo-Only Local Build And Debug
 
-Run the repository validation gates in this order:
+For a fresh machine with only this repository checkout, use this bootstrap path first:
 
 ```powershell
-python -m pytest
 python -m pip install -e .
 python scripts/check_rust_gate.py
+python scripts/ctp_repo_debug_smoke.py
+```
+
+This path does not require `cfgs/local/` or `vendor/ctp/bin/`.
+It proves three things:
+
+1. editable install can compile the Rust/PyO3 bridge from the current repository
+2. `ctp_runtime` can be imported without an external sample project or synced runtime pack
+3. the public scaffold contract and internal MD live-session symbol are both present for step-through debugging
+
+Use `python scripts/ctp_nautilus_live_smoke.py --config <path>` only when a local live config and vendor runtime pack are available.
+
+If you also want to run the repository test suite on a fresh machine, install the dev extra first:
+
+```powershell
+python -m pip install -e ".[dev]"
+python scripts/check_rust_gate.py
+python scripts/ctp_repo_debug_smoke.py
+python -m pytest
+```
+
+## Validation Gates
+
+For a fresh machine, run the full repository validation commands in this order:
+
+```powershell
+python -m pip install -e ".[dev]"
+python scripts/check_rust_gate.py
+python scripts/ctp_repo_debug_smoke.py
+python -m pytest
 ```
 
 `python scripts/check_rust_gate.py` is the canonical Rust validation entrypoint.
