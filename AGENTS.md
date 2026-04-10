@@ -11,7 +11,7 @@ Read these in order:
 2. [docs/README.md](/D:/Nautilus/nautilus_ctp_adapter/docs/README.md)
 3. [docs/doc_harness_kit/README.md](/D:/Nautilus/nautilus_ctp_adapter/docs/doc_harness_kit/README.md)
 4. [docs/architecture/runtime-performance-guidelines.md](/D:/Nautilus/nautilus_ctp_adapter/docs/architecture/runtime-performance-guidelines.md)
-5. [docs/topics/roadmap/nautilus_adapter/live-ops-truth-snapshot/README.md](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/live-ops-truth-snapshot/README.md)
+5. [docs/topics/roadmap/rust_ctp/rust-ctp-runtime-cutover/README.md](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/rust_ctp/rust-ctp-runtime-cutover/README.md)
 6. The current change bundle under `docs/changes/<change-id>/`
 
 ## Repository Role

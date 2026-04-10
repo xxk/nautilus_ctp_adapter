@@ -146,6 +146,32 @@ python scripts/ctp_repo_debug_smoke.py
 python -m pytest
 ```
 
+## Cross-Machine Live-Ready Setup
+
+To make another machine build the live-ready `ctp_native.dll` instead of the scaffold-only bridge, the repository expects two separate local payloads:
+
+1. A local runtime pack under `vendor/ctp/bin/`, containing the runtime DLLs used at load and test time.
+2. A full CTP SDK directory, provided either through `vendor/ctp/sdk/` or through `CTP_VENDOR_SDK_ROOT` / `CTP_SDK_ROOT`.
+
+The minimum SDK payload for the vendor bridge is:
+
+1. `ThostFtdcMdApi.h`
+2. `ThostFtdcTraderApi.h`
+3. `ThostFtdcUserApiStruct.h`
+4. `thostmduserapi_se.lib`
+5. `thosttraderapi_se.lib`
+
+`rust/ctp_runtime_core/build.rs` resolves the SDK in this order:
+
+1. `CTP_VENDOR_SDK_ROOT`
+2. `CTP_SDK_ROOT`
+3. `vendor/ctp/sdk/`
+4. `vendor/ctp/bin/_synced_from.txt` reverse lookup into an external `3rdLib/CTP` tree
+
+`python scripts/check_rust_gate.py` now prepends `vendor/ctp/bin/` to `PATH` before running cargo commands, so `cargo test` can resolve `thostmduserapi_se.dll` and `thosttraderapi_se.dll` without manual shell setup.
+
+Git tracks the code, tests, and runbooks for this flow. The proprietary runtime pack and SDK payload stay local-only and are ignored by `.gitignore`, so each machine must sync or copy them from a private source before running live-ready validation.
+
 ## Validation Gates
 
 For a fresh machine, run the full repository validation commands in this order:

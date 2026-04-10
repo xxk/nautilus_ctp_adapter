@@ -4738,6 +4738,94 @@ def test_check_rust_gate_runs_metadata_and_check_with_fake_cargo(tmp_path: Path)
     assert "ctp_native.dll" in result.stdout  # [CONTRACT-LOCK: rust gate must validate the repo-owned ctp_native artifact path instead of stopping at cargo check]
 
 
+def test_check_rust_gate_prepends_vendor_runtime_bin_to_path(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[1]
+    script = root / "scripts" / "check_rust_gate.py"
+    runtime_bin = root / "vendor" / "ctp" / "bin"
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake_target_dir = tmp_path / "rust-target"
+    metadata_json = json.dumps(
+        {
+            "workspace_members": [
+                "ctp_runtime_core 0.1.0 (path+file:///D:/Nautilus/nautilus_ctp_adapter/rust/ctp_runtime_core)"
+            ],
+            "target_directory": fake_target_dir.as_posix(),
+            "version": 1,
+        }
+    )
+    fake_cargo_py = fake_bin / "fake_cargo.py"
+    fake_cargo_py.write_text(
+        "\n".join(
+            [
+                "from __future__ import annotations",
+                "import os",
+                "from pathlib import Path",
+                "import sys",
+                "",
+                f"target_dir = Path(r'{fake_target_dir.as_posix()}')",
+                f"metadata = r'''{metadata_json}'''",
+                f"expected_runtime_bin = Path(r'{runtime_bin.as_posix()}')",
+                "path_entries = [entry for entry in os.environ.get('PATH', '').split(os.pathsep) if entry]",
+                "first_entry = Path(path_entries[0]) if path_entries else None",
+                "if first_entry != expected_runtime_bin:",
+                "    print(f'PATH_FIRST={first_entry}', file=sys.stderr)",
+                "    raise SystemExit(9)",
+                "command = sys.argv[1] if len(sys.argv) > 1 else ''",
+                "if command == 'metadata':",
+                "    print(metadata)",
+                "    raise SystemExit(0)",
+                "if command == 'check':",
+                "    print('Finished dev [unoptimized + debuginfo] target(s) in 0.01s')",
+                "    raise SystemExit(0)",
+                "if command == 'build':",
+                "    artifact = target_dir / 'debug' / 'ctp_native.dll'",
+                "    artifact.parent.mkdir(parents=True, exist_ok=True)",
+                "    artifact.write_bytes(b'fake-dll')",
+                "    if '-p' in sys.argv and 'ctp_py' in sys.argv:",
+                "        pyo3_art = target_dir / 'debug' / '_ctp_runtime.dll'",
+                "        pyo3_art.write_bytes(b'fake-pyo3-dll')",
+                "    print(f'Finished dev [unoptimized + debuginfo] target(s) with artifact={artifact}')",
+                "    raise SystemExit(0)",
+                "if command == 'test':",
+                "    print('running 1 test')",
+                "    print('test ffi::tests::md_scaffold_error_contract_is_frozen ... ok')",
+                "    print('test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out')",
+                "    raise SystemExit(0)",
+                "print('unsupported cargo command', file=sys.stderr)",
+                "raise SystemExit(1)",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    fake_cargo = fake_bin / "cargo.cmd"
+    fake_cargo.write_text(
+        "\n".join(
+            [
+                "@echo off",
+                f'"{sys.executable}" "%~dp0fake_cargo.py" %*',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    env = os.environ.copy()
+    env["PATH"] = str(fake_bin)
+
+    result = subprocess.run(
+        [sys.executable, str(script)],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+        env=env,
+    )
+
+    assert result.returncode == 0
+    assert f"INFO rust-gate: runtime-dll-search={runtime_bin}" in result.stdout  # [CONTRACT-LOCK: rust gate must prepend vendor runtime DLL search path before cargo commands so live-ready cargo test can resolve thost*_se.dll]
+
+
 def test_repo_owned_native_export_manifest_covers_python_ctypes_entrypoints() -> None:
     export_symbols = {export.symbol for export in REPO_OWNED_CTP_NATIVE_EXPORTS}
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -64,7 +65,35 @@ def target_directory(root: Path, metadata: dict[str, object]) -> Path:
     return root / "rust" / "target"
 
 
-def run_command(command: list[str]) -> subprocess.CompletedProcess[str]:
+def vendor_runtime_bin(root: Path) -> Path | None:
+    candidate = root / "vendor" / "ctp" / "bin"
+    if candidate.exists():
+        return candidate
+    return None
+
+
+def build_command_env(root: Path) -> dict[str, str]:
+    env = os.environ.copy()
+    runtime_bin = vendor_runtime_bin(root)
+    if runtime_bin is None:
+        return env
+
+    runtime_bin_str = str(runtime_bin)
+    current_path = env.get("PATH", "")
+    path_entries = [entry for entry in current_path.split(os.pathsep) if entry]
+    normalized_runtime_bin = os.path.normcase(os.path.normpath(runtime_bin_str))
+    normalized_entries = {
+        os.path.normcase(os.path.normpath(entry)) for entry in path_entries
+    }
+    if normalized_runtime_bin not in normalized_entries:
+        path_entries.insert(0, runtime_bin_str)
+    env["PATH"] = os.pathsep.join(path_entries) if path_entries else runtime_bin_str
+    return env
+
+
+def run_command(
+    command: list[str], env: dict[str, str] | None = None
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         command,
         capture_output=True,
@@ -72,6 +101,7 @@ def run_command(command: list[str]) -> subprocess.CompletedProcess[str]:
         encoding="utf-8",
         errors="replace",
         check=False,
+        env=env,
     )
 
 
@@ -97,6 +127,11 @@ def main() -> int:
         print("NEXT rust-gate: install Rust toolchain and ensure cargo is available on PATH")
         return 1
 
+    command_env = build_command_env(root)
+    runtime_bin = vendor_runtime_bin(root)
+    if runtime_bin is not None:
+        print(f"INFO rust-gate: runtime-dll-search={runtime_bin}")
+
     metadata_command = [
         cargo,
         "metadata",
@@ -106,7 +141,7 @@ def main() -> int:
         "--manifest-path",
         str(manifest),
     ]
-    metadata_result = run_command(metadata_command)
+    metadata_result = run_command(metadata_command, env=command_env)
     if metadata_result.returncode != 0:
         print("FAIL rust-gate: cargo-metadata")
         print(f"INFO rust-gate: command={' '.join(metadata_command)}")
@@ -128,7 +163,7 @@ def main() -> int:
     print(f"PASS rust-gate: workspace-members={len(workspace_members)} manifest={manifest}")
 
     check_command = [cargo, "check", "--manifest-path", str(manifest)]
-    check_result = run_command(check_command)
+    check_result = run_command(check_command, env=command_env)
     if check_result.returncode != 0:
         print("FAIL rust-gate: cargo-check")
         print(f"INFO rust-gate: command={' '.join(check_command)}")
@@ -140,7 +175,7 @@ def main() -> int:
     print_block("STDOUT rust-gate: ", check_result.stdout)
 
     build_command = [cargo, "build", "--manifest-path", str(manifest)]
-    build_result = run_command(build_command)
+    build_result = run_command(build_command, env=command_env)
     if build_result.returncode != 0:
         print("FAIL rust-gate: cargo-build")
         print(f"INFO rust-gate: command={' '.join(build_command)}")
@@ -163,7 +198,7 @@ def main() -> int:
     ctp_py_manifest = root / "rust" / "ctp_py" / "Cargo.toml"
     if ctp_py_manifest.exists():
         ctp_py_build_command = [cargo, "build", "-p", "ctp_py", "--manifest-path", str(manifest)]
-        ctp_py_build_result = run_command(ctp_py_build_command)
+        ctp_py_build_result = run_command(ctp_py_build_command, env=command_env)
         if ctp_py_build_result.returncode != 0:
             print("FAIL rust-gate: cargo-build-ctp_py")
             print(f"INFO rust-gate: command={' '.join(ctp_py_build_command)}")
@@ -184,7 +219,7 @@ def main() -> int:
 
     # ── cargo test ────────────────────────────────────────────────────────
     test_command = [cargo, "test", "--manifest-path", str(manifest)]
-    test_result = run_command(test_command)
+    test_result = run_command(test_command, env=command_env)
     if test_result.returncode != 0:
         print("FAIL rust-gate: cargo-test")
         print(f"INFO rust-gate: command={' '.join(test_command)}")

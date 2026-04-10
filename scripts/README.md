@@ -39,6 +39,9 @@ Current planned entrypoints:
 2. It verifies `_ctp_runtime` import, public scaffold return codes, and internal `CtpMdLiveSession` symbol availability without `vendor/ctp/bin` or `cfgs/local`.
 3. If you also want to run the repository tests on a fresh machine, install `python -m pip install -e ".[dev]"` first so `pytest` is present.
 4. Live smoke scripts remain separate and still require a local vendor runtime pack plus a local config file.
+5. `python scripts/check_rust_gate.py` automatically prepends `vendor/ctp/bin/` to `PATH` when that local pack exists, so cargo-side tests can resolve `thost*_se.dll` without manual PATH edits.
+6. A live-ready vendor bridge build additionally requires a full SDK under `vendor/ctp/sdk/` or a matching `CTP_VENDOR_SDK_ROOT` / `CTP_SDK_ROOT` override.
+7. The runtime pack and SDK payload remain local/private inputs; the Git repository only carries the code and runbooks that describe the layout.
 
 ## Formal Baseline
 
