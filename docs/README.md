@@ -41,3 +41,5 @@ python -m pytest
 1. The repo-only debug path above proves the repository can build its own scaffold/runtime artifacts on a fresh clone.
 2. A second machine still needs a local `vendor/ctp/bin/` runtime pack plus a full CTP SDK under `vendor/ctp/sdk/` or `CTP_VENDOR_SDK_ROOT` / `CTP_SDK_ROOT` before it can build the live-ready vendor bridge.
 3. The durable runbook for that layout lives in [/D:/Nautilus/nautilus_ctp_adapter/vendor/ctp/README.md](/D:/Nautilus/nautilus_ctp_adapter/vendor/ctp/README.md) and the top-level repository guide in [/D:/Nautilus/nautilus_ctp_adapter/README.md](/D:/Nautilus/nautilus_ctp_adapter/README.md).
+4. `python scripts/ctp_repo_debug_smoke.py` intentionally checks the public PyO3 scaffold contract; TD `-9000` there is expected before C3 and does not by itself prove the formal TD ctypes/live path is scaffold-only.
+5. The formal TD readiness verdict remains `python scripts/ctp_nautilus_live_smoke.py --config <path>`.

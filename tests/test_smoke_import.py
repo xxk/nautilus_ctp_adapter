@@ -4985,6 +4985,10 @@ def test_pyo3_bridge_invalid_handle_after_dispose() -> None:
 def test_repo_only_debug_smoke_contract_is_stable() -> None:
     snapshot = collect_repo_debug_smoke_snapshot()
 
+    assert snapshot["probe_scope"] == "repo_only_debug_bootstrap"  # [CONTRACT-LOCK: repo-only debug smoke must identify itself as the bootstrap-only probe surface]
+    assert snapshot["td_probe_mode"] == "public_pyo3_scaffold_before_c3"  # [CONTRACT-LOCK: repo-only debug smoke must disclose that TD -9000 comes from the public PyO3 scaffold before C3]
+    assert snapshot["formal_live_td_entrypoint"] == "python scripts/ctp_nautilus_live_smoke.py --config <path>"  # [CONTRACT-LOCK: repo-only debug smoke must point operators at the formal live TD readiness entrypoint]
+    assert snapshot["formal_live_td_path"] == "execution_client.run_live_td_readiness_smoke -> native.td_ctypes -> ctp_native.dll"  # [CONTRACT-LOCK: repo-only debug smoke must disclose the separate formal TD readiness path]
     assert snapshot["has_internal_md_live_session"] is True  # [CONTRACT-LOCK: repo-only debug smoke depends on the internal CtpMdLiveSession symbol being present after editable install]
     assert snapshot["scaffold_not_implemented"] == -9000  # [CONTRACT-LOCK: repo-only debug smoke must continue to see scaffold code -9000 from the public PyO3 sessions]
     assert snapshot["invalid_handle"] == -9001  # [CONTRACT-LOCK: repo-only debug smoke must continue to see invalid-handle code -9001 after dispose]

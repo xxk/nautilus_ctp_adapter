@@ -135,6 +135,10 @@ It proves three things:
 2. `ctp_runtime` can be imported without an external sample project or synced runtime pack
 3. the public scaffold contract and internal MD live-session symbol are both present for step-through debugging
 
+Important: `python scripts/ctp_repo_debug_smoke.py` intentionally exercises the public PyO3 scaffold sessions.
+If `td_init_code`, `td_authenticate_code`, or `td_login_code` is `-9000` there, that does not mean the repository-built `ctp_native.dll` or the formal TD readiness path is still scaffold-only.
+The live-ready verdict belongs to `python scripts/ctp_nautilus_live_smoke.py --config <path>`.
+
 Use `python scripts/ctp_nautilus_live_smoke.py --config <path>` only when a local live config and vendor runtime pack are available.
 
 If you also want to run the repository test suite on a fresh machine, install the dev extra first:
@@ -169,6 +173,11 @@ The minimum SDK payload for the vendor bridge is:
 4. `vendor/ctp/bin/_synced_from.txt` reverse lookup into an external `3rdLib/CTP` tree
 
 `python scripts/check_rust_gate.py` now prepends `vendor/ctp/bin/` to `PATH` before running cargo commands, so `cargo test` can resolve `thostmduserapi_se.dll` and `thosttraderapi_se.dll` without manual shell setup.
+
+This repository currently has two distinct TD probe surfaces:
+
+1. `python scripts/ctp_repo_debug_smoke.py` checks the public PyO3 scaffold contract and is expected to report `-9000` for TD until C3 lands.
+2. `python scripts/ctp_nautilus_live_smoke.py --config <path>` runs the formal TD readiness path through `execution_client.run_live_td_readiness_smoke -> native.td_ctypes -> ctp_native.dll`.
 
 Git tracks the code, tests, and runbooks for this flow. The proprietary runtime pack and SDK payload stay local-only and are ignored by `.gitignore`, so each machine must sync or copy them from a private source before running live-ready validation.
 

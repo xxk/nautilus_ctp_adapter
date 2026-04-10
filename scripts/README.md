@@ -43,6 +43,10 @@ Current planned entrypoints:
 6. A live-ready vendor bridge build additionally requires a full SDK under `vendor/ctp/sdk/` or a matching `CTP_VENDOR_SDK_ROOT` / `CTP_SDK_ROOT` override.
 7. The runtime pack and SDK payload remain local/private inputs; the Git repository only carries the code and runbooks that describe the layout.
 
+Important: `python scripts/ctp_repo_debug_smoke.py` is not the formal TD readiness verdict.
+It intentionally exercises the public PyO3 scaffold `CtpTdSession`, so TD `-9000` is expected there until C3.
+Use `python scripts/ctp_nautilus_live_smoke.py --config <path>` when you need the actual live TD readiness result.
+
 ## Formal Baseline
 
 The formal Nautilus-facing live smoke baseline is:

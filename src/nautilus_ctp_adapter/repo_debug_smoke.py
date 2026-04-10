@@ -18,6 +18,10 @@ def collect_repo_debug_smoke_snapshot() -> dict[str, object]:
         auth_code="RFLEXUGHCKIKWGPC",
     )
     snapshot: dict[str, object] = {
+        "probe_scope": "repo_only_debug_bootstrap",
+        "td_probe_mode": "public_pyo3_scaffold_before_c3",
+        "formal_live_td_entrypoint": "python scripts/ctp_nautilus_live_smoke.py --config <path>",
+        "formal_live_td_path": "execution_client.run_live_td_readiness_smoke -> native.td_ctypes -> ctp_native.dll",
         "runtime_package_file": str(Path(ctp_runtime.__file__).resolve()),
         "runtime_native_module_file": str(Path(native_runtime.__file__).resolve()),
         "has_internal_md_live_session": hasattr(native_runtime, "CtpMdLiveSession"),
