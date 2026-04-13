@@ -82,7 +82,7 @@ docs/doc_harness_kit/
 1. `core/` 第一批 project-agnostic 正文
 2. `checks/` 中的首批 guard 接入映射
 3. `templates/changes/` 下的四件套正文同步
-4. `templates/topics/` 下的索引模板与 roadmap 模板同步，并与 `docs/topics/README.md`、`docs/topics/roadmap/` 保持同次收敛
+4. `templates/topics/` 下的索引模板与 roadmap 模板同步，并与 `docs/topics/README.md`、`docs/topics/<topic-id>.md` 保持同次收敛
 
 ---
 
@@ -133,5 +133,5 @@ docs/doc_harness_kit/
 1. `docs/changes/_template/` 是当前仓库本地执行模板源。
 2. `docs/doc_harness_kit/templates/changes/` 是跨项目复用模板源。
 3. 以后若本地 child change 模板字段发生稳定变更，应在同一次变更中同步更新这两个位置。
-4. `docs/topics/README.md` 与 `docs/topics/roadmap/` 是当前仓库 topic 治理的正式来源。
+4. `docs/topics/README.md` 与 `docs/topics/<topic-id>.md` 是当前仓库 topic 治理的正式来源。
 5. `docs/doc_harness_kit/templates/topics/` 与 `examples/example_topic/` 必须和正式来源同次同步，避免 harness kit 再次退化成“只有入口、没有正文”的指针包。

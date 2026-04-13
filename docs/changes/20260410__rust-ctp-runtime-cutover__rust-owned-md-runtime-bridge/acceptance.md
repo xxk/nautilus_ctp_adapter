@@ -8,7 +8,7 @@
 **change-id**：20260410__rust-ctp-runtime-cutover__rust-owned-md-runtime-bridge
 **关联 plan**：./plan.md
 **关联 ai_constraints**：./ai_constraints.md
-**长期归宿 / Long-Term Target**：/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/rust_ctp/rust-ctp-runtime-cutover/README.md
+**长期归宿 / Long-Term Target**：/D:/Nautilus/nautilus_ctp_adapter/docs/topics/rust-ctp-runtime-cutover.md
 
 <!-- AI-STATUS-BEGIN -->
 ```yaml

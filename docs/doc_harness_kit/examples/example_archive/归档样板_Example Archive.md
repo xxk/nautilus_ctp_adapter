@@ -25,7 +25,7 @@
 
 1. 当前正式入口：`docs/architecture/AI开发导航总览.md`
 2. 当前正式规范：`docs/doc_harness_kit/README.md`
-3. 当前长期路线图：`docs/topics/roadmap/...`
+3. 当前长期路线图：`docs/topics/<topic-id>.md`
 
 ---
 

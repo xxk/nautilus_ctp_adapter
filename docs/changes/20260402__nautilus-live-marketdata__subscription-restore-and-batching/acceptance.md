@@ -8,7 +8,7 @@
 **change-id**：20260402__nautilus-live-marketdata__subscription-restore-and-batching
 **关联 plan**：./plan.md
 **关联 ai_constraints**：./ai_constraints.md
-**长期归宿 / Long-Term Target**：/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/nautilus-live-marketdata/README.md
+**长期归宿 / Long-Term Target**：/D:/Nautilus/nautilus_ctp_adapter/docs/topics/nautilus-live-marketdata.md
 
 <!-- AI-STATUS-BEGIN -->
 ```yaml

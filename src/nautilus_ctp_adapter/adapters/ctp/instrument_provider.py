@@ -6,7 +6,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 import time
 
-from nautilus_ctp_adapter.native import CtpTdApi
 from nautilus_ctp_adapter.runtime import (
     CtpRuntimeBridge,
     CtpRuntimeCommand,
@@ -17,6 +16,16 @@ from nautilus_ctp_adapter.runtime import (
 
 from .config import CtpAdapterConfig
 from .normalization import NormalizedCtpInstrument, normalize_instrument_record
+
+
+def _create_td_live_session(flow_path: Path):
+    try:
+        from ctp_runtime._ctp_runtime import CtpTdLiveSession
+    except ImportError as exc:
+        raise RuntimeError(
+            "PyO3 TD bridge unavailable; run maturin develop or pip install -e . before TD instrument smoke"
+        ) from exc
+    return CtpTdLiveSession(str(flow_path))
 
 
 @dataclass(slots=True)
@@ -165,16 +174,14 @@ class CtpInstrumentProvider:
         if not state.request_id:
             raise RuntimeError("instrument query bootstrap did not produce request_id")
 
-        api = CtpTdApi.load(self._repository_root())
         effective_flow_path = Path(flow_path) if flow_path else self._default_flow_path()
         effective_flow_path.mkdir(parents=True, exist_ok=True)
-        handle = api.create(effective_flow_path)
+        session = _create_td_live_session(effective_flow_path)
         login_state: dict[str, object] = {"login": None}
 
         try:
-            api.set_login_callback(handle, lambda resp: login_state.__setitem__("login", resp))
-            api.set_front_disconnected_callback(
-                handle,
+            session.set_login_callback(lambda resp: login_state.__setitem__("login", resp))
+            session.set_front_disconnected_callback(
                 lambda reason: self._runtime_bridge.push_event(
                     CtpRuntimeEvent(
                         kind=CtpRuntimeEventKind.DISCONNECTED,
@@ -183,8 +190,7 @@ class CtpInstrumentProvider:
                     )
                 ),
             )
-            api.set_instrument_callback(
-                handle,
+            session.set_instrument_callback(
                 lambda inst, req_id, is_last: self._on_td_instrument_callback(
                     request_id=state.request_id or "",
                     instrument=inst,
@@ -193,9 +199,9 @@ class CtpInstrumentProvider:
                 ),
             )
 
-            api.init(handle, self._config.td_front)
-            api.authenticate(handle, self._config.app_id, self._config.auth_code, self._config.product_info)
-            api.login(handle, self._config.broker_id, self._config.user_id, self._config.password)
+            session.init(self._config.td_front)
+            session.authenticate(self._config.app_id, self._config.auth_code, self._config.product_info)
+            session.login(self._config.broker_id, self._config.user_id, self._config.password)
 
             deadline = time.time() + timeout_seconds
             while time.time() < deadline and login_state["login"] is None:
@@ -205,8 +211,8 @@ class CtpInstrumentProvider:
             if login is None or not login.success:
                 return self.load_result_for_request(state.request_id)
 
-            api.confirm_settlement(handle)
-            api.qry_instrument(handle, symbol)
+            session.confirm_settlement()
+            session.qry_instrument(symbol)
 
             while time.time() < deadline and not self._runtime_bridge.query.is_query_completed(state.request_id):
                 time.sleep(0.1)
@@ -214,7 +220,7 @@ class CtpInstrumentProvider:
             self._latest_load_result = self.load_result_for_request(state.request_id)
             return self._latest_load_result
         finally:
-            api.dispose(handle)
+            session.dispose()
 
     def _next_request_id(self, prefix: str) -> str:
         self._request_sequence += 1

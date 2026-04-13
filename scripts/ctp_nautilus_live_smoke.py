@@ -14,6 +14,27 @@ from nautilus_ctp_adapter.adapters.ctp.config import CtpAdapterConfig
 from nautilus_ctp_adapter.adapters.ctp.factory import build_ctp_stack
 
 
+BASELINE = "nautilus-live-smoke-v1"
+
+
+def _emit_payload(payload: dict[str, object]) -> None:
+    print(json.dumps(payload, ensure_ascii=False))
+
+
+def _emit_exception(*, stage: str, exc: Exception) -> int:
+    _emit_payload(
+        {
+            "baseline": BASELINE,
+            "success": False,
+            "failure_reason": "exception",
+            "error_stage": stage,
+            "error_type": type(exc).__name__,
+            "error_message": str(exc),
+        }
+    )
+    return 1
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run the formal Nautilus-facing live smoke baseline.")
     parser.add_argument("--config", type=Path, required=True)
@@ -21,19 +42,40 @@ def main() -> int:
     parser.add_argument("--td-timeout-seconds", type=int, default=20)
     args = parser.parse_args()
 
-    config = CtpAdapterConfig.from_json_file(args.config)
-    stack = build_ctp_stack(config)
-    data_client = stack["data_client"]
-    execution_client = stack["execution_client"]
-    runtime_bridge = stack["runtime_bridge"]
+    try:
+        config = CtpAdapterConfig.from_json_file(args.config)
+    except Exception as exc:
+        return _emit_exception(stage="config_load", exc=exc)
 
-    bootstrap = data_client.bootstrap_market_data_mainline()
-    md_result = data_client.run_live_md_smoke(timeout_seconds=args.md_timeout_seconds)
-    td_result = execution_client.run_live_td_readiness_smoke(timeout_seconds=args.td_timeout_seconds)
-    events = runtime_bridge.drain_events()
+    try:
+        stack = build_ctp_stack(config)
+        data_client = stack["data_client"]
+        execution_client = stack["execution_client"]
+        runtime_bridge = stack["runtime_bridge"]
+
+        bootstrap = data_client.bootstrap_market_data_mainline()
+        md_result = data_client.run_live_md_smoke(timeout_seconds=args.md_timeout_seconds)
+        td_result = execution_client.run_live_td_readiness_smoke(timeout_seconds=args.td_timeout_seconds)
+        events = runtime_bridge.drain_events()
+    except Exception as exc:
+        return _emit_exception(stage="run_smoke", exc=exc)
+
+    failure_reason = None
+    if not bootstrap.started:
+        failure_reason = "md_bootstrap_not_started"
+    elif md_result.login_success is not True:
+        failure_reason = "md_login_failed"
+    elif md_result.first_tick_symbol not in config.instruments:
+        failure_reason = "md_first_tick_missing"
+    elif td_result.login_success is not True:
+        failure_reason = "td_login_failed"
+    elif td_result.settlement_code != 0:
+        failure_reason = "td_settlement_not_confirmed"
 
     payload = {
-        "baseline": "nautilus-live-smoke-v1",
+        "baseline": BASELINE,
+        "success": failure_reason is None,
+        "failure_reason": failure_reason,
         "bootstrap_started": bootstrap.started,
         "connect_request_id": bootstrap.connect_request_id,
         "subscribe_request_ids": list(bootstrap.subscribe_request_ids),
@@ -69,15 +111,9 @@ def main() -> int:
         ),
         "bridge_settlement_seen": any(event.kind.value == "settlement_confirmed" for event in events),
     }
-    print(json.dumps(payload, ensure_ascii=False))
+    _emit_payload(payload)
 
-    success = (
-        md_result.login_success
-        and md_result.first_tick_symbol in config.instruments
-        and td_result.login_success
-        and td_result.settlement_code == 0
-    )
-    return 0 if success else 1
+    return 0 if failure_reason is None else 1
 
 
 if __name__ == "__main__":

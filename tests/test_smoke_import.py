@@ -11,8 +11,11 @@ from nautilus_ctp_adapter.adapters.ctp import (
     CtpAccountQueryBaseline,
     CtpAdapterConfig,
     CtpCancelOrderIntent,
+    CtpDataClientConfig,
     CtpExecutionBootstrapResult,
     CtpExecutionClient,
+    CtpInstrumentProviderConfig,
+    CtpLiveDataClient,
     CtpLiveExecutionClientBootstrapResult,
     CtpLiveOpsSnapshot,
     CtpLiveOpsSnapshotAdapter,
@@ -31,6 +34,7 @@ from nautilus_ctp_adapter.adapters.ctp import (
     CtpReconciliationEvidence,
     CtpReconciliationPolicyFinding,
     CtpReconciliationPolicyResult,
+    CtpReconciliationSnapshot,
     CtpReconciliationSummary,
     CtpReconciliationSymbolExposure,
     CtpSessionRebuildFinding,
@@ -48,6 +52,7 @@ from nautilus_ctp_adapter.adapters.ctp import (
     CtpTdBootstrapState,
     CtpTdExecEventPayload,
     CtpTdObservedCallback,
+    CtpTdOrderTradeSnapshot,
     CtpTdOrderTruthEvidenceMatrix,
     CtpTdOrderTruthBaseline,
     CtpTdSessionIdentity,
@@ -749,6 +754,120 @@ def test_instrument_provider_load_result_for_request_exposes_stable_shape() -> N
     assert result.instruments[0].exchange_id == "CFFEX"
     assert result.instruments[0].venue_symbol == "IF2606"
     assert result.instruments[0].display_symbol == "IF2606.CFFEX"
+
+
+def test_instrument_provider_live_smoke_uses_pyo3_td_live_session_mainline(monkeypatch, tmp_path: Path) -> None:
+    import nautilus_ctp_adapter.adapters.ctp.instrument_provider as instrument_provider_module
+
+    records: dict[str, object] = {"session_factory_used": False}
+
+    class FailIfCtypesTdApiUsed:
+        @classmethod
+        def load(cls, base_dir):
+            raise AssertionError("run_live_instrument_smoke must not fall back to ctypes CtpTdApi")
+
+    class FakeTdLiveSession:
+        def __init__(self, flow_path: str) -> None:
+            records["session_factory_used"] = True
+            records["flow_path"] = Path(flow_path)
+            self._login_callback = None
+            self._disconnect_callback = None
+            self._instrument_callback = None
+
+        def set_login_callback(self, callback):
+            self._login_callback = callback
+
+        def set_front_disconnected_callback(self, callback):
+            self._disconnect_callback = callback
+
+        def set_instrument_callback(self, callback):
+            self._instrument_callback = callback
+
+        def init(self, front: str) -> int:
+            return 0
+
+        def authenticate(self, app_id: str, auth_code: str, product_info: str) -> int:
+            return 0
+
+        def login(self, broker: str, user: str, password: str) -> int:
+            class LoginResponse:
+                success = True
+                error_id = 0
+                error_message = ""
+                front_id = 11
+                session_id = 22
+                max_order_ref = 100
+
+            assert self._login_callback is not None
+            self._login_callback(LoginResponse())
+            return 0
+
+        def confirm_settlement(self) -> int:
+            return 0
+
+        def qry_instrument(self, symbol: str) -> int:
+            records["symbol"] = symbol
+
+            class InstrumentView:
+                symbol = "RB2610"
+                exchange = "SHF"
+                exchange_inst_id = "rb2610"
+                product_id = "rb"
+                tick_size = 1.0
+                volume_multiple = 10
+                lot_size = 10
+                instrument_name = "Rebar Oct 2026"
+                expire_date = "202610"
+                product_class = 49
+                strike_price = 0.0
+                underlying_instr_id = ""
+                options_type = 0
+                ts_epoch_us = 123456789
+                open_date = "20260101"
+                create_date = "20250101"
+
+            assert self._instrument_callback is not None
+            self._instrument_callback(InstrumentView(), 1, True)
+            return 0
+
+        def dispose(self) -> None:
+            records["disposed"] = True
+
+    monkeypatch.setattr(instrument_provider_module, "CtpTdApi", FailIfCtypesTdApiUsed, raising=False)
+    monkeypatch.setattr(
+        instrument_provider_module,
+        "_create_td_live_session",
+        lambda flow_path: FakeTdLiveSession(str(flow_path)),
+    )
+
+    config = CtpAdapterConfig.from_dict(
+        {
+            "BrokerID": "0155",
+            "UserID": "025292",
+            "Password": "secret",
+            "AppID": "client_iq_3.6.2",
+            "AuthCode": "RFLEXUGHCKIKWGPC",
+            "ProductInfo": "iQuant",
+            "Pricer": "tcp://106.75.173.28:51213",
+            "Host": "tcp://106.75.173.28:51205",
+            "Instruments": ["rb2610"],
+        }
+    )
+    provider = build_ctp_stack(config)["instrument_provider"]
+
+    result = provider.run_live_instrument_smoke(
+        symbol="rb2610",
+        timeout_seconds=1,
+        flow_path=tmp_path / "td_instrument_flow",
+    )
+
+    assert records["session_factory_used"] is True
+    assert records["disposed"] is True
+    assert records["symbol"] == "rb2610"
+    assert result.loaded is True
+    assert result.instrument_count == 1
+    assert result.instruments[0].venue_symbol == "rb2610"
+    assert result.instruments[0].exchange_id == "SHFE"
 
 
 def test_native_loader_candidates_cover_repo_owned_pack() -> None:
@@ -1615,7 +1734,9 @@ def test_live_execution_client_debug_submit_uses_bootstrap_identity() -> None:
     assert commands[-1].payload["session_id"] == "22"
 
 
-def test_position_query_smoke_collects_runtime_positions_with_fake_native() -> None:
+def test_position_query_smoke_collects_runtime_positions_with_fake_native(monkeypatch) -> None:
+    import nautilus_ctp_adapter.adapters.ctp.execution_client as execution_client_module
+
     config = CtpAdapterConfig.from_dict(
         {
             "BrokerID": "0155",
@@ -1632,39 +1753,37 @@ def test_position_query_smoke_collects_runtime_positions_with_fake_native() -> N
     stack = build_ctp_stack(config)
     execution_client = stack["execution_client"]
     bridge = stack["runtime_bridge"]
+    records: dict[str, object] = {"session_factory_used": False}
 
-    class FakeTdApi:
-        def __init__(self) -> None:
+    class FailIfCtypesTdApiUsed:
+        @classmethod
+        def load(cls, base_dir):
+            raise AssertionError("run_live_position_query_smoke must not fall back to ctypes CtpTdApi")
+
+    class FakeTdLiveSession:
+        def __init__(self, flow_path: str) -> None:
+            self.flow_path = Path(flow_path)
             self._login_callback = None
             self._disconnect_callback = None
             self._position_callback = None
+            records["session_factory_used"] = True
 
-        def create(self, flow_path: Path) -> int:
-            self.flow_path = flow_path
-            return 1
-
-        def dispose(self, handle: int) -> None:
-            self.disposed_handle = handle
-
-        def set_login_callback(self, handle: int, callback):
+        def set_login_callback(self, callback) -> None:
             self._login_callback = callback
-            return callback
 
-        def set_front_disconnected_callback(self, handle: int, callback):
+        def set_front_disconnected_callback(self, callback) -> None:
             self._disconnect_callback = callback
-            return callback
 
-        def set_position_callback(self, handle: int, callback):
+        def set_position_callback(self, callback) -> None:
             self._position_callback = callback
-            return callback
 
-        def init(self, handle: int, front: str) -> int:
+        def init(self, front: str) -> int:
             return 0
 
-        def authenticate(self, handle: int, app_id: str, auth_code: str, product_info: str) -> int:
+        def authenticate(self, app_id: str, auth_code: str, product_info: str) -> int:
             return 0
 
-        def login(self, handle: int, broker_id: str, user_id: str, password: str) -> int:
+        def login(self, broker: str, user: str, password: str) -> int:
             class LoginResponse:
                 success = True
                 error_id = 0
@@ -1677,10 +1796,13 @@ def test_position_query_smoke_collects_runtime_positions_with_fake_native() -> N
             self._login_callback(LoginResponse())
             return 0
 
-        def confirm_settlement(self, handle: int) -> int:
+        def confirm_settlement(self) -> int:
             return 0
 
-        def qry_position(self, handle: int) -> int:
+        def dispose(self) -> None:
+            records["disposed"] = True
+
+        def qry_position(self) -> int:
             assert self._position_callback is not None
             self._position_callback(
                 NativePositionView(
@@ -1697,28 +1819,32 @@ def test_position_query_smoke_collects_runtime_positions_with_fake_native() -> N
                     open_cost=60000.0,
                     exchange_margin=12000.0,
                     use_margin=11000.0,
-                    position_profit=345.0,
+                    position_profit=123.0,
                     ts_epoch_us=123456789,
-                )
+                ),
+                7,
+                True,
             )
             return 0
 
-    fake_api = FakeTdApi()
-    original_load = CtpTdApi.__dict__["load"]
-    setattr(CtpTdApi, "load", classmethod(lambda cls, base_dir: fake_api))
+    monkeypatch.setattr(execution_client_module, "CtpTdApi", FailIfCtypesTdApiUsed, raising=False)
+    monkeypatch.setattr(
+        execution_client_module,
+        "_create_td_live_session",
+        lambda flow_path: FakeTdLiveSession(str(flow_path)),
+    )
 
-    try:
-        result = execution_client.run_live_position_query_smoke(
-            timeout_seconds=2,
-            completion_grace_seconds=0.0,
-        )
-    finally:
-        setattr(CtpTdApi, "load", original_load)
+    result = execution_client.run_live_position_query_smoke(
+        timeout_seconds=2,
+        completion_grace_seconds=0.0,
+    )
 
     events = bridge.drain_events()
     commands = bridge.drain_submitted_commands()
 
     assert isinstance(result, CtpPositionQuerySmokeResult)
+    assert records["session_factory_used"] is True
+    assert records["disposed"] is True
     assert result.bootstrap.ready is True
     assert result.query_code == 0
     assert result.completed is True
@@ -1740,7 +1866,9 @@ def test_position_query_smoke_collects_runtime_positions_with_fake_native() -> N
     assert any(event.kind is CtpRuntimeEventKind.POSITION for event in events)
 
 
-def test_account_query_smoke_collects_runtime_account_with_fake_native() -> None:
+def test_position_query_smoke_treats_empty_snapshot_as_completed_with_fake_native(monkeypatch) -> None:
+    import nautilus_ctp_adapter.adapters.ctp.execution_client as execution_client_module
+
     config = CtpAdapterConfig.from_dict(
         {
             "BrokerID": "0155",
@@ -1758,38 +1886,34 @@ def test_account_query_smoke_collects_runtime_account_with_fake_native() -> None
     execution_client = stack["execution_client"]
     bridge = stack["runtime_bridge"]
 
-    class FakeTdApi:
-        def __init__(self) -> None:
+    class FailIfCtypesTdApiUsed:
+        @classmethod
+        def load(cls, base_dir):
+            raise AssertionError("run_live_position_query_smoke must not fall back to ctypes CtpTdApi")
+
+    class FakeTdLiveSession:
+        def __init__(self, flow_path: str) -> None:
+            self.flow_path = Path(flow_path)
             self._login_callback = None
             self._disconnect_callback = None
-            self._account_callback = None
+            self._position_callback = None
 
-        def create(self, flow_path: Path) -> int:
-            self.flow_path = flow_path
-            return 1
-
-        def dispose(self, handle: int) -> None:
-            self.disposed_handle = handle
-
-        def set_login_callback(self, handle: int, callback):
+        def set_login_callback(self, callback) -> None:
             self._login_callback = callback
-            return callback
 
-        def set_front_disconnected_callback(self, handle: int, callback):
+        def set_front_disconnected_callback(self, callback) -> None:
             self._disconnect_callback = callback
-            return callback
 
-        def set_account_callback(self, handle: int, callback):
-            self._account_callback = callback
-            return callback
+        def set_position_callback(self, callback) -> None:
+            self._position_callback = callback
 
-        def init(self, handle: int, front: str) -> int:
+        def init(self, front: str) -> int:
             return 0
 
-        def authenticate(self, handle: int, app_id: str, auth_code: str, product_info: str) -> int:
+        def authenticate(self, app_id: str, auth_code: str, product_info: str) -> int:
             return 0
 
-        def login(self, handle: int, broker_id: str, user_id: str, password: str) -> int:
+        def login(self, broker: str, user: str, password: str) -> int:
             class LoginResponse:
                 success = True
                 error_id = 0
@@ -1802,10 +1926,116 @@ def test_account_query_smoke_collects_runtime_account_with_fake_native() -> None
             self._login_callback(LoginResponse())
             return 0
 
-        def confirm_settlement(self, handle: int) -> int:
+        def confirm_settlement(self) -> int:
             return 0
 
-        def qry_account(self, handle: int) -> int:
+        def dispose(self) -> None:
+            return None
+
+        def qry_position(self) -> int:
+            assert self._position_callback is not None
+            self._position_callback(None, 8, True)
+            return 0
+
+    monkeypatch.setattr(execution_client_module, "CtpTdApi", FailIfCtypesTdApiUsed, raising=False)
+    monkeypatch.setattr(
+        execution_client_module,
+        "_create_td_live_session",
+        lambda flow_path: FakeTdLiveSession(str(flow_path)),
+    )
+
+    result = execution_client.run_live_position_query_smoke(
+        timeout_seconds=2,
+        completion_grace_seconds=0.0,
+    )
+
+    events = bridge.drain_events()
+
+    assert isinstance(result, CtpPositionQuerySmokeResult)
+    assert result.bootstrap.ready is True
+    assert result.query_code == 0
+    assert result.completed is True
+    assert result.timed_out is False
+    assert result.no_positions is True
+    assert result.position_count == 0
+    assert result.positions == ()
+    assert any(
+        event.kind is CtpRuntimeEventKind.POSITION
+        and event.payload.get("snapshot_complete") == "true"
+        and event.payload.get("snapshot_empty") == "true"
+        for event in events
+    )
+
+
+def test_account_query_smoke_collects_runtime_account_with_fake_native(monkeypatch) -> None:
+    import nautilus_ctp_adapter.adapters.ctp.execution_client as execution_client_module
+
+    config = CtpAdapterConfig.from_dict(
+        {
+            "BrokerID": "0155",
+            "UserID": "025292",
+            "Password": "secret",
+            "AppID": "client_iq_3.6.2",
+            "AuthCode": "RFLEXUGHCKIKWGPC",
+            "ProductInfo": "iQuant",
+            "Pricer": "tcp://106.75.173.28:51213",
+            "Host": "tcp://106.75.173.28:51205",
+            "Instruments": ["rb2610"],
+        }
+    )
+    stack = build_ctp_stack(config)
+    execution_client = stack["execution_client"]
+    bridge = stack["runtime_bridge"]
+    records: dict[str, object] = {"session_factory_used": False}
+
+    class FailIfCtypesTdApiUsed:
+        @classmethod
+        def load(cls, base_dir):
+            raise AssertionError("run_live_account_query_smoke must not fall back to ctypes CtpTdApi")
+
+    class FakeTdLiveSession:
+        def __init__(self, flow_path: str) -> None:
+            self.flow_path = flow_path
+            self._login_callback = None
+            self._disconnect_callback = None
+            self._account_callback = None
+            records["session_factory_used"] = True
+
+        def set_login_callback(self, callback):
+            self._login_callback = callback
+
+        def set_front_disconnected_callback(self, callback):
+            self._disconnect_callback = callback
+
+        def set_account_callback(self, callback):
+            self._account_callback = callback
+
+        def init(self, front: str) -> int:
+            return 0
+
+        def authenticate(self, app_id: str, auth_code: str, product_info: str) -> int:
+            return 0
+
+        def login(self, broker: str, user: str, password: str) -> int:
+            class LoginResponse:
+                success = True
+                error_id = 0
+                error_message = ""
+                front_id = 11
+                session_id = 22
+                max_order_ref = 100
+
+            assert self._login_callback is not None
+            self._login_callback(LoginResponse())
+            return 0
+
+        def confirm_settlement(self) -> int:
+            return 0
+
+        def dispose(self) -> None:
+            return None
+
+        def qry_account(self) -> int:
             assert self._account_callback is not None
             self._account_callback(
                 NativeTradingAccountView(
@@ -1826,19 +2056,20 @@ def test_account_query_smoke_collects_runtime_account_with_fake_native() -> None
             )
             return 0
 
-    fake_api = FakeTdApi()
-    original_load = CtpTdApi.__dict__["load"]
-    setattr(CtpTdApi, "load", classmethod(lambda cls, base_dir: fake_api))
+    monkeypatch.setattr(execution_client_module, "CtpTdApi", FailIfCtypesTdApiUsed, raising=False)
+    monkeypatch.setattr(
+        execution_client_module,
+        "_create_td_live_session",
+        lambda flow_path: FakeTdLiveSession(str(flow_path)),
+    )
 
-    try:
-        result = execution_client.run_live_account_query_smoke(timeout_seconds=2)
-    finally:
-        setattr(CtpTdApi, "load", original_load)
+    result = execution_client.run_live_account_query_smoke(timeout_seconds=2)
 
     events = bridge.drain_events()
     commands = bridge.drain_submitted_commands()
 
     assert isinstance(result, CtpAccountQuerySmokeResult)
+    assert records["session_factory_used"] is True
     assert result.bootstrap.ready is True
     assert result.query_code == 0
     assert result.completed is True
@@ -2759,7 +2990,9 @@ def test_data_client_builds_md_truth_evidence_matrix() -> None:
     assert evidence.captured_at_utc.endswith("Z")
 
 
-def test_execution_client_captures_td_order_truth_baseline() -> None:
+def test_execution_client_captures_td_order_truth_baseline(monkeypatch) -> None:
+    import nautilus_ctp_adapter.adapters.ctp.execution_client as execution_client_module
+
     config = CtpAdapterConfig.from_dict(
         {
             "BrokerID": "0155",
@@ -2774,39 +3007,39 @@ def test_execution_client_captures_td_order_truth_baseline() -> None:
         }
     )
     execution_client = build_ctp_stack(config)["execution_client"]
+    records: dict[str, object] = {"session_factory_used": False}
 
-    class FakeTdApi:
-        def __init__(self) -> None:
+    class FailIfCtypesTdApiUsed:
+        @classmethod
+        def load(cls, base_dir):
+            raise AssertionError(
+                "capture_td_order_truth_baseline_mainline must not fall back to ctypes CtpTdApi"
+            )
+
+    class FakeTdLiveSession:
+        def __init__(self, flow_path: str) -> None:
+            self.flow_path = Path(flow_path)
             self._login_callback = None
             self._disconnect_callback = None
             self._exec_callback = None
+            records["session_factory_used"] = True
 
-        def create(self, flow_path: Path) -> int:
-            self.flow_path = flow_path
-            return 1
-
-        def dispose(self, handle: int) -> None:
-            self.disposed_handle = handle
-
-        def set_login_callback(self, handle: int, callback):
+        def set_login_callback(self, callback) -> None:
             self._login_callback = callback
-            return callback
 
-        def set_front_disconnected_callback(self, handle: int, callback):
+        def set_front_disconnected_callback(self, callback) -> None:
             self._disconnect_callback = callback
-            return callback
 
-        def set_exec_callback(self, handle: int, callback):
+        def set_exec_callback(self, callback) -> None:
             self._exec_callback = callback
-            return callback
 
-        def init(self, handle: int, front: str) -> int:
+        def init(self, front: str) -> int:
             return 0
 
-        def authenticate(self, handle: int, app_id: str, auth_code: str, product_info: str) -> int:
+        def authenticate(self, app_id: str, auth_code: str, product_info: str) -> int:
             return 0
 
-        def login(self, handle: int, broker_id: str, user_id: str, password: str) -> int:
+        def login(self, broker_id: str, user_id: str, password: str) -> int:
             class LoginResponse:
                 success = True
                 error_id = 0
@@ -2815,7 +3048,9 @@ def test_execution_client_captures_td_order_truth_baseline() -> None:
                 session_id = 22
                 max_order_ref = 100
 
+            assert self._login_callback is not None
             self._login_callback(LoginResponse())
+            assert self._exec_callback is not None
             self._exec_callback(
                 NativeExecView(
                     order_id="hist-order-1",
@@ -2862,22 +3097,27 @@ def test_execution_client_captures_td_order_truth_baseline() -> None:
             )
             return 0
 
-        def confirm_settlement(self, handle: int) -> int:
+        def confirm_settlement(self) -> int:
             return 0
 
-    fake_api = FakeTdApi()
-    original_load = CtpTdApi.__dict__["load"]
-    setattr(CtpTdApi, "load", classmethod(lambda cls, base_dir: fake_api))
+        def dispose(self) -> None:
+            records["disposed"] = True
 
-    try:
-        result = execution_client.capture_td_order_truth_baseline_mainline(
-            timeout_seconds=5,
-            flow_path=Path("D:/tmp/td-order-truth"),
-            observation_grace_seconds=0.01,
-        )
-    finally:
-        setattr(CtpTdApi, "load", original_load)
+    monkeypatch.setattr(execution_client_module, "CtpTdApi", FailIfCtypesTdApiUsed, raising=False)
+    monkeypatch.setattr(
+        execution_client_module,
+        "_create_td_live_session",
+        lambda flow_path: FakeTdLiveSession(str(flow_path)),
+    )
 
+    result = execution_client.capture_td_order_truth_baseline_mainline(
+        timeout_seconds=5,
+        flow_path=Path("D:/tmp/td-order-truth"),
+        observation_grace_seconds=0.01,
+    )
+
+    assert records["session_factory_used"] is True
+    assert records["disposed"] is True
     assert isinstance(result, CtpTdOrderTruthBaseline)
     assert result == CtpTdOrderTruthBaseline(
         flow_path="D:\\tmp\\td-order-truth",
@@ -3852,7 +4092,9 @@ def test_order_lifecycle_live_send_requires_config_arm() -> None:
         assert "AllowLiveOrderSmoke=true" in str(exc)
 
 
-def test_order_lifecycle_live_send_hits_native_order_send_and_collects_exec_events() -> None:
+def test_order_lifecycle_live_send_hits_native_order_send_and_collects_exec_events(monkeypatch) -> None:
+    import nautilus_ctp_adapter.adapters.ctp.execution_client as execution_client_module
+
     config = CtpAdapterConfig.from_dict(
         {
             "BrokerID": "0155",
@@ -3878,42 +4120,39 @@ def test_order_lifecycle_live_send_hits_native_order_send_and_collects_exec_even
     stack = build_ctp_stack(config)
     execution_client = stack["execution_client"]
     bridge = stack["runtime_bridge"]
+    records: dict[str, object] = {"session_factory_used": False}
 
-    class FakeTdApi:
-        def __init__(self) -> None:
+    class FailIfCtypesTdApiUsed:
+        @classmethod
+        def load(cls, base_dir):
+            raise AssertionError("run_order_lifecycle_smoke_baseline must not fall back to ctypes CtpTdApi")
+
+    class FakeTdLiveSession:
+        def __init__(self, flow_path: str) -> None:
+            self.flow_path = Path(flow_path)
             self.order_send_calls: list[dict[str, object]] = []
             self._login_callback = None
             self._disconnect_callback = None
             self._exec_callback = None
+            records["session_factory_used"] = True
+            records["session"] = self
 
-        def create(self, flow_path: Path) -> int:
-            self.flow_path = flow_path
-            return 1
-
-        def dispose(self, handle: int) -> None:
-            self.disposed_handle = handle
-
-        def set_login_callback(self, handle: int, callback):
+        def set_login_callback(self, callback) -> None:
             self._login_callback = callback
-            return callback
 
-        def set_front_disconnected_callback(self, handle: int, callback):
+        def set_front_disconnected_callback(self, callback) -> None:
             self._disconnect_callback = callback
-            return callback
 
-        def set_exec_callback(self, handle: int, callback):
+        def set_exec_callback(self, callback) -> None:
             self._exec_callback = callback
-            return callback
 
-        def init(self, handle: int, front: str) -> int:
-            self.init_front = front
+        def init(self, front: str) -> int:
             return 0
 
-        def authenticate(self, handle: int, app_id: str, auth_code: str, product_info: str) -> int:
-            self.auth_payload = (app_id, auth_code, product_info)
+        def authenticate(self, app_id: str, auth_code: str, product_info: str) -> int:
             return 0
 
-        def login(self, handle: int, broker_id: str, user_id: str, password: str) -> int:
+        def login(self, broker_id: str, user_id: str, password: str) -> int:
             class LoginResponse:
                 success = True
                 error_id = 0
@@ -3926,10 +4165,10 @@ def test_order_lifecycle_live_send_hits_native_order_send_and_collects_exec_even
             self._login_callback(LoginResponse())
             return 0
 
-        def confirm_settlement(self, handle: int) -> int:
+        def confirm_settlement(self) -> int:
             return 0
 
-        def order_send(self, handle: int, **kwargs) -> int:
+        def order_send(self, **kwargs) -> int:
             self.order_send_calls.append(kwargs)
             assert self._exec_callback is not None
             self._exec_callback(
@@ -3978,25 +4217,31 @@ def test_order_lifecycle_live_send_hits_native_order_send_and_collects_exec_even
             )
             return 0
 
-    fake_api = FakeTdApi()
-    original_load = CtpTdApi.__dict__["load"]
-    setattr(CtpTdApi, "load", classmethod(lambda cls, base_dir: fake_api))
+        def dispose(self) -> None:
+            records["disposed"] = True
 
-    try:
-        result = execution_client.run_order_lifecycle_smoke_baseline(
-            instrument_id="c2609",
-            side="BUY",
-            quantity=1,
-            limit_price=2241.0,
-            client_order_id="order-smoke-live-1",
-            dry_run=False,
-        )
-    finally:
-        setattr(CtpTdApi, "load", original_load)
+    monkeypatch.setattr(execution_client_module, "CtpTdApi", FailIfCtypesTdApiUsed, raising=False)
+    monkeypatch.setattr(
+        execution_client_module,
+        "_create_td_live_session",
+        lambda flow_path: FakeTdLiveSession(str(flow_path)),
+    )
+
+    result = execution_client.run_order_lifecycle_smoke_baseline(
+        instrument_id="c2609",
+        side="BUY",
+        quantity=1,
+        limit_price=2241.0,
+        client_order_id="order-smoke-live-1",
+        dry_run=False,
+    )
 
     commands = bridge.drain_submitted_commands()
     events = bridge.drain_events()
+    session = records["session"]
 
+    assert records["session_factory_used"] is True
+    assert records["disposed"] is True
     assert result.dry_run is False
     assert result.live_send_armed is True  # [CONTRACT-LOCK: config arm plus live path must reach native order send]
     assert result.mapped_submit.error is None
@@ -4004,8 +4249,8 @@ def test_order_lifecycle_live_send_hits_native_order_send_and_collects_exec_even
         "client_order_id_echo",
         "native_alias",
     ]
-    assert fake_api.order_send_calls[0]["symbol"] == "c2609"  # [CONTRACT-LOCK: live smoke native send stays locked to c2609]
-    assert fake_api.order_send_calls[0]["qty"] == 1
+    assert session.order_send_calls[0]["symbol"] == "c2609"  # [CONTRACT-LOCK: live smoke native send stays locked to c2609]
+    assert session.order_send_calls[0]["qty"] == 1
     assert [command.kind for command in commands] == [
         CtpRuntimeCommandKind.CONNECT,
         CtpRuntimeCommandKind.SUBMIT_ORDER,
@@ -4022,7 +4267,9 @@ def test_order_lifecycle_live_send_hits_native_order_send_and_collects_exec_even
     ]  # [CONTRACT-LOCK: native ORDER/TRADE callbacks must be rebound to the Python smoke client_order_id after correlation]
 
 
-def test_order_lifecycle_live_send_uses_unique_default_flow_directory() -> None:
+def test_order_lifecycle_live_send_uses_unique_default_flow_directory(monkeypatch) -> None:
+    import nautilus_ctp_adapter.adapters.ctp.execution_client as execution_client_module
+
     config = CtpAdapterConfig.from_dict(
         {
             "BrokerID": "0155",
@@ -4046,40 +4293,37 @@ def test_order_lifecycle_live_send_uses_unique_default_flow_directory() -> None:
         }
     )
     execution_client = build_ctp_stack(config)["execution_client"]
+    records: dict[str, object] = {}
 
-    class FakeTdApi:
-        def __init__(self) -> None:
-            self.flow_path: Path | None = None
+    class FailIfCtypesTdApiUsed:
+        @classmethod
+        def load(cls, base_dir):
+            raise AssertionError("run_order_lifecycle_smoke_baseline must not fall back to ctypes CtpTdApi")
+
+    class FakeTdLiveSession:
+        def __init__(self, flow_path: str) -> None:
+            self.flow_path = Path(flow_path)
             self._login_callback = None
             self._disconnect_callback = None
             self._exec_callback = None
+            records["flow_path"] = self.flow_path
 
-        def create(self, flow_path: Path) -> int:
-            self.flow_path = flow_path
-            return 1
-
-        def dispose(self, handle: int) -> None:
-            self.disposed_handle = handle
-
-        def set_login_callback(self, handle: int, callback):
+        def set_login_callback(self, callback) -> None:
             self._login_callback = callback
-            return callback
 
-        def set_front_disconnected_callback(self, handle: int, callback):
+        def set_front_disconnected_callback(self, callback) -> None:
             self._disconnect_callback = callback
-            return callback
 
-        def set_exec_callback(self, handle: int, callback):
+        def set_exec_callback(self, callback) -> None:
             self._exec_callback = callback
-            return callback
 
-        def init(self, handle: int, front: str) -> int:
+        def init(self, front: str) -> int:
             return 0
 
-        def authenticate(self, handle: int, app_id: str, auth_code: str, product_info: str) -> int:
+        def authenticate(self, app_id: str, auth_code: str, product_info: str) -> int:
             return 0
 
-        def login(self, handle: int, broker_id: str, user_id: str, password: str) -> int:
+        def login(self, broker_id: str, user_id: str, password: str) -> int:
             class LoginResponse:
                 success = True
                 error_id = 0
@@ -4088,13 +4332,15 @@ def test_order_lifecycle_live_send_uses_unique_default_flow_directory() -> None:
                 session_id = 22
                 max_order_ref = 100
 
+            assert self._login_callback is not None
             self._login_callback(LoginResponse())
             return 0
 
-        def confirm_settlement(self, handle: int) -> int:
+        def confirm_settlement(self) -> int:
             return 0
 
-        def order_send(self, handle: int, **kwargs) -> int:
+        def order_send(self, **kwargs) -> int:
+            assert self._exec_callback is not None
             self._exec_callback(
                 NativeExecView(
                     order_id=str(kwargs["order_id"]),
@@ -4119,28 +4365,36 @@ def test_order_lifecycle_live_send_uses_unique_default_flow_directory() -> None:
             )
             return 0
 
-    fake_api = FakeTdApi()
-    original_load = CtpTdApi.__dict__["load"]
-    setattr(CtpTdApi, "load", classmethod(lambda cls, base_dir: fake_api))
+        def dispose(self) -> None:
+            records["disposed"] = True
 
-    try:
-        execution_client.run_order_lifecycle_smoke_baseline(
-            instrument_id="c2609",
-            side="BUY",
-            quantity=1,
-            limit_price=2241.0,
-            client_order_id="order-smoke-live-flow-default",
-            dry_run=False,
-        )
-    finally:
-        setattr(CtpTdApi, "load", original_load)
+    monkeypatch.setattr(execution_client_module, "CtpTdApi", FailIfCtypesTdApiUsed, raising=False)
+    monkeypatch.setattr(
+        execution_client_module,
+        "_create_td_live_session",
+        lambda flow_path: FakeTdLiveSession(str(flow_path)),
+    )
 
-    assert fake_api.flow_path is not None
-    assert fake_api.flow_path.parent.name == "debug"
-    assert fake_api.flow_path.name.startswith("live_order_smoke_")  # [CONTRACT-LOCK: real order smoke must use a unique default flow directory to avoid reusing stale TD session artifacts]
+    execution_client.run_order_lifecycle_smoke_baseline(
+        instrument_id="c2609",
+        side="BUY",
+        quantity=1,
+        limit_price=2241.0,
+        client_order_id="order-smoke-live-flow-default",
+        dry_run=False,
+    )
+
+    flow_path = records["flow_path"]
+    assert records["disposed"] is True
+    assert flow_path.parent.name == "debug"
+    assert flow_path.name.startswith("live_order_smoke_")  # [CONTRACT-LOCK: real order smoke must use a unique default flow directory to avoid reusing stale TD session artifacts]
 
 
-def test_order_lifecycle_live_send_ignores_unrelated_exec_callbacks_until_matching_symbol_callback_arrives() -> None:
+def test_order_lifecycle_live_send_ignores_unrelated_exec_callbacks_until_matching_symbol_callback_arrives(
+    monkeypatch,
+) -> None:
+    import nautilus_ctp_adapter.adapters.ctp.execution_client as execution_client_module
+
     config = CtpAdapterConfig.from_dict(
         {
             "BrokerID": "0155",
@@ -4167,38 +4421,34 @@ def test_order_lifecycle_live_send_ignores_unrelated_exec_callbacks_until_matchi
     execution_client = stack["execution_client"]
     bridge = stack["runtime_bridge"]
 
-    class FakeTdApi:
-        def __init__(self) -> None:
+    class FailIfCtypesTdApiUsed:
+        @classmethod
+        def load(cls, base_dir):
+            raise AssertionError("run_order_lifecycle_smoke_baseline must not fall back to ctypes CtpTdApi")
+
+    class FakeTdLiveSession:
+        def __init__(self, flow_path: str) -> None:
+            self.flow_path = Path(flow_path)
             self._login_callback = None
             self._disconnect_callback = None
             self._exec_callback = None
 
-        def create(self, flow_path: Path) -> int:
-            self.flow_path = flow_path
-            return 1
-
-        def dispose(self, handle: int) -> None:
-            self.disposed_handle = handle
-
-        def set_login_callback(self, handle: int, callback):
+        def set_login_callback(self, callback) -> None:
             self._login_callback = callback
-            return callback
 
-        def set_front_disconnected_callback(self, handle: int, callback):
+        def set_front_disconnected_callback(self, callback) -> None:
             self._disconnect_callback = callback
-            return callback
 
-        def set_exec_callback(self, handle: int, callback):
+        def set_exec_callback(self, callback) -> None:
             self._exec_callback = callback
-            return callback
 
-        def init(self, handle: int, front: str) -> int:
+        def init(self, front: str) -> int:
             return 0
 
-        def authenticate(self, handle: int, app_id: str, auth_code: str, product_info: str) -> int:
+        def authenticate(self, app_id: str, auth_code: str, product_info: str) -> int:
             return 0
 
-        def login(self, handle: int, broker_id: str, user_id: str, password: str) -> int:
+        def login(self, broker_id: str, user_id: str, password: str) -> int:
             class LoginResponse:
                 success = True
                 error_id = 0
@@ -4234,10 +4484,10 @@ def test_order_lifecycle_live_send_ignores_unrelated_exec_callbacks_until_matchi
             )
             return 0
 
-        def confirm_settlement(self, handle: int) -> int:
+        def confirm_settlement(self) -> int:
             return 0
 
-        def order_send(self, handle: int, **kwargs) -> int:
+        def order_send(self, **kwargs) -> int:
             assert self._exec_callback is not None
             self._exec_callback(
                 NativeExecView(
@@ -4263,21 +4513,24 @@ def test_order_lifecycle_live_send_ignores_unrelated_exec_callbacks_until_matchi
             )
             return 0
 
-    fake_api = FakeTdApi()
-    original_load = CtpTdApi.__dict__["load"]
-    setattr(CtpTdApi, "load", classmethod(lambda cls, base_dir: fake_api))
+        def dispose(self) -> None:
+            return None
 
-    try:
-        result = execution_client.run_order_lifecycle_smoke_baseline(
-            instrument_id="c2609",
-            side="BUY",
-            quantity=1,
-            limit_price=2241.0,
-            client_order_id="order-smoke-live-2",
-            dry_run=False,
-        )
-    finally:
-        setattr(CtpTdApi, "load", original_load)
+    monkeypatch.setattr(execution_client_module, "CtpTdApi", FailIfCtypesTdApiUsed, raising=False)
+    monkeypatch.setattr(
+        execution_client_module,
+        "_create_td_live_session",
+        lambda flow_path: FakeTdLiveSession(str(flow_path)),
+    )
+
+    result = execution_client.run_order_lifecycle_smoke_baseline(
+        instrument_id="c2609",
+        side="BUY",
+        quantity=1,
+        limit_price=2241.0,
+        client_order_id="order-smoke-live-2",
+        dry_run=False,
+    )
 
     events = bridge.drain_events()
 
@@ -4299,7 +4552,11 @@ def test_order_lifecycle_live_send_ignores_unrelated_exec_callbacks_until_matchi
     )  # [CONTRACT-LOCK: live smoke must ignore historical callbacks and accept the first post-send c2609 callback even if native order ids differ]
 
 
-def test_order_lifecycle_live_send_ignores_delayed_historical_same_symbol_callbacks_before_native_boundary_match() -> None:
+def test_order_lifecycle_live_send_ignores_delayed_historical_same_symbol_callbacks_before_native_boundary_match(
+    monkeypatch,
+) -> None:
+    import nautilus_ctp_adapter.adapters.ctp.execution_client as execution_client_module
+
     config = CtpAdapterConfig.from_dict(
         {
             "BrokerID": "0155",
@@ -4326,38 +4583,34 @@ def test_order_lifecycle_live_send_ignores_delayed_historical_same_symbol_callba
     execution_client = stack["execution_client"]
     bridge = stack["runtime_bridge"]
 
-    class FakeTdApi:
-        def __init__(self) -> None:
+    class FailIfCtypesTdApiUsed:
+        @classmethod
+        def load(cls, base_dir):
+            raise AssertionError("run_order_lifecycle_smoke_baseline must not fall back to ctypes CtpTdApi")
+
+    class FakeTdLiveSession:
+        def __init__(self, flow_path: str) -> None:
+            self.flow_path = Path(flow_path)
             self._login_callback = None
             self._disconnect_callback = None
             self._exec_callback = None
 
-        def create(self, flow_path: Path) -> int:
-            self.flow_path = flow_path
-            return 1
-
-        def dispose(self, handle: int) -> None:
-            self.disposed_handle = handle
-
-        def set_login_callback(self, handle: int, callback):
+        def set_login_callback(self, callback) -> None:
             self._login_callback = callback
-            return callback
 
-        def set_front_disconnected_callback(self, handle: int, callback):
+        def set_front_disconnected_callback(self, callback) -> None:
             self._disconnect_callback = callback
-            return callback
 
-        def set_exec_callback(self, handle: int, callback):
+        def set_exec_callback(self, callback) -> None:
             self._exec_callback = callback
-            return callback
 
-        def init(self, handle: int, front: str) -> int:
+        def init(self, front: str) -> int:
             return 0
 
-        def authenticate(self, handle: int, app_id: str, auth_code: str, product_info: str) -> int:
+        def authenticate(self, app_id: str, auth_code: str, product_info: str) -> int:
             return 0
 
-        def login(self, handle: int, broker_id: str, user_id: str, password: str) -> int:
+        def login(self, broker_id: str, user_id: str, password: str) -> int:
             class LoginResponse:
                 success = True
                 error_id = 0
@@ -4370,10 +4623,10 @@ def test_order_lifecycle_live_send_ignores_delayed_historical_same_symbol_callba
             self._login_callback(LoginResponse())
             return 0
 
-        def confirm_settlement(self, handle: int) -> int:
+        def confirm_settlement(self) -> int:
             return 0
 
-        def order_send(self, handle: int, **kwargs) -> int:
+        def order_send(self, **kwargs) -> int:
             assert self._exec_callback is not None
             self._exec_callback(
                 NativeExecView(
@@ -4421,21 +4674,24 @@ def test_order_lifecycle_live_send_ignores_delayed_historical_same_symbol_callba
             )
             return 0
 
-    fake_api = FakeTdApi()
-    original_load = CtpTdApi.__dict__["load"]
-    setattr(CtpTdApi, "load", classmethod(lambda cls, base_dir: fake_api))
+        def dispose(self) -> None:
+            return None
 
-    try:
-        result = execution_client.run_order_lifecycle_smoke_baseline(
-            instrument_id="c2609",
-            side="BUY",
-            quantity=1,
-            limit_price=2241.0,
-            client_order_id="order-smoke-live-3",
-            dry_run=False,
-        )
-    finally:
-        setattr(CtpTdApi, "load", original_load)
+    monkeypatch.setattr(execution_client_module, "CtpTdApi", FailIfCtypesTdApiUsed, raising=False)
+    monkeypatch.setattr(
+        execution_client_module,
+        "_create_td_live_session",
+        lambda flow_path: FakeTdLiveSession(str(flow_path)),
+    )
+
+    result = execution_client.run_order_lifecycle_smoke_baseline(
+        instrument_id="c2609",
+        side="BUY",
+        quantity=1,
+        limit_price=2241.0,
+        client_order_id="order-smoke-live-3",
+        dry_run=False,
+    )
 
     events = bridge.drain_events()
 
@@ -4450,7 +4706,9 @@ def test_order_lifecycle_live_send_ignores_delayed_historical_same_symbol_callba
     ]
 
 
-def test_order_lifecycle_live_send_maps_ioc_to_native_time_condition() -> None:
+def test_order_lifecycle_live_send_maps_ioc_to_native_time_condition(monkeypatch) -> None:
+    import nautilus_ctp_adapter.adapters.ctp.execution_client as execution_client_module
+
     config = CtpAdapterConfig.from_dict(
         {
             "BrokerID": "0155",
@@ -4474,39 +4732,37 @@ def test_order_lifecycle_live_send_maps_ioc_to_native_time_condition() -> None:
         }
     )
     execution_client = build_ctp_stack(config)["execution_client"]
+    records: dict[str, object] = {}
 
-    class FakeTdApi:
-        def __init__(self) -> None:
+    class FailIfCtypesTdApiUsed:
+        @classmethod
+        def load(cls, base_dir):
+            raise AssertionError("run_order_lifecycle_smoke_baseline must not fall back to ctypes CtpTdApi")
+
+    class FakeTdLiveSession:
+        def __init__(self, flow_path: str) -> None:
             self.order_send_calls: list[dict[str, object]] = []
             self._login_callback = None
             self._disconnect_callback = None
             self._exec_callback = None
+            records["session"] = self
 
-        def create(self, flow_path: Path) -> int:
-            return 1
-
-        def dispose(self, handle: int) -> None:
-            self.disposed_handle = handle
-
-        def set_login_callback(self, handle: int, callback):
+        def set_login_callback(self, callback) -> None:
             self._login_callback = callback
-            return callback
 
-        def set_front_disconnected_callback(self, handle: int, callback):
+        def set_front_disconnected_callback(self, callback) -> None:
             self._disconnect_callback = callback
-            return callback
 
-        def set_exec_callback(self, handle: int, callback):
+        def set_exec_callback(self, callback) -> None:
             self._exec_callback = callback
-            return callback
 
-        def init(self, handle: int, front: str) -> int:
+        def init(self, front: str) -> int:
             return 0
 
-        def authenticate(self, handle: int, app_id: str, auth_code: str, product_info: str) -> int:
+        def authenticate(self, app_id: str, auth_code: str, product_info: str) -> int:
             return 0
 
-        def login(self, handle: int, broker_id: str, user_id: str, password: str) -> int:
+        def login(self, broker_id: str, user_id: str, password: str) -> int:
             class LoginResponse:
                 success = True
                 error_id = 0
@@ -4515,14 +4771,16 @@ def test_order_lifecycle_live_send_maps_ioc_to_native_time_condition() -> None:
                 session_id = 22
                 max_order_ref = 100
 
+            assert self._login_callback is not None
             self._login_callback(LoginResponse())
             return 0
 
-        def confirm_settlement(self, handle: int) -> int:
+        def confirm_settlement(self) -> int:
             return 0
 
-        def order_send(self, handle: int, **kwargs) -> int:
+        def order_send(self, **kwargs) -> int:
             self.order_send_calls.append(kwargs)
+            assert self._exec_callback is not None
             self._exec_callback(
                 NativeExecView(
                     order_id=str(kwargs["order_id"]),
@@ -4547,24 +4805,28 @@ def test_order_lifecycle_live_send_maps_ioc_to_native_time_condition() -> None:
             )
             return 0
 
-    fake_api = FakeTdApi()
-    original_load = CtpTdApi.__dict__["load"]
-    setattr(CtpTdApi, "load", classmethod(lambda cls, base_dir: fake_api))
+        def dispose(self) -> None:
+            return None
 
-    try:
-        execution_client.run_order_lifecycle_smoke_baseline(
-            instrument_id="c2609",
-            side="BUY",
-            quantity=1,
-            limit_price=2241.0,
-            client_order_id="order-smoke-ioc-1",
-            dry_run=False,
-            time_in_force="IOC",
-        )
-    finally:
-        setattr(CtpTdApi, "load", original_load)
+    monkeypatch.setattr(execution_client_module, "CtpTdApi", FailIfCtypesTdApiUsed, raising=False)
+    monkeypatch.setattr(
+        execution_client_module,
+        "_create_td_live_session",
+        lambda flow_path: FakeTdLiveSession(str(flow_path)),
+    )
 
-    assert fake_api.order_send_calls[0]["time_condition"] == 1  # [CONTRACT-LOCK: IOC live smoke must map to native IOC time condition]
+    execution_client.run_order_lifecycle_smoke_baseline(
+        instrument_id="c2609",
+        side="BUY",
+        quantity=1,
+        limit_price=2241.0,
+        client_order_id="order-smoke-ioc-1",
+        dry_run=False,
+        time_in_force="IOC",
+    )
+
+    session = records["session"]
+    assert session.order_send_calls[0]["time_condition"] == 1  # [CONTRACT-LOCK: IOC live smoke must map to native IOC time condition]
 
 
 def test_execution_client_exec_callback_maps_order_and_trade_events() -> None:
@@ -4633,8 +4895,12 @@ def test_execution_client_exec_callback_maps_order_and_trade_events() -> None:
 def test_check_rust_gate_reports_missing_cargo_when_toolchain_is_absent(tmp_path: Path) -> None:
     root = Path(__file__).resolve().parents[1]
     script = root / "scripts" / "check_rust_gate.py"
+    fake_root = tmp_path / "repo"
+    (fake_root / "rust").mkdir(parents=True)
+    (fake_root / "rust" / "Cargo.toml").write_text("[workspace]\nmembers = []\n", encoding="utf-8")
     env = os.environ.copy()
     env["PATH"] = str(tmp_path)
+    env["NAUTILUS_CTP_ADAPTER_ROOT_OVERRIDE"] = str(fake_root)
 
     result = subprocess.run(
         [sys.executable, str(script)],
@@ -4652,21 +4918,18 @@ def test_check_rust_gate_reports_missing_cargo_when_toolchain_is_absent(tmp_path
     assert "NEXT rust-gate: install Rust toolchain" in result.stdout
 
 
-def test_check_rust_gate_runs_metadata_and_check_with_fake_cargo(tmp_path: Path) -> None:
-    root = Path(__file__).resolve().parents[1]
-    script = root / "scripts" / "check_rust_gate.py"
-    fake_bin = tmp_path / "bin"
-    fake_bin.mkdir()
-    fake_target_dir = tmp_path / "rust-target"
-    metadata_json = json.dumps(
-        {
-            "workspace_members": [
-                "ctp_runtime_core 0.1.0 (path+file:///D:/Nautilus/nautilus_ctp_adapter/rust/ctp_runtime_core)"
-            ],
-            "target_directory": fake_target_dir.as_posix(),
-            "version": 1,
-        }
+def _prepare_fake_rust_gate_root(tmp_path: Path) -> Path:
+    fake_root = tmp_path / "repo"
+    (fake_root / "rust" / "ctp_py").mkdir(parents=True, exist_ok=True)
+    (fake_root / "rust" / "Cargo.toml").write_text("[workspace]\nmembers = []\n", encoding="utf-8")
+    (fake_root / "rust" / "ctp_py" / "Cargo.toml").write_text(
+        "[package]\nname = \"ctp_py\"\nversion = \"0.1.0\"\n",
+        encoding="utf-8",
     )
+    return fake_root
+
+
+def _write_fake_cargo(fake_bin: Path, fake_target_dir: Path, metadata_json: str) -> None:
     fake_cargo_py = fake_bin / "fake_cargo.py"
     fake_cargo_py.write_text(
         "\n".join(
@@ -4715,8 +4978,42 @@ def test_check_rust_gate_runs_metadata_and_check_with_fake_cargo(tmp_path: Path)
         ),
         encoding="utf-8",
     )
+
+
+def _prepare_fake_ctp_sdk(tmp_path: Path) -> Path:
+    fake_sdk = tmp_path / "sdk"
+    fake_sdk.mkdir(parents=True, exist_ok=True)
+    for header_name in (
+        "ThostFtdcMdApi.h",
+        "ThostFtdcTraderApi.h",
+        "ThostFtdcUserApiStruct.h",
+    ):
+        (fake_sdk / header_name).write_text("// fake sdk header\n", encoding="utf-8")
+    for lib_name in ("thostmduserapi_se.lib", "thosttraderapi_se.lib"):
+        (fake_sdk / lib_name).write_bytes(b"fake-lib")
+    return fake_sdk
+
+
+def test_check_rust_gate_runs_metadata_and_check_with_fake_cargo(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[1]
+    script = root / "scripts" / "check_rust_gate.py"
+    fake_root = _prepare_fake_rust_gate_root(tmp_path)
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake_target_dir = tmp_path / "rust-target"
+    metadata_json = json.dumps(
+        {
+            "workspace_members": [
+                "ctp_runtime_core 0.1.0 (path+file:///D:/Nautilus/nautilus_ctp_adapter/rust/ctp_runtime_core)"
+            ],
+            "target_directory": fake_target_dir.as_posix(),
+            "version": 1,
+        }
+    )
+    _write_fake_cargo(fake_bin, fake_target_dir, metadata_json)
     env = os.environ.copy()
     env["PATH"] = str(fake_bin)
+    env["NAUTILUS_CTP_ADAPTER_ROOT_OVERRIDE"] = str(fake_root)
 
     result = subprocess.run(
         [sys.executable, str(script)],
@@ -4734,8 +5031,95 @@ def test_check_rust_gate_runs_metadata_and_check_with_fake_cargo(tmp_path: Path)
     assert "PASS rust-gate: workspace-members=1" in result.stdout
     assert "PASS rust-gate: cargo-check" in result.stdout
     assert "PASS rust-gate: cargo-build artifact=" in result.stdout
+    assert "INFO rust-gate: repo-only-probe=python scripts/ctp_repo_debug_smoke.py" in result.stdout
+    assert (
+        "INFO rust-gate: formal-live-verdict=python scripts/ctp_nautilus_live_smoke.py --config <path>"
+        in result.stdout
+    )
+    assert "WARN rust-gate: ctp_vendor_bridge-scaffold-only sdk-not-found" in result.stdout
     assert "PASS rust-gate: cargo-test" in result.stdout
     assert "ctp_native.dll" in result.stdout  # [CONTRACT-LOCK: rust gate must validate the repo-owned ctp_native artifact path instead of stopping at cargo check]
+
+
+def test_check_rust_gate_prepends_vendor_runtime_bin_to_path(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[1]
+    script = root / "scripts" / "check_rust_gate.py"
+    runtime_bin = root / "vendor" / "ctp" / "bin"
+
+
+def test_check_rust_gate_reports_vendor_bridge_ready_when_sdk_is_present(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[1]
+    script = root / "scripts" / "check_rust_gate.py"
+    fake_root = _prepare_fake_rust_gate_root(tmp_path)
+    fake_sdk = _prepare_fake_ctp_sdk(tmp_path)
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake_target_dir = tmp_path / "rust-target"
+    metadata_json = json.dumps(
+        {
+            "workspace_members": [
+                "ctp_runtime_core 0.1.0 (path+file:///D:/Nautilus/nautilus_ctp_adapter/rust/ctp_runtime_core)"
+            ],
+            "target_directory": fake_target_dir.as_posix(),
+            "version": 1,
+        }
+    )
+    fake_cargo_py = fake_bin / "fake_cargo.py"
+    fake_cargo_py.write_text(
+        "\n".join(
+            [
+                "from __future__ import annotations",
+                "import os",
+                "from pathlib import Path",
+                "import sys",
+                "",
+                f"target_dir = Path(r'{fake_target_dir.as_posix()}')",
+                f"metadata = r'''{metadata_json}'''",
+                f"expected_runtime_bin = Path(r'{runtime_bin.as_posix()}')",
+                "path_entries = [entry for entry in os.environ.get('PATH', '').split(os.pathsep) if entry]",
+                "first_entry = Path(path_entries[0]) if path_entries else None",
+                "if first_entry != expected_runtime_bin:",
+                "    print(f'PATH_FIRST={first_entry}', file=sys.stderr)",
+                "    raise SystemExit(9)",
+                "command = sys.argv[1] if len(sys.argv) > 1 else ''",
+                "if command == 'metadata':",
+                "    print(metadata)",
+                "    raise SystemExit(0)",
+                "if command == 'check':",
+                "    print('Finished dev [unoptimized + debuginfo] target(s) in 0.01s')",
+                "    raise SystemExit(0)",
+                "if command == 'build':",
+                "    artifact = target_dir / 'debug' / 'ctp_native.dll'",
+                "    artifact.parent.mkdir(parents=True, exist_ok=True)",
+                "    artifact.write_bytes(b'fake-dll')",
+                "    if '-p' in sys.argv and 'ctp_py' in sys.argv:",
+                "        pyo3_art = target_dir / 'debug' / '_ctp_runtime.dll'",
+                "        pyo3_art.write_bytes(b'fake-pyo3-dll')",
+                "    print(f'Finished dev [unoptimized + debuginfo] target(s) with artifact={artifact}')",
+                "    raise SystemExit(0)",
+                "if command == 'test':",
+                "    print('running 1 test')",
+                "    print('test ffi::tests::md_scaffold_error_contract_is_frozen ... ok')",
+                "    print('test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out')",
+                "    raise SystemExit(0)",
+                "print('unsupported cargo command', file=sys.stderr)",
+                "raise SystemExit(1)",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    fake_cargo = fake_bin / "cargo.cmd"
+    fake_cargo.write_text(
+        "\n".join(
+            [
+                "@echo off",
+                f'"{sys.executable}" "%~dp0fake_cargo.py" %*',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    env = os.environ.copy()
+    env["PATH"] = str(fake_bin)
 
 
 def test_check_rust_gate_prepends_vendor_runtime_bin_to_path(tmp_path: Path) -> None:
@@ -4826,6 +5210,159 @@ def test_check_rust_gate_prepends_vendor_runtime_bin_to_path(tmp_path: Path) -> 
     assert f"INFO rust-gate: runtime-dll-search={runtime_bin}" in result.stdout  # [CONTRACT-LOCK: rust gate must prepend vendor runtime DLL search path before cargo commands so live-ready cargo test can resolve thost*_se.dll]
 
 
+def test_check_rust_gate_reports_vendor_bridge_ready_when_sdk_is_present(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[1]
+    script = root / "scripts" / "check_rust_gate.py"
+    fake_root = _prepare_fake_rust_gate_root(tmp_path)
+    fake_sdk = _prepare_fake_ctp_sdk(tmp_path)
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake_target_dir = tmp_path / "rust-target"
+    metadata_json = json.dumps(
+        {
+            "workspace_members": [
+                "ctp_runtime_core 0.1.0 (path+file:///D:/Nautilus/nautilus_ctp_adapter/rust/ctp_runtime_core)"
+            ],
+            "target_directory": fake_target_dir.as_posix(),
+            "version": 1,
+        }
+    )
+    _write_fake_cargo(fake_bin, fake_target_dir, metadata_json)
+    env = os.environ.copy()
+    env["PATH"] = str(fake_bin)
+    env["NAUTILUS_CTP_ADAPTER_ROOT_OVERRIDE"] = str(fake_root)
+    env["CTP_VENDOR_SDK_ROOT"] = str(fake_sdk)
+    env.pop("CTP_SDK_ROOT", None)
+
+    result = subprocess.run(
+        [sys.executable, str(script)],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+        env=env,
+    )
+
+    assert result.returncode == 0
+    assert f"INFO rust-gate: sdk-probe CTP_VENDOR_SDK_ROOT={fake_sdk}" in result.stdout
+    assert "INFO rust-gate: repo-only-probe=python scripts/ctp_repo_debug_smoke.py" in result.stdout
+    assert f"PASS rust-gate: ctp_vendor_bridge-ready sdk_dir={fake_sdk}" in result.stdout
+    assert "ctp_vendor_bridge-scaffold-only" not in result.stdout
+
+
+def test_check_rust_gate_reports_vendor_bridge_ready_when_sdk_scan_roots_find_sdk(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[1]
+    script = root / "scripts" / "check_rust_gate.py"
+    fake_root = _prepare_fake_rust_gate_root(tmp_path)
+    scan_root = tmp_path / "sdk-scan-root"
+    nested_sdk = scan_root / "external" / "3rdLib" / "CTP" / "v6.7.9"
+    nested_sdk.mkdir(parents=True)
+    for file_name in (
+        "ThostFtdcMdApi.h",
+        "ThostFtdcTraderApi.h",
+        "ThostFtdcUserApiStruct.h",
+        "thostmduserapi_se.lib",
+        "thosttraderapi_se.lib",
+    ):
+        (nested_sdk / file_name).write_text("placeholder\n", encoding="utf-8")
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake_target_dir = tmp_path / "rust-target"
+    metadata_json = json.dumps(
+        {
+            "workspace_members": [
+                "ctp_runtime_core 0.1.0 (path+file:///D:/Nautilus/nautilus_ctp_adapter/rust/ctp_runtime_core)"
+            ],
+            "target_directory": fake_target_dir.as_posix(),
+            "version": 1,
+        }
+    )
+    _write_fake_cargo(fake_bin, fake_target_dir, metadata_json)
+    env = os.environ.copy()
+    env["PATH"] = str(fake_bin)
+    env["NAUTILUS_CTP_ADAPTER_ROOT_OVERRIDE"] = str(fake_root)
+    env.pop("CTP_VENDOR_SDK_ROOT", None)
+    env.pop("CTP_SDK_ROOT", None)
+    explicit_temp_root = tmp_path / "explicit-temp-root"
+    explicit_temp_root.mkdir()
+    env["TMP"] = str(explicit_temp_root)
+    env["TEMP"] = str(explicit_temp_root)
+    env["CTP_SDK_SCAN_ROOTS"] = str(scan_root)
+
+    result = subprocess.run(
+        [sys.executable, str(script)],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+        env=env,
+    )
+
+    assert result.returncode == 0
+    assert f"INFO rust-gate: sdk-probe CTP_SDK_SCAN_ROOTS={scan_root}" in result.stdout
+    assert f"INFO rust-gate: sdk-scan-root={scan_root}" in result.stdout
+    assert f"PASS rust-gate: ctp_vendor_bridge-ready sdk_dir={nested_sdk}" in result.stdout
+
+
+def test_check_rust_gate_ignores_temp_sdk_artifacts_when_scanning_roots(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[1]
+    script = root / "scripts" / "check_rust_gate.py"
+    fake_root = _prepare_fake_rust_gate_root(tmp_path)
+    scan_root = tmp_path / "scan-root"
+    explicit_temp_root = scan_root / "AppData" / "Local" / "Temp"
+    temp_like_sdk = explicit_temp_root / "pytest-of-Administrator" / "fake-sdk"
+    temp_like_sdk.mkdir(parents=True)
+    for file_name in (
+        "ThostFtdcMdApi.h",
+        "ThostFtdcTraderApi.h",
+        "ThostFtdcUserApiStruct.h",
+        "thostmduserapi_se.lib",
+        "thosttraderapi_se.lib",
+    ):
+        (temp_like_sdk / file_name).write_text("placeholder\n", encoding="utf-8")
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake_target_dir = tmp_path / "rust-target"
+    metadata_json = json.dumps(
+        {
+            "workspace_members": [
+                "ctp_runtime_core 0.1.0 (path+file:///D:/Nautilus/nautilus_ctp_adapter/rust/ctp_runtime_core)"
+            ],
+            "target_directory": fake_target_dir.as_posix(),
+            "version": 1,
+        }
+    )
+    _write_fake_cargo(fake_bin, fake_target_dir, metadata_json)
+    env = os.environ.copy()
+    env["PATH"] = str(fake_bin)
+    env["NAUTILUS_CTP_ADAPTER_ROOT_OVERRIDE"] = str(fake_root)
+    env.pop("CTP_VENDOR_SDK_ROOT", None)
+    env.pop("CTP_SDK_ROOT", None)
+    env["TMP"] = str(explicit_temp_root)
+    env["TEMP"] = str(explicit_temp_root)
+    env["CTP_SDK_SCAN_ROOTS"] = str(scan_root)
+
+    result = subprocess.run(
+        [sys.executable, str(script)],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+        env=env,
+    )
+
+    assert result.returncode == 0
+    assert f"INFO rust-gate: sdk-scan-root={scan_root}" in result.stdout
+    assert "PASS rust-gate: ctp_vendor_bridge-ready" not in result.stdout
+    assert "WARN rust-gate: ctp_vendor_bridge-scaffold-only sdk-not-found" in result.stdout
+
+
 def test_repo_owned_native_export_manifest_covers_python_ctypes_entrypoints() -> None:
     export_symbols = {export.symbol for export in REPO_OWNED_CTP_NATIVE_EXPORTS}
 
@@ -4884,18 +5421,54 @@ def test_read_only_smokes_report_structured_config_load_failure() -> None:
     root = Path(__file__).resolve().parents[1]
     missing_config = root / "output" / "debug" / "missing-live-config.json"
     cases = {
+        "ctp_md_login_smoke.py": "md-login-smoke-v1",
+        "ctp_instrument_query_smoke.py": "instrument-query-smoke-v1",
+        "ctp_live_data_client_bootstrap_smoke.py": "live-data-client-bootstrap-smoke-v1",
+        "ctp_marketdata_smoke.py": "marketdata-smoke-v1",
         "ctp_query_adapter_smoke.py": "nautilus-query-adapter-v1",
         "ctp_position_query_smoke.py": "position-query-smoke-v1",
         "ctp_account_query_smoke.py": "account-query-smoke-v1",
+        "ctp_live_ops_snapshot_smoke.py": "live-ops-snapshot-v1",
+        "ctp_live_ops_policy_smoke.py": "live-ops-policy-v1",
+        "ctp_live_ops_evidence_matrix_smoke.py": "live-ops-evidence-matrix-v1",
+        "ctp_md_startup_truth_smoke.py": "md-startup-truth-v1",
+        "ctp_md_restore_policy_smoke.py": "md-restore-policy-v1",
+        "ctp_md_truth_evidence_matrix_smoke.py": "md-truth-evidence-matrix-v1",
         "ctp_reconciliation_snapshot_smoke.py": "reconciliation-snapshot-v1",
+        "ctp_reconciliation_policy_smoke.py": "reconciliation-policy-v1",
+        "ctp_reconciliation_evidence_smoke.py": "reconciliation-evidence-v1",
+        "ctp_startup_truth_smoke.py": "td-startup-truth-v1",
+        "ctp_startup_truth_evidence_matrix_smoke.py": "td-startup-truth-evidence-matrix-v1",
+        "ctp_session_rebuild_policy_smoke.py": "td-session-rebuild-policy-v1",
+        "ctp_nautilus_live_smoke.py": "nautilus-live-smoke-v1",
+        "ctp_td_historical_callback_boundary_smoke.py": "td-historical-callback-boundary-v1",
+        "ctp_td_login_smoke.py": "td-login-smoke-v1",
+        "ctp_td_order_truth_smoke.py": "td-order-truth-v1",
+        "ctp_td_order_truth_evidence_matrix_smoke.py": "td-order-truth-evidence-matrix-v1",
         "ctp_td_truth_merge_snapshot_smoke.py": "td-truth-merge-snapshot-v1",
         "ctp_td_merged_reconciliation_policy_smoke.py": "td-merged-reconciliation-policy-v1",
+        "ctp_td_merged_evidence_matrix_smoke.py": "td-merged-evidence-matrix-v1",
     }
 
     for script_name, baseline in cases.items():
         script = root / "scripts" / script_name
         result = subprocess.run(
-            [sys.executable, str(script), "--config", str(missing_config)],
+            [
+                sys.executable,
+                str(script),
+                "--config",
+                str(missing_config),
+                *(
+                    ["--symbol", "rb2610"]
+                    if script_name
+                    in {
+                        "ctp_instrument_query_smoke.py",
+                        "ctp_live_data_client_bootstrap_smoke.py",
+                        "ctp_marketdata_smoke.py",
+                    }
+                    else []
+                ),
+            ],
             cwd=root,
             capture_output=True,
             text=True,
@@ -4912,6 +5485,963 @@ def test_read_only_smokes_report_structured_config_load_failure() -> None:
         assert payload["error_stage"] == "config_load", script_name
         assert payload["error_type"] == "FileNotFoundError", script_name
         assert "missing-live-config.json" in payload["error_message"], script_name
+
+
+def test_instrument_query_smoke_reports_instrument_missing_as_structured_json(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_instrument_query_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_instrument_query_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeProvider:
+        def run_live_instrument_smoke(self, *, symbol: str, timeout_seconds: int, flow_path=None):
+            class Result:
+                request_id = "instrument-query-1"
+                loaded = True
+                instrument_count = 0
+                instruments = ()
+
+            return Result()
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"instrument_provider": FakeProvider(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [str(script_path), "--config", str(tmp_path / "fake.json"), "--symbol", "rb2610"],
+    )
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 1
+    assert payload["baseline"] == "instrument-query-smoke-v1"
+    assert payload["success"] is False
+    assert payload["failure_reason"] == "instrument_missing"
+    assert payload["requested_symbol"] == "rb2610"
+    assert payload["loaded"] is True
+    assert payload["instrument_count"] == 0
+    assert payload["exact_symbol_found"] is False
+
+
+def test_instrument_query_smoke_writes_isolated_flow_export(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_instrument_query_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_instrument_query_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class ProductKind:
+        value = "FUTURES"
+
+    class FakeInstrument:
+        display_symbol = "rb2610.SHFE"
+        venue_symbol = "rb2610"
+        underlying = "rb"
+        contract_month = "2610"
+        product_kind = ProductKind()
+        price_tick = 1.0
+        volume_multiple = 10
+
+    class FakeProvider:
+        def run_live_instrument_smoke(self, *, symbol: str, timeout_seconds: int, flow_path=None):
+            class Result:
+                request_id = "instrument-query-1"
+                loaded = True
+                instrument_count = 1
+                instruments = (FakeInstrument(),)
+
+            assert flow_path == tmp_path / "instrument-flow"
+            return Result()
+
+    evidence_root = tmp_path / "evidence-root"
+    expected_output = evidence_root / "isolated-flow" / "instrument_query.json"
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"instrument_provider": FakeProvider(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--symbol",
+            "rb2610",
+            "--flow-path",
+            str(tmp_path / "instrument-flow"),
+            "--evidence-root",
+            str(evidence_root),
+        ],
+    )
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    exported = json.loads(expected_output.read_text(encoding="utf-8"))
+
+    assert exit_code == 0
+    assert payload["flow_mode"] == "explicit_override"
+    assert payload["session_label"] == "isolated-flow"
+    assert payload["export"] == {
+        "path": str(expected_output),
+        "written": True,
+        "session_label": "isolated-flow",
+        "evidence_root": str(evidence_root),
+        "explicit_path": False,
+    }
+    assert exported["export"]["path"] == str(expected_output)
+
+
+def test_instrument_query_smoke_rejects_conflicting_export_targets(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_instrument_query_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_instrument_query_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--symbol",
+            "rb2610",
+            "--output-json",
+            str(tmp_path / "explicit.json"),
+            "--evidence-root",
+            str(tmp_path / "evidence-root"),
+        ],
+    )
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 1
+    assert payload["error_stage"] == "argument_validation"
+    assert payload["error_type"] == "ValueError"
+    assert "output_json conflicts with evidence_root" in payload["error_message"]
+
+
+def test_position_query_smoke_reports_empty_positions_as_success_structured_json(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_position_query_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_position_query_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeSmokeResult:
+        query_request_id = "query-positions-1"
+        query_code = 0
+        completed = True
+        timed_out = False
+        no_positions = True
+        position_count = 0
+        positions = ()
+        disconnects = []
+
+        class bootstrap:
+            ready = True
+
+            class execution_bootstrap:
+                class td_smoke:
+                    login_success = True
+                    settlement_code = 0
+
+    class FakeExecutionClient:
+        def run_live_position_query_smoke(self, *, timeout_seconds: int, completion_grace_seconds: float):
+            return FakeSmokeResult()
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"execution_client": FakeExecutionClient(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [str(script_path), "--config", str(tmp_path / "fake.json")],
+    )
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert payload["baseline"] == "position-query-smoke-v1"
+    assert payload["success"] is True
+    assert payload["failure_reason"] is None
+    assert payload["query_code"] == 0
+    assert payload["completed"] is True
+    assert payload["timed_out"] is False
+    assert payload["no_positions"] is True
+    assert payload["position_count"] == 0
+    assert payload["positions"] == []
+
+
+def test_position_query_smoke_writes_session_labeled_export(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_position_query_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_position_query_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeSmokeResult:
+        query_request_id = "query-positions-1"
+        query_code = 0
+        completed = True
+        timed_out = False
+        no_positions = True
+        position_count = 0
+        positions = ()
+        disconnects = []
+
+        class bootstrap:
+            ready = True
+
+            class execution_bootstrap:
+                class td_smoke:
+                    login_success = True
+                    settlement_code = 0
+
+    class FakeExecutionClient:
+        def run_live_position_query_smoke(self, *, timeout_seconds: int, flow_path=None, completion_grace_seconds: float):
+            assert flow_path is None
+            return FakeSmokeResult()
+
+    evidence_root = tmp_path / "evidence-root"
+    expected_output = evidence_root / "positions-a" / "position_query.json"
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"execution_client": FakeExecutionClient(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--session-label",
+            "positions-a",
+            "--evidence-root",
+            str(evidence_root),
+        ],
+    )
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    exported = json.loads(expected_output.read_text(encoding="utf-8"))
+
+    assert exit_code == 0
+    assert payload["flow_mode"] == "default_shared_flow"
+    assert payload["session_label"] == "positions-a"
+    assert payload["export"] == {
+        "path": str(expected_output),
+        "written": True,
+        "session_label": "positions-a",
+        "evidence_root": str(evidence_root),
+        "explicit_path": False,
+    }
+    assert exported["export"]["path"] == str(expected_output)
+
+
+def test_position_query_smoke_rejects_conflicting_export_targets(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_position_query_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_position_query_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--output-json",
+            str(tmp_path / "explicit.json"),
+            "--evidence-root",
+            str(tmp_path / "evidence-root"),
+        ],
+    )
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 1
+    assert payload["error_stage"] == "argument_validation"
+    assert payload["error_type"] == "ValueError"
+    assert "output_json conflicts with evidence_root" in payload["error_message"]
+
+
+def test_account_query_smoke_writes_isolated_flow_export(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_account_query_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_account_query_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAccount:
+        account_id = "025292"
+        balance = 1000000.0
+        available = 214000.0
+        margin = 780000.0
+        commission = 35.0
+        close_profit = 1200.0
+        position_profit = -230.0
+
+    class FakeSmokeResult:
+        query_request_id = "query-account-1"
+        query_code = 0
+        completed = True
+        timed_out = False
+        account = FakeAccount()
+        disconnects = []
+
+        class bootstrap:
+            ready = True
+
+            class execution_bootstrap:
+                class td_smoke:
+                    login_success = True
+                    settlement_code = 0
+
+    class FakeExecutionClient:
+        def run_live_account_query_smoke(self, *, timeout_seconds: int, flow_path=None):
+            assert flow_path == tmp_path / "account-flow"
+            return FakeSmokeResult()
+
+    evidence_root = tmp_path / "evidence-root"
+    expected_output = evidence_root / "isolated-flow" / "account_query.json"
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"execution_client": FakeExecutionClient(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--flow-path",
+            str(tmp_path / "account-flow"),
+            "--evidence-root",
+            str(evidence_root),
+        ],
+    )
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    exported = json.loads(expected_output.read_text(encoding="utf-8"))
+
+    assert exit_code == 0
+    assert payload["flow_mode"] == "explicit_override"
+    assert payload["session_label"] == "isolated-flow"
+    assert payload["account"]["account_id"] == "025292"
+    assert payload["export"] == {
+        "path": str(expected_output),
+        "written": True,
+        "session_label": "isolated-flow",
+        "evidence_root": str(evidence_root),
+        "explicit_path": False,
+    }
+    assert exported["export"]["path"] == str(expected_output)
+
+
+def test_account_query_smoke_rejects_conflicting_export_targets(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_account_query_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_account_query_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--output-json",
+            str(tmp_path / "explicit.json"),
+            "--evidence-root",
+            str(tmp_path / "evidence-root"),
+        ],
+    )
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 1
+    assert payload["error_stage"] == "argument_validation"
+    assert payload["error_type"] == "ValueError"
+    assert "output_json conflicts with evidence_root" in payload["error_message"]
+
+
+def test_md_login_smoke_writes_isolated_flow_export(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_md_login_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_md_login_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class Kind:
+        def __init__(self, value: str):
+            self.value = value
+
+    class FakeEvent:
+        def __init__(self, kind: str, venue_symbol: str | None = None):
+            self.kind = Kind(kind)
+            self.venue_symbol = venue_symbol
+
+    class FakeBridge:
+        def drain_events(self):
+            return [FakeEvent("login_succeeded"), FakeEvent("tick", "rb2610")]
+
+    class FakeResult:
+        init_code = 0
+        login_request_code = 0
+        subscribe_code = 0
+        login_success = True
+        login_error_id = 0
+        login_error_message = ""
+        first_tick_symbol = "rb2610"
+        first_tick_last = 4021.0
+        first_tick_bid = 4020.0
+        first_tick_ask = 4022.0
+        first_tick_ts_epoch_us = 123456789
+
+    class FakeClient:
+        def __init__(self, config):
+            self.runtime_bridge = FakeBridge()
+
+        def run_live_md_smoke(self, *, timeout_seconds: int, flow_path=None):
+            assert flow_path == tmp_path / "md-flow"
+            return FakeResult()
+
+    evidence_root = tmp_path / "evidence-root"
+    expected_output = evidence_root / "isolated-flow" / "md_login_smoke.json"
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(module, "CtpDataClient", FakeClient)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--flow-path",
+            str(tmp_path / "md-flow"),
+            "--evidence-root",
+            str(evidence_root),
+        ],
+    )
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+    exported = json.loads(expected_output.read_text(encoding="utf-8"))
+
+    assert exit_code == 0
+    assert payload["baseline"] == "md-login-smoke-v1"
+    assert payload["flow_mode"] == "explicit_override"
+    assert payload["session_label"] == "isolated-flow"
+    assert payload["bridge_tick_symbol"] == "rb2610"
+    assert payload["export"] == {
+        "path": str(expected_output),
+        "written": True,
+        "session_label": "isolated-flow",
+        "evidence_root": str(evidence_root),
+        "explicit_path": False,
+    }
+    assert exported["export"]["path"] == str(expected_output)
+
+
+def test_md_login_smoke_rejects_conflicting_export_targets(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_md_login_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_md_login_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--output-json",
+            str(tmp_path / "explicit.json"),
+            "--evidence-root",
+            str(tmp_path / "evidence-root"),
+        ],
+    )
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 1
+    assert payload["error_stage"] == "argument_validation"
+    assert payload["error_type"] == "ValueError"
+    assert "output_json conflicts with evidence_root" in payload["error_message"]
+
+
+def test_live_data_client_bootstrap_smoke_writes_session_labeled_export(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_live_data_client_bootstrap_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_live_data_client_bootstrap_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class Kind:
+        def __init__(self, value: str):
+            self.value = value
+
+    class FakeEvent:
+        def __init__(self, kind: str):
+            self.kind = Kind(kind)
+
+    class FakeCommand:
+        def __init__(self, kind: str, venue_symbol: str | None = None):
+            self.kind = Kind(kind)
+            self.venue_symbol = venue_symbol
+
+    class FakeInstrument:
+        display_symbol = "rb2610.SHFE"
+
+    class FakeLoadResult:
+        request_id = "instrument-query-1"
+        loaded = True
+        instrument_count = 1
+        instruments = (FakeInstrument(),)
+
+    class FakeBootstrapState:
+        started = True
+        connect_request_id = "md-connect-1"
+        subscribe_request_ids = ["md-subscribe-1"]
+
+    class FakeBootstrapResult:
+        selected_symbols = ("rb2610",)
+        bootstrap_state = FakeBootstrapState()
+
+    class FakeProvider:
+        def run_live_instrument_smoke(self, *, symbol: str, timeout_seconds: int, flow_path=None):
+            assert symbol == "rb2610"
+            assert flow_path == tmp_path / "bootstrap-flow"
+            return FakeLoadResult()
+
+    class FakeDataClient:
+        def bootstrap_live_data_client_mainline(self, load_result):
+            assert load_result.request_id == "instrument-query-1"
+            return FakeBootstrapResult()
+
+    class FakeBridge:
+        def __init__(self):
+            self._command_batches = [
+                [],
+                [FakeCommand("connect"), FakeCommand("subscribe_market_data", "rb2610")],
+            ]
+            self._event_batches = [[FakeEvent("instrument"), FakeEvent("instrument_end")]]
+
+        def drain_submitted_commands(self):
+            return self._command_batches.pop(0) if self._command_batches else []
+
+        def drain_events(self):
+            return self._event_batches.pop(0) if self._event_batches else []
+
+    evidence_root = tmp_path / "evidence-root"
+    expected_output = evidence_root / "bootstrap-a" / "live_data_client_bootstrap.json"
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {
+            "instrument_provider": FakeProvider(),
+            "data_client": FakeDataClient(),
+            "runtime_bridge": FakeBridge(),
+        },
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--symbol",
+            "rb2610",
+            "--flow-path",
+            str(tmp_path / "bootstrap-flow"),
+            "--session-label",
+            "bootstrap-a",
+            "--evidence-root",
+            str(evidence_root),
+        ],
+    )
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+    exported = json.loads(expected_output.read_text(encoding="utf-8"))
+
+    assert exit_code == 0
+    assert payload["baseline"] == "live-data-client-bootstrap-smoke-v1"
+    assert payload["flow_mode"] == "explicit_override"
+    assert payload["session_label"] == "bootstrap-a"
+    assert payload["bootstrap_command_kinds"] == ["connect", "subscribe_market_data"]
+    assert payload["export"] == {
+        "path": str(expected_output),
+        "written": True,
+        "session_label": "bootstrap-a",
+        "evidence_root": str(evidence_root),
+        "explicit_path": False,
+    }
+    assert exported["export"]["path"] == str(expected_output)
+
+
+def test_live_data_client_bootstrap_smoke_rejects_conflicting_export_targets(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_live_data_client_bootstrap_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_live_data_client_bootstrap_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--symbol",
+            "rb2610",
+            "--output-json",
+            str(tmp_path / "explicit.json"),
+            "--evidence-root",
+            str(tmp_path / "evidence-root"),
+        ],
+    )
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 1
+    assert payload["error_stage"] == "argument_validation"
+    assert payload["error_type"] == "ValueError"
+    assert "output_json conflicts with evidence_root" in payload["error_message"]
+
+
+def test_marketdata_smoke_writes_session_labeled_export(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_marketdata_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_marketdata_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class Kind:
+        def __init__(self, value: str):
+            self.value = value
+
+    class FakeEvent:
+        def __init__(self, kind: str, venue_symbol: str | None = None):
+            self.kind = Kind(kind)
+            self.venue_symbol = venue_symbol
+
+    class FakeLoadResult:
+        request_id = "instrument-query-1"
+        loaded = True
+
+    class FakeBootstrapState:
+        started = True
+        connect_request_id = "md-connect-1"
+        subscribe_request_ids = ["md-subscribe-1"]
+
+    class FakeMdSmoke:
+        init_code = 0
+        login_request_code = 0
+        subscribe_code = 0
+        login_success = True
+        login_error_id = 0
+        login_error_message = ""
+        first_tick_symbol = "rb2610"
+        first_tick_last = 4021.0
+        first_tick_bid = 4020.0
+        first_tick_ask = 4022.0
+        first_tick_ts_epoch_us = 123456789
+
+    class FakeEventBatch:
+        events = (FakeEvent("login_succeeded"), FakeEvent("tick", "rb2610"))
+        should_restore = False
+
+    class FakeResult:
+        instrument_request_id = "instrument-query-1"
+        instrument_loaded = True
+        source_instrument_count = 1
+        selected_symbols = ("rb2610",)
+        bootstrap_state = FakeBootstrapState()
+        md_smoke = FakeMdSmoke()
+        event_batch = FakeEventBatch()
+
+    class FakeProvider:
+        def run_live_instrument_smoke(self, *, symbol: str, timeout_seconds: int, flow_path=None):
+            assert symbol == "rb2610"
+            assert flow_path == tmp_path / "marketdata-flow"
+            return FakeLoadResult()
+
+    class FakeDataClient:
+        def run_marketdata_smoke_baseline(self, load_result, *, timeout_seconds: int, flow_path=None):
+            assert load_result.request_id == "instrument-query-1"
+            assert flow_path == tmp_path / "marketdata-flow"
+            return FakeResult()
+
+    class FakeBridge:
+        def drain_submitted_commands(self):
+            return []
+
+        def drain_events(self):
+            return [FakeEvent("tick", "rb2610")]
+
+    evidence_root = tmp_path / "evidence-root"
+    expected_output = evidence_root / "md-a" / "marketdata_smoke.json"
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {
+            "instrument_provider": FakeProvider(),
+            "data_client": FakeDataClient(),
+            "runtime_bridge": FakeBridge(),
+        },
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--symbol",
+            "rb2610",
+            "--flow-path",
+            str(tmp_path / "marketdata-flow"),
+            "--session-label",
+            "md-a",
+            "--evidence-root",
+            str(evidence_root),
+        ],
+    )
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+    exported = json.loads(expected_output.read_text(encoding="utf-8"))
+
+    assert exit_code == 0
+    assert payload["baseline"] == "marketdata-smoke-v1"
+    assert payload["flow_mode"] == "explicit_override"
+    assert payload["session_label"] == "md-a"
+    assert payload["md"]["first_tick_symbol"] == "rb2610"
+    assert payload["export"] == {
+        "path": str(expected_output),
+        "written": True,
+        "session_label": "md-a",
+        "evidence_root": str(evidence_root),
+        "explicit_path": False,
+    }
+    assert exported["export"]["path"] == str(expected_output)
+
+
+def test_marketdata_smoke_rejects_conflicting_export_targets(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_marketdata_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_marketdata_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--symbol",
+            "rb2610",
+            "--output-json",
+            str(tmp_path / "explicit.json"),
+            "--evidence-root",
+            str(tmp_path / "evidence-root"),
+        ],
+    )
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 1
+    assert payload["error_stage"] == "argument_validation"
+    assert payload["error_type"] == "ValueError"
+    assert "output_json conflicts with evidence_root" in payload["error_message"]
 
 
 def test_query_adapter_smoke_rejects_live_send_argument() -> None:
@@ -4931,6 +6461,7806 @@ def test_query_adapter_smoke_rejects_live_send_argument() -> None:
 
     assert result.returncode == 2
     assert "unrecognized arguments: --live-send" in result.stderr
+
+
+def test_query_adapter_smoke_reports_optional_instrument_snapshot_as_structured_json(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_query_adapter_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_query_adapter_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeQueryAdapter:
+        def query_snapshot_mainline(self, *, timeout_seconds: int, flow_path=None, completion_grace_seconds: float):
+            return CtpQueryAdapterSnapshot(
+                positions=CtpPositionQueryBaseline(
+                    request_id="query-positions-1",
+                    query_code=0,
+                    completed=True,
+                    timed_out=False,
+                    no_positions=False,
+                    position_count=2,
+                    positions=(),
+                ),
+                account=CtpAccountQueryBaseline(
+                    request_id="query-account-1",
+                    query_code=0,
+                    completed=True,
+                    timed_out=False,
+                    account=CtpAccountRecord(
+                        account_id="025292",
+                        balance=1000000.0,
+                        available=214000.0,
+                        margin=780000.0,
+                        commission=35.0,
+                        close_profit=1200.0,
+                        position_profit=-230.0,
+                    ),
+                ),
+            )
+
+    class ProductKind:
+        value = "FUTURES"
+
+    class FakeInstrument:
+        display_symbol = "rb2610.SHFE"
+        venue_symbol = "rb2610"
+        underlying = "rb"
+        contract_month = "2610"
+        product_kind = ProductKind()
+        price_tick = 1.0
+        volume_multiple = 10
+
+    class FakeInstrumentProvider:
+        def run_live_instrument_smoke(self, *, symbol: str, timeout_seconds: int, flow_path=None):
+            class Result:
+                request_id = "instrument-query-1"
+                loaded = True
+                instrument_count = 1
+                instruments = (FakeInstrument(),)
+
+            return Result()
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {
+            "query_adapter": FakeQueryAdapter(),
+            "instrument_provider": FakeInstrumentProvider(),
+            "execution_client": object(),
+            "runtime_bridge": FakeBridge(),
+        },
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [str(script_path), "--config", str(tmp_path / "fake.json"), "--instrument-symbol", "rb2610"],
+    )
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert payload["baseline"] == "nautilus-query-adapter-v1"
+    assert payload["success"] is True
+    assert payload["failure_reason"] is None
+    assert payload["positions"]["position_count"] == 2
+    assert payload["account"]["account_id"] == "025292"
+    assert payload["instrument"]["requested_symbol"] == "rb2610"
+    assert payload["instrument"]["loaded"] is True
+    assert payload["instrument"]["instrument_count"] == 1
+    assert payload["instrument"]["exact_symbol_found"] is True
+    assert payload["instrument"]["matched_symbols"] == ["rb2610.SHFE"]
+    assert payload["instrument"]["first_instrument"]["display_symbol"] == "rb2610.SHFE"
+    assert payload["order_truth"] is None
+
+
+def test_query_adapter_smoke_reports_instrument_missing_when_requested(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_query_adapter_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_query_adapter_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeQueryAdapter:
+        def query_snapshot_mainline(self, *, timeout_seconds: int, flow_path=None, completion_grace_seconds: float):
+            return CtpQueryAdapterSnapshot(
+                positions=CtpPositionQueryBaseline(
+                    request_id="query-positions-1",
+                    query_code=0,
+                    completed=True,
+                    timed_out=False,
+                    no_positions=True,
+                    position_count=0,
+                    positions=(),
+                ),
+                account=CtpAccountQueryBaseline(
+                    request_id="query-account-1",
+                    query_code=0,
+                    completed=True,
+                    timed_out=False,
+                    account=CtpAccountRecord(
+                        account_id="025292",
+                        balance=1000000.0,
+                        available=214000.0,
+                        margin=780000.0,
+                        commission=35.0,
+                        close_profit=1200.0,
+                        position_profit=-230.0,
+                    ),
+                ),
+            )
+
+    class FakeInstrumentProvider:
+        def run_live_instrument_smoke(self, *, symbol: str, timeout_seconds: int, flow_path=None):
+            class Result:
+                request_id = "instrument-query-1"
+                loaded = True
+                instrument_count = 0
+                instruments = ()
+
+            return Result()
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {
+            "query_adapter": FakeQueryAdapter(),
+            "instrument_provider": FakeInstrumentProvider(),
+            "execution_client": object(),
+            "runtime_bridge": FakeBridge(),
+        },
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [str(script_path), "--config", str(tmp_path / "fake.json"), "--instrument-symbol", "rb2610"],
+    )
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 1
+    assert payload["baseline"] == "nautilus-query-adapter-v1"
+    assert payload["success"] is False
+    assert payload["failure_reason"] == "instrument_missing"
+    assert payload["positions"]["no_positions"] is True
+    assert payload["instrument"]["requested_symbol"] == "rb2610"
+    assert payload["instrument"]["instrument_count"] == 0
+    assert payload["instrument"]["exact_symbol_found"] is False
+
+
+def test_query_adapter_smoke_reports_optional_order_truth_snapshot_as_structured_json(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_query_adapter_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_query_adapter_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeQueryAdapter:
+        def query_snapshot_mainline(self, *, timeout_seconds: int, flow_path=None, completion_grace_seconds: float):
+            return CtpQueryAdapterSnapshot(
+                positions=CtpPositionQueryBaseline(
+                    request_id="query-positions-1",
+                    query_code=0,
+                    completed=True,
+                    timed_out=False,
+                    no_positions=True,
+                    position_count=0,
+                    positions=(),
+                ),
+                account=CtpAccountQueryBaseline(
+                    request_id="query-account-1",
+                    query_code=0,
+                    completed=True,
+                    timed_out=False,
+                    account=CtpAccountRecord(
+                        account_id="025292",
+                        balance=1000000.0,
+                        available=214000.0,
+                        margin=780000.0,
+                        commission=35.0,
+                        close_profit=1200.0,
+                        position_profit=-230.0,
+                    ),
+                ),
+            )
+
+    class FakeExecutionClient:
+        def capture_historical_callback_boundary_policy_mainline(
+            self,
+            *,
+            timeout_seconds: int,
+                flow_path=None,
+            observation_grace_seconds: float,
+        ):
+            return CtpTdHistoricalCallbackBoundaryPolicyResult(
+                baseline=CtpTdOrderTruthBaseline(
+                    flow_path="D:/flow/td",
+                    flow_mode="default_shared_flow",
+                    ready=True,
+                    login_success=True,
+                    settlement_code=0,
+                    login_front_id=7,
+                    login_session_id=8,
+                    login_max_order_ref=9,
+                    disconnect_count=0,
+                    disconnect_reasons=(),
+                    observed_callback_count=3,
+                    observed_order_event_count=2,
+                    observed_trade_event_count=1,
+                    no_callbacks_observed=False,
+                    first_order_id="49456082",
+                    first_order_ref="11",
+                    first_session_id=8,
+                    first_front_id=7,
+                    first_is_trade=False,
+                    observed_callbacks=(),
+                ),
+                disposition="boundary_required",
+                historical_callback_count=1,
+                delayed_callback_count=0,
+                current_session_callback_count=2,
+                first_historical_order_id="49456082",
+                first_current_session_order_id="49456090",
+                findings=(
+                    CtpTdHistoricalCallbackBoundaryFinding(
+                        code="historical_callbacks_present",
+                        severity="warn",
+                        action="boundary_required",
+                        metric="historical_callback_count",
+                        metric_value=1,
+                        threshold=0,
+                        message="boundary",
+                    ),
+                    CtpTdHistoricalCallbackBoundaryFinding(
+                        code="current_session_callbacks_present",
+                        severity="info",
+                        action="evidence_only",
+                        metric="current_session_callback_count",
+                        metric_value=2,
+                        threshold=0,
+                        message="evidence",
+                    ),
+                ),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: type("Cfg", (), {"user_id": "025292"})()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {
+            "query_adapter": FakeQueryAdapter(),
+            "instrument_provider": object(),
+            "execution_client": FakeExecutionClient(),
+            "runtime_bridge": FakeBridge(),
+        },
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [str(script_path), "--config", str(tmp_path / "fake.json"), "--include-order-truth"],
+    )
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert payload["success"] is True
+    assert payload["failure_reason"] is None
+    assert payload["order_truth"]["account_id"] == "025292"
+    assert payload["order_truth"]["disposition"] == "boundary_required"
+    assert payload["order_truth"]["observed_trade_event_count"] == 1
+    assert payload["order_truth"]["boundary_codes"] == ["historical_callbacks_present"]
+    assert payload["order_truth"]["evidence_only_codes"] == ["current_session_callbacks_present"]
+
+
+def test_query_adapter_smoke_reports_optional_order_trade_snapshot_as_structured_json(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_query_adapter_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_query_adapter_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeQueryAdapter:
+        def query_snapshot_mainline(self, *, timeout_seconds: int, flow_path=None, completion_grace_seconds: float):
+            return CtpQueryAdapterSnapshot(
+                positions=CtpPositionQueryBaseline(
+                    request_id="query-positions-1",
+                    query_code=0,
+                    completed=True,
+                    timed_out=False,
+                    no_positions=True,
+                    position_count=0,
+                    positions=(),
+                ),
+                account=CtpAccountQueryBaseline(
+                    request_id="query-account-1",
+                    query_code=0,
+                    completed=True,
+                    timed_out=False,
+                    account=CtpAccountRecord(
+                        account_id="025292",
+                        balance=1000000.0,
+                        available=214000.0,
+                        margin=780000.0,
+                        commission=35.0,
+                        close_profit=1200.0,
+                        position_profit=-230.0,
+                    ),
+                ),
+            )
+
+    class FakeExecutionClient:
+        def capture_td_order_trade_snapshot_mainline(
+            self,
+            *,
+            timeout_seconds: int,
+            flow_path=None,
+            observation_grace_seconds: float,
+        ):
+            return CtpTdOrderTradeSnapshot(
+                baseline=CtpTdOrderTruthBaseline(
+                    flow_path="D:/flow/td",
+                    flow_mode="default_shared_flow",
+                    ready=True,
+                    login_success=True,
+                    settlement_code=0,
+                    login_front_id=7,
+                    login_session_id=8,
+                    login_max_order_ref=9,
+                    disconnect_count=0,
+                    disconnect_reasons=(),
+                    observed_callback_count=2,
+                    observed_order_event_count=2,
+                    observed_trade_event_count=0,
+                    no_callbacks_observed=False,
+                    first_order_id="49456082",
+                    first_order_ref="11",
+                    first_session_id=8,
+                    first_front_id=7,
+                    first_is_trade=False,
+                    observed_callbacks=(),
+                ),
+                disposition="boundary_required",
+                observed_order_event_count=2,
+                observed_trade_event_count=0,
+                no_order_events=False,
+                no_trade_events=True,
+                historical_order_count=1,
+                historical_trade_count=0,
+                delayed_order_count=0,
+                delayed_trade_count=0,
+                historical_residue_order_count=1,
+                historical_residue_trade_count=0,
+                current_session_order_count=1,
+                current_session_trade_count=0,
+                first_order_event_id="49456082",
+                first_trade_event_id=None,
+                first_historical_order_id="49456082",
+                first_historical_trade_id=None,
+                first_current_session_order_id="49456090",
+                first_current_session_trade_id=None,
+                findings=(
+                    CtpTdHistoricalCallbackBoundaryFinding(
+                        code="historical_order_events_present",
+                        severity="warn",
+                        action="boundary_required",
+                        metric="historical_order_count",
+                        metric_value=1,
+                        threshold=0,
+                        message="boundary",
+                    ),
+                    CtpTdHistoricalCallbackBoundaryFinding(
+                        code="no_trade_events_observed",
+                        severity="info",
+                        action="evidence_only",
+                        metric="observed_trade_event_count",
+                        metric_value=0,
+                        threshold="> 0 optional",
+                        message="no trade",
+                    ),
+                ),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: type("Cfg", (), {"user_id": "025292"})()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {
+            "query_adapter": FakeQueryAdapter(),
+            "instrument_provider": object(),
+            "execution_client": FakeExecutionClient(),
+            "runtime_bridge": FakeBridge(),
+        },
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [str(script_path), "--config", str(tmp_path / "fake.json"), "--include-order-trade-snapshot"],
+    )
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert payload["success"] is True
+    assert payload["failure_reason"] is None
+    assert payload["order_trade_snapshot"]["disposition"] == "boundary_required"
+    assert payload["order_trade_snapshot"]["no_trade_events"] is True
+    assert payload["order_trade_snapshot"]["historical_residue_order_count"] == 1
+    assert payload["order_trade_snapshot"]["boundary_codes"] == ["historical_order_events_present"]
+    assert payload["order_trade_snapshot"]["evidence_only_codes"] == ["no_trade_events_observed"]
+
+
+def test_query_adapter_smoke_reports_order_truth_manual_review_failure(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_query_adapter_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_query_adapter_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeQueryAdapter:
+        def query_snapshot_mainline(self, *, timeout_seconds: int, flow_path=None, completion_grace_seconds: float):
+            return CtpQueryAdapterSnapshot(
+                positions=CtpPositionQueryBaseline(
+                    request_id="query-positions-1",
+                    query_code=0,
+                    completed=True,
+                    timed_out=False,
+                    no_positions=True,
+                    position_count=0,
+                    positions=(),
+                ),
+                account=CtpAccountQueryBaseline(
+                    request_id="query-account-1",
+                    query_code=0,
+                    completed=True,
+                    timed_out=False,
+                    account=CtpAccountRecord(
+                        account_id="025292",
+                        balance=1000000.0,
+                        available=214000.0,
+                        margin=780000.0,
+                        commission=35.0,
+                        close_profit=1200.0,
+                        position_profit=-230.0,
+                    ),
+                ),
+            )
+
+    class FakeExecutionClient:
+        def capture_historical_callback_boundary_policy_mainline(
+            self,
+            *,
+            timeout_seconds: int,
+                flow_path=None,
+            observation_grace_seconds: float,
+        ):
+            return CtpTdHistoricalCallbackBoundaryPolicyResult(
+                baseline=CtpTdOrderTruthBaseline(
+                    flow_path="D:/flow/td",
+                    flow_mode="default_shared_flow",
+                    ready=False,
+                    login_success=False,
+                    settlement_code=-1,
+                    login_front_id=None,
+                    login_session_id=None,
+                    login_max_order_ref=None,
+                    disconnect_count=0,
+                    disconnect_reasons=(),
+                    observed_callback_count=0,
+                    observed_order_event_count=0,
+                    observed_trade_event_count=0,
+                    no_callbacks_observed=True,
+                    first_order_id=None,
+                    first_order_ref=None,
+                    first_session_id=None,
+                    first_front_id=None,
+                    first_is_trade=None,
+                    observed_callbacks=(),
+                ),
+                disposition="manual_review_required",
+                historical_callback_count=0,
+                delayed_callback_count=0,
+                current_session_callback_count=0,
+                first_historical_order_id=None,
+                first_current_session_order_id=None,
+                findings=(
+                    CtpTdHistoricalCallbackBoundaryFinding(
+                        code="td_order_truth_unready",
+                        severity="critical",
+                        action="manual_review_required",
+                        metric="ready",
+                        metric_value="False",
+                        threshold="true",
+                        message="manual review",
+                    ),
+                ),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: type("Cfg", (), {"user_id": "025292"})()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {
+            "query_adapter": FakeQueryAdapter(),
+            "instrument_provider": object(),
+            "execution_client": FakeExecutionClient(),
+            "runtime_bridge": FakeBridge(),
+        },
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [str(script_path), "--config", str(tmp_path / "fake.json"), "--include-order-truth"],
+    )
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 1
+    assert payload["success"] is False
+    assert payload["failure_reason"] == "order_truth_manual_review_required"
+    assert payload["order_truth"]["manual_review_codes"] == ["td_order_truth_unready"]
+
+
+def test_query_adapter_smoke_reports_order_trade_snapshot_manual_review_failure(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_query_adapter_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_query_adapter_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeQueryAdapter:
+        def query_snapshot_mainline(self, *, timeout_seconds: int, flow_path=None, completion_grace_seconds: float):
+            return CtpQueryAdapterSnapshot(
+                positions=CtpPositionQueryBaseline(
+                    request_id="query-positions-1",
+                    query_code=0,
+                    completed=True,
+                    timed_out=False,
+                    no_positions=True,
+                    position_count=0,
+                    positions=(),
+                ),
+                account=CtpAccountQueryBaseline(
+                    request_id="query-account-1",
+                    query_code=0,
+                    completed=True,
+                    timed_out=False,
+                    account=CtpAccountRecord(
+                        account_id="025292",
+                        balance=1000000.0,
+                        available=214000.0,
+                        margin=780000.0,
+                        commission=35.0,
+                        close_profit=1200.0,
+                        position_profit=-230.0,
+                    ),
+                ),
+            )
+
+    class FakeExecutionClient:
+        def capture_td_order_trade_snapshot_mainline(
+            self,
+            *,
+            timeout_seconds: int,
+            flow_path=None,
+            observation_grace_seconds: float,
+        ):
+            return CtpTdOrderTradeSnapshot(
+                baseline=CtpTdOrderTruthBaseline(
+                    flow_path="D:/flow/td",
+                    flow_mode="default_shared_flow",
+                    ready=False,
+                    login_success=False,
+                    settlement_code=-1,
+                    login_front_id=None,
+                    login_session_id=None,
+                    login_max_order_ref=None,
+                    disconnect_count=0,
+                    disconnect_reasons=(),
+                    observed_callback_count=0,
+                    observed_order_event_count=0,
+                    observed_trade_event_count=0,
+                    no_callbacks_observed=True,
+                    first_order_id=None,
+                    first_order_ref=None,
+                    first_session_id=None,
+                    first_front_id=None,
+                    first_is_trade=None,
+                    observed_callbacks=(),
+                ),
+                disposition="manual_review_required",
+                observed_order_event_count=0,
+                observed_trade_event_count=0,
+                no_order_events=True,
+                no_trade_events=True,
+                historical_order_count=0,
+                historical_trade_count=0,
+                delayed_order_count=0,
+                delayed_trade_count=0,
+                historical_residue_order_count=0,
+                historical_residue_trade_count=0,
+                current_session_order_count=0,
+                current_session_trade_count=0,
+                first_order_event_id=None,
+                first_trade_event_id=None,
+                first_historical_order_id=None,
+                first_historical_trade_id=None,
+                first_current_session_order_id=None,
+                first_current_session_trade_id=None,
+                findings=(
+                    CtpTdHistoricalCallbackBoundaryFinding(
+                        code="order_trade_snapshot_unready",
+                        severity="critical",
+                        action="manual_review_required",
+                        metric="ready",
+                        metric_value="False",
+                        threshold="true",
+                        message="manual review",
+                    ),
+                ),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: type("Cfg", (), {"user_id": "025292"})()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {
+            "query_adapter": FakeQueryAdapter(),
+            "instrument_provider": object(),
+            "execution_client": FakeExecutionClient(),
+            "runtime_bridge": FakeBridge(),
+        },
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [str(script_path), "--config", str(tmp_path / "fake.json"), "--include-order-trade-snapshot"],
+    )
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 1
+    assert payload["success"] is False
+    assert payload["failure_reason"] == "order_trade_snapshot_manual_review_required"
+    assert payload["order_trade_snapshot"]["manual_review_codes"] == ["order_trade_snapshot_unready"]
+def test_query_adapter_smoke_reports_optional_reconciliation_snapshot_and_exports_json(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_query_adapter_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_query_adapter_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeQueryAdapter:
+        def query_snapshot_mainline(self, *, timeout_seconds: int, flow_path=None, completion_grace_seconds: float):
+            return CtpQueryAdapterSnapshot(
+                positions=CtpPositionQueryBaseline(
+                    request_id="query-positions-1",
+                    query_code=0,
+                    completed=True,
+                    timed_out=False,
+                    no_positions=True,
+                    position_count=0,
+                    positions=(),
+                ),
+                account=CtpAccountQueryBaseline(
+                    request_id="query-account-1",
+                    query_code=0,
+                    completed=True,
+                    timed_out=False,
+                    account=CtpAccountRecord(
+                        account_id="025292",
+                        balance=1000000.0,
+                        available=520000.0,
+                        margin=120000.0,
+                        commission=35.0,
+                        close_profit=1200.0,
+                        position_profit=-230.0,
+                    ),
+                ),
+            )
+
+    class FakeReconciliationAdapter:
+        def summarize_snapshot(self, snapshot: CtpReconciliationSnapshot) -> CtpReconciliationSummary:
+            assert snapshot.query_snapshot.account.account is not None
+            return CtpReconciliationSummary(
+                position_request_id="query-positions-1",
+                account_request_id="query-account-1",
+                account_id="025292",
+                position_line_count=0,
+                symbol_count=0,
+                total_long_qty=0,
+                total_short_qty=0,
+                gross_position_qty=0,
+                total_position_cost=0.0,
+                account_balance=1000000.0,
+                account_available=520000.0,
+                account_margin=120000.0,
+                available_ratio=0.52,
+                margin_ratio=0.12,
+                dominant_exposure_symbol=None,
+                dominant_exposure_exchange=None,
+                dominant_exposure_abs_net_qty=0,
+                exposures=(),
+            )
+
+        def evaluate_summary(self, summary: CtpReconciliationSummary) -> CtpReconciliationPolicyResult:
+            return CtpReconciliationPolicyResult(
+                summary=summary,
+                disposition="evidence_only",
+                requires_manual_review=False,
+                findings=(
+                    CtpReconciliationPolicyFinding(
+                        code="flat_positions",
+                        severity="info",
+                        action="evidence_only",
+                        metric="position_line_count",
+                        metric_value=0,
+                        threshold="> 0",
+                        message="No open position lines were returned by the live snapshot.",
+                    ),
+                ),
+            )
+
+        def build_evidence(self, result: CtpReconciliationPolicyResult) -> CtpReconciliationEvidence:
+            return CtpReconciliationEvidence(
+                evidence_version="reconciliation-evidence-v1",
+                captured_at_utc="2026-04-10T12:00:00Z",
+                account_id="025292",
+                disposition=result.disposition,
+                requires_manual_review=False,
+                finding_count=1,
+                manual_review_codes=(),
+                evidence_only_codes=("flat_positions",),
+                position_line_count=0,
+                symbol_count=0,
+                gross_position_qty=0,
+                available_ratio=0.52,
+                margin_ratio=0.12,
+                dominant_exposure_symbol=None,
+                dominant_exposure_abs_net_qty=0,
+                top_exposures=(),
+            )
+
+    output_json = tmp_path / "output" / "aggregated_query.json"
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: type("Cfg", (), {"user_id": "025292"})()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {
+            "query_adapter": FakeQueryAdapter(),
+            "instrument_provider": object(),
+            "execution_client": object(),
+            "reconciliation_adapter": FakeReconciliationAdapter(),
+            "runtime_bridge": FakeBridge(),
+        },
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--include-reconciliation",
+            "--output-json",
+            str(output_json),
+        ],
+    )
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    exported = json.loads(output_json.read_text(encoding="utf-8"))
+
+    assert exit_code == 0
+    assert payload["success"] is True
+    assert payload["failure_reason"] is None
+    assert payload["reconciliation"]["disposition"] == "evidence_only"
+    assert payload["reconciliation"]["evidence_only_codes"] == ["flat_positions"]
+    assert payload["reconciliation"]["captured_at_utc"] == "2026-04-10T12:00:00Z"
+    assert payload["session_label"] == "shared-flow"
+    assert payload["export"] == {
+        "path": str(output_json),
+        "written": True,
+        "session_label": "shared-flow",
+        "evidence_root": None,
+        "explicit_path": True,
+    }
+    assert exported["reconciliation"]["account_id"] == "025292"
+    assert exported["export"] == {
+        "path": str(output_json),
+        "written": True,
+        "session_label": "shared-flow",
+        "evidence_root": None,
+        "explicit_path": True,
+    }
+
+
+def test_query_adapter_smoke_reports_reconciliation_manual_review_failure(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_query_adapter_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_query_adapter_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeQueryAdapter:
+        def query_snapshot_mainline(self, *, timeout_seconds: int, flow_path=None, completion_grace_seconds: float):
+            return CtpQueryAdapterSnapshot(
+                positions=CtpPositionQueryBaseline(
+                    request_id="query-positions-1",
+                    query_code=0,
+                    completed=True,
+                    timed_out=False,
+                    no_positions=False,
+                    position_count=1,
+                    positions=(),
+                ),
+                account=CtpAccountQueryBaseline(
+                    request_id="query-account-1",
+                    query_code=0,
+                    completed=True,
+                    timed_out=False,
+                    account=CtpAccountRecord(
+                        account_id="025292",
+                        balance=1000000.0,
+                        available=180000.0,
+                        margin=780000.0,
+                        commission=35.0,
+                        close_profit=1200.0,
+                        position_profit=-230.0,
+                    ),
+                ),
+            )
+
+    class FakeReconciliationAdapter:
+        def summarize_snapshot(self, snapshot: CtpReconciliationSnapshot) -> CtpReconciliationSummary:
+            return CtpReconciliationSummary(
+                position_request_id="query-positions-1",
+                account_request_id="query-account-1",
+                account_id="025292",
+                position_line_count=1,
+                symbol_count=1,
+                total_long_qty=1,
+                total_short_qty=0,
+                gross_position_qty=1,
+                total_position_cost=1000.0,
+                account_balance=1000000.0,
+                account_available=180000.0,
+                account_margin=780000.0,
+                available_ratio=0.18,
+                margin_ratio=0.78,
+                dominant_exposure_symbol="rb2610",
+                dominant_exposure_exchange="SHFE",
+                dominant_exposure_abs_net_qty=1,
+                exposures=(),
+            )
+
+        def evaluate_summary(self, summary: CtpReconciliationSummary) -> CtpReconciliationPolicyResult:
+            return CtpReconciliationPolicyResult(
+                summary=summary,
+                disposition="manual_review_required",
+                requires_manual_review=True,
+                findings=(
+                    CtpReconciliationPolicyFinding(
+                        code="available_ratio_warn",
+                        severity="warn",
+                        action="manual_review_required",
+                        metric="available_ratio",
+                        metric_value=0.18,
+                        threshold=0.25,
+                        message="Available ratio is below the baseline comfort threshold.",
+                    ),
+                ),
+            )
+
+        def build_evidence(self, result: CtpReconciliationPolicyResult) -> CtpReconciliationEvidence:
+            return CtpReconciliationEvidence(
+                evidence_version="reconciliation-evidence-v1",
+                captured_at_utc="2026-04-10T12:00:00Z",
+                account_id="025292",
+                disposition=result.disposition,
+                requires_manual_review=True,
+                finding_count=1,
+                manual_review_codes=("available_ratio_warn",),
+                evidence_only_codes=(),
+                position_line_count=1,
+                symbol_count=1,
+                gross_position_qty=1,
+                available_ratio=0.18,
+                margin_ratio=0.78,
+                dominant_exposure_symbol="rb2610",
+                dominant_exposure_abs_net_qty=1,
+                top_exposures=(),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {
+            "query_adapter": FakeQueryAdapter(),
+            "instrument_provider": object(),
+            "execution_client": object(),
+            "reconciliation_adapter": FakeReconciliationAdapter(),
+            "runtime_bridge": FakeBridge(),
+        },
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [str(script_path), "--config", str(tmp_path / "fake.json"), "--include-reconciliation"],
+    )
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 1
+    assert payload["success"] is False
+    assert payload["failure_reason"] == "reconciliation_manual_review_required"
+    assert payload["reconciliation"]["manual_review_codes"] == ["available_ratio_warn"]
+    assert payload["reconciliation"]["disposition"] == "manual_review_required"
+
+
+def test_query_adapter_smoke_reports_export_path_failure_semantics(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_query_adapter_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_query_adapter_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeQueryAdapter:
+        def query_snapshot_mainline(self, *, timeout_seconds: int, flow_path=None, completion_grace_seconds: float):
+            return CtpQueryAdapterSnapshot(
+                positions=CtpPositionQueryBaseline(
+                    request_id="query-positions-1",
+                    query_code=0,
+                    completed=True,
+                    timed_out=False,
+                    no_positions=True,
+                    position_count=0,
+                    positions=(),
+                ),
+                account=CtpAccountQueryBaseline(
+                    request_id="query-account-1",
+                    query_code=0,
+                    completed=True,
+                    timed_out=False,
+                    account=CtpAccountRecord(
+                        account_id="025292",
+                        balance=1000000.0,
+                        available=520000.0,
+                        margin=120000.0,
+                        commission=35.0,
+                        close_profit=1200.0,
+                        position_profit=-230.0,
+                    ),
+                ),
+            )
+
+    occupied = tmp_path / "occupied"
+    occupied.write_text("taken\n", encoding="utf-8")
+    invalid_output = occupied / "aggregated_query.json"
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {
+            "query_adapter": FakeQueryAdapter(),
+            "instrument_provider": object(),
+            "execution_client": object(),
+            "runtime_bridge": FakeBridge(),
+        },
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [str(script_path), "--config", str(tmp_path / "fake.json"), "--output-json", str(invalid_output)],
+    )
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 1
+    assert payload["success"] is False
+    assert payload["failure_reason"] == "exception"
+    assert payload["error_stage"] == "export_payload"
+    assert payload["error_type"] in {"FileExistsError", "NotADirectoryError", "OSError"}
+
+
+def test_query_adapter_smoke_writes_session_labeled_export_under_evidence_root(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_query_adapter_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_query_adapter_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeQueryAdapter:
+        def query_snapshot_mainline(self, *, timeout_seconds: int, flow_path=None, completion_grace_seconds: float):
+            return CtpQueryAdapterSnapshot(
+                positions=CtpPositionQueryBaseline(
+                    request_id="query-positions-1",
+                    query_code=0,
+                    completed=True,
+                    timed_out=False,
+                    no_positions=True,
+                    position_count=0,
+                    positions=(),
+                ),
+                account=CtpAccountQueryBaseline(
+                    request_id="query-account-1",
+                    query_code=0,
+                    completed=True,
+                    timed_out=False,
+                    account=CtpAccountRecord(
+                        account_id="025292",
+                        balance=1000000.0,
+                        available=520000.0,
+                        margin=120000.0,
+                        commission=35.0,
+                        close_profit=1200.0,
+                        position_profit=-230.0,
+                    ),
+                ),
+            )
+
+    evidence_root = tmp_path / "evidence-root"
+    expected_output = evidence_root / "nightly-a" / "aggregated_query.json"
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {
+            "query_adapter": FakeQueryAdapter(),
+            "instrument_provider": object(),
+            "execution_client": object(),
+            "runtime_bridge": FakeBridge(),
+        },
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--session-label",
+            "nightly-a",
+            "--evidence-root",
+            str(evidence_root),
+        ],
+    )
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    exported = json.loads(expected_output.read_text(encoding="utf-8"))
+
+    assert exit_code == 0
+    assert payload["flow_mode"] == "default_shared_flow"
+    assert payload["session_label"] == "nightly-a"
+    assert payload["export"] == {
+        "path": str(expected_output),
+        "written": True,
+        "session_label": "nightly-a",
+        "evidence_root": str(evidence_root),
+        "explicit_path": False,
+    }
+    assert exported["session_label"] == "nightly-a"
+    assert exported["export"]["path"] == str(expected_output)
+
+
+def test_query_adapter_smoke_uses_stable_default_label_for_evidence_root(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_query_adapter_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_query_adapter_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeQueryAdapter:
+        def query_snapshot_mainline(self, *, timeout_seconds: int, flow_path=None, completion_grace_seconds: float):
+            return CtpQueryAdapterSnapshot(
+                positions=CtpPositionQueryBaseline(
+                    request_id="query-positions-1",
+                    query_code=0,
+                    completed=True,
+                    timed_out=False,
+                    no_positions=True,
+                    position_count=0,
+                    positions=(),
+                ),
+                account=CtpAccountQueryBaseline(
+                    request_id="query-account-1",
+                    query_code=0,
+                    completed=True,
+                    timed_out=False,
+                    account=CtpAccountRecord(
+                        account_id="025292",
+                        balance=1000000.0,
+                        available=520000.0,
+                        margin=120000.0,
+                        commission=35.0,
+                        close_profit=1200.0,
+                        position_profit=-230.0,
+                    ),
+                ),
+            )
+
+    evidence_root = tmp_path / "evidence-root"
+    expected_output = evidence_root / "shared-flow" / "aggregated_query.json"
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {
+            "query_adapter": FakeQueryAdapter(),
+            "instrument_provider": object(),
+            "execution_client": object(),
+            "runtime_bridge": FakeBridge(),
+        },
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--evidence-root",
+            str(evidence_root),
+        ],
+    )
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert payload["session_label"] == "shared-flow"
+    assert payload["export"]["path"] == str(expected_output)
+    assert expected_output.exists()
+
+
+def test_query_adapter_smoke_rejects_conflicting_output_json_and_evidence_root(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_query_adapter_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_query_adapter_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--output-json",
+            str(tmp_path / "explicit.json"),
+            "--evidence-root",
+            str(tmp_path / "evidence-root"),
+        ],
+    )
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 1
+    assert payload["success"] is False
+    assert payload["failure_reason"] == "exception"
+    assert payload["error_stage"] == "argument_validation"
+    assert payload["error_type"] == "ValueError"
+    assert "output_json conflicts with evidence_root" in payload["error_message"]
+
+
+def test_query_adapter_smoke_reports_optional_merged_policy_snapshot_as_structured_json(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_query_adapter_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_query_adapter_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeQueryAdapter:
+        def query_snapshot_mainline(self, *, timeout_seconds: int, flow_path=None, completion_grace_seconds: float):
+            return CtpQueryAdapterSnapshot(
+                positions=CtpPositionQueryBaseline(
+                    request_id="query-positions-1",
+                    query_code=0,
+                    completed=True,
+                    timed_out=False,
+                    no_positions=False,
+                    position_count=2,
+                    positions=(),
+                ),
+                account=CtpAccountQueryBaseline(
+                    request_id="query-account-1",
+                    query_code=0,
+                    completed=True,
+                    timed_out=False,
+                    account=CtpAccountRecord(
+                        account_id="025292",
+                        balance=1000000.0,
+                        available=214000.0,
+                        margin=780000.0,
+                        commission=35.0,
+                        close_profit=1200.0,
+                        position_profit=-230.0,
+                    ),
+                ),
+            )
+
+    class FakeTruthMergeAdapter:
+        def capture_merged_reconciliation_policy_mainline(
+            self,
+            *,
+            timeout_seconds: int,
+            flow_path=None,
+            observation_grace_seconds: float,
+            completion_grace_seconds: float,
+        ):
+            return CtpTdMergedReconciliationPolicyResult(
+                snapshot=CtpTdTruthMergeSnapshot(
+                    order_truth=CtpTdOrderTruthEvidenceMatrix(
+                        evidence_version="td-order-truth-evidence-v1",
+                        captured_at_utc="2026-04-10T12:00:00Z",
+                        account_id="025292",
+                        disposition="boundary_required",
+                        observed_callback_count=3,
+                        historical_callback_count=1,
+                        delayed_callback_count=0,
+                        current_session_callback_count=2,
+                        first_historical_order_id="49456082",
+                        first_current_session_order_id="49456090",
+                        manual_review_codes=(),
+                        boundary_codes=("historical_callbacks_present",),
+                        evidence_only_codes=("current_session_callbacks_present",),
+                    ),
+                    positions=CtpPositionQueryBaseline(
+                        request_id="query-positions-1",
+                        query_code=0,
+                        completed=True,
+                        timed_out=False,
+                        no_positions=False,
+                        position_count=2,
+                        positions=(),
+                    ),
+                    account=CtpAccountQueryBaseline(
+                        request_id="query-account-1",
+                        query_code=0,
+                        completed=True,
+                        timed_out=False,
+                        account=CtpAccountRecord(
+                            account_id="025292",
+                            balance=1000000.0,
+                            available=214000.0,
+                            margin=780000.0,
+                            commission=35.0,
+                            close_profit=1200.0,
+                            position_profit=-230.0,
+                        ),
+                    ),
+                ),
+                disposition="boundary_required",
+                available_ratio=0.214,
+                margin_ratio=0.78,
+                findings=(
+                    CtpTdMergedReconciliationFinding(
+                        code="historical_callbacks_present",
+                        severity="warn",
+                        action="boundary_required",
+                        metric="historical_callback_count",
+                        metric_value=1,
+                        threshold=0,
+                        message="boundary",
+                    ),
+                    CtpTdMergedReconciliationFinding(
+                        code="current_session_callbacks_present",
+                        severity="info",
+                        action="evidence_only",
+                        metric="current_session_callback_count",
+                        metric_value=2,
+                        threshold=0,
+                        message="evidence",
+                    ),
+                ),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {
+            "query_adapter": FakeQueryAdapter(),
+            "instrument_provider": object(),
+            "execution_client": object(),
+            "truth_merge_adapter": FakeTruthMergeAdapter(),
+            "runtime_bridge": FakeBridge(),
+        },
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [str(script_path), "--config", str(tmp_path / "fake.json"), "--include-merged-policy"],
+    )
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert payload["success"] is True
+    assert payload["failure_reason"] is None
+    assert payload["merged_policy"]["disposition"] == "boundary_required"
+    assert payload["merged_policy"]["order_truth"]["boundary_codes"] == ["historical_callbacks_present"]
+    assert payload["merged_policy"]["boundary_codes"] == ["historical_callbacks_present"]
+    assert payload["merged_policy"]["evidence_only_codes"] == ["current_session_callbacks_present"]
+    assert payload["merged_policy"]["positions"]["position_count"] == 2
+
+
+def test_query_adapter_smoke_reports_merged_policy_manual_review_failure(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_query_adapter_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_query_adapter_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeQueryAdapter:
+        def query_snapshot_mainline(self, *, timeout_seconds: int, flow_path=None, completion_grace_seconds: float):
+            return CtpQueryAdapterSnapshot(
+                positions=CtpPositionQueryBaseline(
+                    request_id="query-positions-1",
+                    query_code=0,
+                    completed=True,
+                    timed_out=False,
+                    no_positions=False,
+                    position_count=1,
+                    positions=(),
+                ),
+                account=CtpAccountQueryBaseline(
+                    request_id="query-account-1",
+                    query_code=0,
+                    completed=True,
+                    timed_out=False,
+                    account=CtpAccountRecord(
+                        account_id="025292",
+                        balance=1000000.0,
+                        available=180000.0,
+                        margin=780000.0,
+                        commission=35.0,
+                        close_profit=1200.0,
+                        position_profit=-230.0,
+                    ),
+                ),
+            )
+
+    class FakeTruthMergeAdapter:
+        def capture_merged_reconciliation_policy_mainline(
+            self,
+            *,
+            timeout_seconds: int,
+            flow_path=None,
+            observation_grace_seconds: float,
+            completion_grace_seconds: float,
+        ):
+            return CtpTdMergedReconciliationPolicyResult(
+                snapshot=CtpTdTruthMergeSnapshot(
+                    order_truth=CtpTdOrderTruthEvidenceMatrix(
+                        evidence_version="td-order-truth-evidence-v1",
+                        captured_at_utc="2026-04-10T12:00:00Z",
+                        account_id="025292",
+                        disposition="boundary_required",
+                        observed_callback_count=3,
+                        historical_callback_count=1,
+                        delayed_callback_count=0,
+                        current_session_callback_count=2,
+                        first_historical_order_id="49456082",
+                        first_current_session_order_id="49456090",
+                        manual_review_codes=(),
+                        boundary_codes=("historical_callbacks_present",),
+                        evidence_only_codes=(),
+                    ),
+                    positions=CtpPositionQueryBaseline(
+                        request_id="query-positions-1",
+                        query_code=0,
+                        completed=True,
+                        timed_out=False,
+                        no_positions=False,
+                        position_count=1,
+                        positions=(),
+                    ),
+                    account=CtpAccountQueryBaseline(
+                        request_id="query-account-1",
+                        query_code=0,
+                        completed=True,
+                        timed_out=False,
+                        account=CtpAccountRecord(
+                            account_id="025292",
+                            balance=1000000.0,
+                            available=180000.0,
+                            margin=780000.0,
+                            commission=35.0,
+                            close_profit=1200.0,
+                            position_profit=-230.0,
+                        ),
+                    ),
+                ),
+                disposition="manual_review_required",
+                available_ratio=0.18,
+                margin_ratio=0.78,
+                findings=(
+                    CtpTdMergedReconciliationFinding(
+                        code="available_ratio_warn",
+                        severity="warn",
+                        action="manual_review_required",
+                        metric="available_ratio",
+                        metric_value=0.18,
+                        threshold=0.25,
+                        message="manual review",
+                    ),
+                ),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {
+            "query_adapter": FakeQueryAdapter(),
+            "instrument_provider": object(),
+            "execution_client": object(),
+            "truth_merge_adapter": FakeTruthMergeAdapter(),
+            "runtime_bridge": FakeBridge(),
+        },
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [str(script_path), "--config", str(tmp_path / "fake.json"), "--include-merged-policy"],
+    )
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 1
+    assert payload["success"] is False
+    assert payload["failure_reason"] == "merged_policy_manual_review_required"
+    assert payload["merged_policy"]["manual_review_codes"] == ["available_ratio_warn"]
+    assert payload["merged_policy"]["disposition"] == "manual_review_required"
+
+
+def test_query_adapter_smoke_propagates_shared_flow_path_to_optional_lanes(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_query_adapter_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_query_adapter_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    flow_path = tmp_path / "shared-flow"
+    calls: dict[str, object] = {}
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeQueryAdapter:
+        def query_snapshot_mainline(self, *, timeout_seconds: int, flow_path, completion_grace_seconds: float):
+            calls["query_flow_path"] = flow_path
+            return CtpQueryAdapterSnapshot(
+                positions=CtpPositionQueryBaseline(
+                    request_id="query-positions-1",
+                    query_code=0,
+                    completed=True,
+                    timed_out=False,
+                    no_positions=True,
+                    position_count=0,
+                    positions=(),
+                ),
+                account=CtpAccountQueryBaseline(
+                    request_id="query-account-1",
+                    query_code=0,
+                    completed=True,
+                    timed_out=False,
+                    account=CtpAccountRecord(
+                        account_id="025292",
+                        balance=1000000.0,
+                        available=520000.0,
+                        margin=120000.0,
+                        commission=35.0,
+                        close_profit=1200.0,
+                        position_profit=-230.0,
+                    ),
+                ),
+            )
+
+    class ProductKind:
+        value = "FUTURES"
+
+    class FakeInstrument:
+        display_symbol = "rb2610.SHFE"
+        venue_symbol = "rb2610"
+        underlying = "rb"
+        contract_month = "2610"
+        product_kind = ProductKind()
+        price_tick = 1.0
+        volume_multiple = 10
+
+    class FakeInstrumentProvider:
+        def run_live_instrument_smoke(self, *, symbol: str, timeout_seconds: int, flow_path):
+            calls["instrument_flow_path"] = flow_path
+
+            class Result:
+                request_id = "instrument-query-1"
+                loaded = True
+                instrument_count = 1
+                instruments = (FakeInstrument(),)
+
+            return Result()
+
+    class FakeExecutionClient:
+        def capture_historical_callback_boundary_policy_mainline(
+            self,
+            *,
+            timeout_seconds: int,
+            flow_path,
+            observation_grace_seconds: float,
+        ):
+            calls["order_truth_flow_path"] = flow_path
+            return CtpTdHistoricalCallbackBoundaryPolicyResult(
+                baseline=CtpTdOrderTruthBaseline(
+                    flow_path=str(flow_path),
+                    flow_mode="default_shared_flow",
+                    ready=True,
+                    login_success=True,
+                    settlement_code=0,
+                    login_front_id=7,
+                    login_session_id=8,
+                    login_max_order_ref=9,
+                    disconnect_count=0,
+                    disconnect_reasons=(),
+                    observed_callback_count=1,
+                    observed_order_event_count=1,
+                    observed_trade_event_count=0,
+                    no_callbacks_observed=False,
+                    first_order_id="49456082",
+                    first_order_ref="11",
+                    first_session_id=8,
+                    first_front_id=7,
+                    first_is_trade=False,
+                    observed_callbacks=(),
+                ),
+                disposition="evidence_only",
+                historical_callback_count=0,
+                delayed_callback_count=0,
+                current_session_callback_count=1,
+                first_historical_order_id=None,
+                first_current_session_order_id="49456090",
+                findings=(),
+            )
+
+        def capture_td_order_trade_snapshot_mainline(
+            self,
+            *,
+            timeout_seconds: int,
+            flow_path,
+            observation_grace_seconds: float,
+        ):
+            calls["order_trade_snapshot_flow_path"] = flow_path
+            return CtpTdOrderTradeSnapshot(
+                baseline=CtpTdOrderTruthBaseline(
+                    flow_path=str(flow_path),
+                    flow_mode="default_shared_flow",
+                    ready=True,
+                    login_success=True,
+                    settlement_code=0,
+                    login_front_id=7,
+                    login_session_id=8,
+                    login_max_order_ref=9,
+                    disconnect_count=0,
+                    disconnect_reasons=(),
+                    observed_callback_count=1,
+                    observed_order_event_count=1,
+                    observed_trade_event_count=0,
+                    no_callbacks_observed=False,
+                    first_order_id="49456082",
+                    first_order_ref="11",
+                    first_session_id=8,
+                    first_front_id=7,
+                    first_is_trade=False,
+                    observed_callbacks=(),
+                ),
+                disposition="evidence_only",
+                observed_order_event_count=1,
+                observed_trade_event_count=0,
+                no_order_events=False,
+                no_trade_events=True,
+                historical_order_count=0,
+                historical_trade_count=0,
+                delayed_order_count=0,
+                delayed_trade_count=0,
+                historical_residue_order_count=0,
+                historical_residue_trade_count=0,
+                current_session_order_count=1,
+                current_session_trade_count=0,
+                first_order_event_id="49456082",
+                first_trade_event_id=None,
+                first_historical_order_id=None,
+                first_historical_trade_id=None,
+                first_current_session_order_id="49456090",
+                first_current_session_trade_id=None,
+                findings=(),
+            )
+
+    class FakeTruthMergeAdapter:
+        def capture_merged_reconciliation_policy_mainline(
+            self,
+            *,
+            timeout_seconds: int,
+            flow_path,
+            observation_grace_seconds: float,
+            completion_grace_seconds: float,
+        ):
+            calls["merged_flow_path"] = flow_path
+            return CtpTdMergedReconciliationPolicyResult(
+                snapshot=CtpTdTruthMergeSnapshot(
+                    order_truth=CtpTdOrderTruthEvidenceMatrix(
+                        evidence_version="td-order-truth-evidence-v1",
+                        captured_at_utc="2026-04-10T12:00:00Z",
+                        account_id="025292",
+                        disposition="evidence_only",
+                        observed_callback_count=1,
+                        historical_callback_count=0,
+                        delayed_callback_count=0,
+                        current_session_callback_count=1,
+                        first_historical_order_id=None,
+                        first_current_session_order_id="49456090",
+                        manual_review_codes=(),
+                        boundary_codes=(),
+                        evidence_only_codes=("current_session_callbacks_present",),
+                    ),
+                    positions=CtpPositionQueryBaseline(
+                        request_id="query-positions-1",
+                        query_code=0,
+                        completed=True,
+                        timed_out=False,
+                        no_positions=True,
+                        position_count=0,
+                        positions=(),
+                    ),
+                    account=CtpAccountQueryBaseline(
+                        request_id="query-account-1",
+                        query_code=0,
+                        completed=True,
+                        timed_out=False,
+                        account=CtpAccountRecord(
+                            account_id="025292",
+                            balance=1000000.0,
+                            available=520000.0,
+                            margin=120000.0,
+                            commission=35.0,
+                            close_profit=1200.0,
+                            position_profit=-230.0,
+                        ),
+                    ),
+                ),
+                disposition="evidence_only",
+                available_ratio=0.52,
+                margin_ratio=0.12,
+                findings=(),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {
+            "query_adapter": FakeQueryAdapter(),
+            "instrument_provider": FakeInstrumentProvider(),
+            "execution_client": FakeExecutionClient(),
+            "truth_merge_adapter": FakeTruthMergeAdapter(),
+            "runtime_bridge": FakeBridge(),
+        },
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--flow-path",
+            str(flow_path),
+            "--instrument-symbol",
+            "rb2610",
+            "--include-order-truth",
+            "--include-order-trade-snapshot",
+            "--include-merged-policy",
+        ],
+    )
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert payload["flow_path"] == str(flow_path)
+    assert calls["query_flow_path"] == flow_path
+    assert calls["instrument_flow_path"] == flow_path
+    assert calls["order_truth_flow_path"] == flow_path
+    assert calls["order_trade_snapshot_flow_path"] == flow_path
+    assert calls["merged_flow_path"] == flow_path
+
+
+def test_reconciliation_snapshot_smoke_reports_disposition_and_findings(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_reconciliation_snapshot_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_reconciliation_snapshot_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAdapter:
+        def capture_snapshot_mainline(self, *, timeout_seconds: int, completion_grace_seconds: float):
+            return CtpReconciliationSnapshot(
+                query_snapshot=CtpQueryAdapterSnapshot(
+                    positions=CtpPositionQueryBaseline(
+                        request_id="query-positions-1",
+                        query_code=0,
+                        completed=True,
+                        timed_out=False,
+                        no_positions=False,
+                        position_count=2,
+                        positions=(),
+                    ),
+                    account=CtpAccountQueryBaseline(
+                        request_id="query-account-1",
+                        query_code=0,
+                        completed=True,
+                        timed_out=False,
+                        account=CtpAccountRecord(
+                            account_id="025292",
+                            balance=1000000.0,
+                            available=214000.0,
+                            margin=780000.0,
+                            commission=35.0,
+                            close_profit=1200.0,
+                            position_profit=-230.0,
+                        ),
+                    ),
+                )
+            )
+
+        def summarize_snapshot(self, snapshot):
+            return CtpReconciliationSummary(
+                position_request_id="query-positions-1",
+                account_request_id="query-account-1",
+                account_id="025292",
+                position_line_count=2,
+                symbol_count=1,
+                total_long_qty=3,
+                total_short_qty=0,
+                gross_position_qty=3,
+                total_position_cost=61234.5,
+                account_balance=1000000.0,
+                account_available=214000.0,
+                account_margin=780000.0,
+                available_ratio=0.214,
+                margin_ratio=0.78,
+                dominant_exposure_symbol="rb2610",
+                dominant_exposure_exchange="SHFE",
+                dominant_exposure_abs_net_qty=3,
+                exposures=(),
+            )
+
+        def evaluate_summary(self, summary):
+            return CtpReconciliationPolicyResult(
+                summary=summary,
+                disposition="manual_review_required",
+                requires_manual_review=True,
+                findings=(
+                    CtpReconciliationPolicyFinding(
+                        code="available_ratio_warn",
+                        severity="warn",
+                        action="manual_review_required",
+                        metric="available_ratio",
+                        metric_value=0.214,
+                        threshold=0.25,
+                        message="Available ratio is below the baseline comfort threshold.",
+                    ),
+                    CtpReconciliationPolicyFinding(
+                        code="margin_ratio_warn",
+                        severity="warn",
+                        action="manual_review_required",
+                        metric="margin_ratio",
+                        metric_value=0.78,
+                        threshold=0.75,
+                        message="Margin ratio is above the baseline comfort threshold.",
+                    ),
+                ),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"reconciliation_adapter": FakeAdapter(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert payload["baseline"] == "reconciliation-snapshot-v1"
+    assert payload["success"] is True
+    assert payload["failure_reason"] is None
+    assert payload["positions"]["completed"] is True
+    assert payload["account"]["account_id"] == "025292"
+    assert payload["disposition"] == "manual_review_required"
+    assert payload["requires_manual_review"] is True
+    assert payload["manual_review_codes"] == ["available_ratio_warn", "margin_ratio_warn"]
+    assert payload["finding_count"] == 2
+
+
+def test_reconciliation_snapshot_smoke_reports_positions_incomplete_failure(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_reconciliation_snapshot_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_reconciliation_snapshot_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAdapter:
+        def capture_snapshot_mainline(self, *, timeout_seconds: int, completion_grace_seconds: float):
+            return CtpReconciliationSnapshot(
+                query_snapshot=CtpQueryAdapterSnapshot(
+                    positions=CtpPositionQueryBaseline(
+                        request_id="query-positions-1",
+                        query_code=0,
+                        completed=False,
+                        timed_out=False,
+                        no_positions=False,
+                        position_count=0,
+                        positions=(),
+                    ),
+                    account=CtpAccountQueryBaseline(
+                        request_id="query-account-1",
+                        query_code=0,
+                        completed=True,
+                        timed_out=False,
+                        account=CtpAccountRecord(
+                            account_id="025292",
+                            balance=1000000.0,
+                            available=214000.0,
+                            margin=780000.0,
+                            commission=35.0,
+                            close_profit=1200.0,
+                            position_profit=-230.0,
+                        ),
+                    ),
+                )
+            )
+
+        def summarize_snapshot(self, snapshot):
+            return CtpReconciliationSummary(
+                position_request_id="query-positions-1",
+                account_request_id="query-account-1",
+                account_id="025292",
+                position_line_count=0,
+                symbol_count=0,
+                total_long_qty=0,
+                total_short_qty=0,
+                gross_position_qty=0,
+                total_position_cost=0.0,
+                account_balance=1000000.0,
+                account_available=214000.0,
+                account_margin=780000.0,
+                available_ratio=0.214,
+                margin_ratio=0.78,
+                dominant_exposure_symbol=None,
+                dominant_exposure_exchange=None,
+                dominant_exposure_abs_net_qty=0,
+                exposures=(),
+            )
+
+        def evaluate_summary(self, summary):
+            return CtpReconciliationPolicyResult(
+                summary=summary,
+                disposition="evidence_only",
+                requires_manual_review=False,
+                findings=(
+                    CtpReconciliationPolicyFinding(
+                        code="flat_positions",
+                        severity="info",
+                        action="evidence_only",
+                        metric="position_line_count",
+                        metric_value=0,
+                        threshold="> 0",
+                        message="No open position lines were returned by the live snapshot.",
+                    ),
+                ),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"reconciliation_adapter": FakeAdapter(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 1
+    assert payload["baseline"] == "reconciliation-snapshot-v1"
+    assert payload["success"] is False
+    assert payload["failure_reason"] == "positions_incomplete"
+
+
+def test_reconciliation_snapshot_smoke_writes_session_labeled_export(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_reconciliation_snapshot_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_reconciliation_snapshot_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAdapter:
+        def capture_snapshot_mainline(self, *, timeout_seconds: int, completion_grace_seconds: float):
+            return CtpReconciliationSnapshot(
+                query_snapshot=CtpQueryAdapterSnapshot(
+                    positions=CtpPositionQueryBaseline(
+                        request_id="query-positions-1",
+                        query_code=0,
+                        completed=True,
+                        timed_out=False,
+                        no_positions=True,
+                        position_count=0,
+                        positions=(),
+                    ),
+                    account=CtpAccountQueryBaseline(
+                        request_id="query-account-1",
+                        query_code=0,
+                        completed=True,
+                        timed_out=False,
+                        account=CtpAccountRecord(
+                            account_id="025292",
+                            balance=1000000.0,
+                            available=214000.0,
+                            margin=780000.0,
+                            commission=35.0,
+                            close_profit=1200.0,
+                            position_profit=-230.0,
+                        ),
+                    ),
+                )
+            )
+
+        def summarize_snapshot(self, snapshot):
+            return CtpReconciliationSummary(
+                position_request_id="query-positions-1",
+                account_request_id="query-account-1",
+                account_id="025292",
+                position_line_count=0,
+                symbol_count=0,
+                total_long_qty=0,
+                total_short_qty=0,
+                gross_position_qty=0,
+                total_position_cost=0.0,
+                account_balance=1000000.0,
+                account_available=214000.0,
+                account_margin=780000.0,
+                available_ratio=0.214,
+                margin_ratio=0.78,
+                dominant_exposure_symbol=None,
+                dominant_exposure_exchange=None,
+                dominant_exposure_abs_net_qty=0,
+                exposures=(),
+            )
+
+        def evaluate_summary(self, summary):
+            return CtpReconciliationPolicyResult(
+                summary=summary,
+                disposition="evidence_only",
+                requires_manual_review=False,
+                findings=(),
+            )
+
+    evidence_root = tmp_path / "evidence-root"
+    expected_output = evidence_root / "recon-a" / "reconciliation_snapshot.json"
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"reconciliation_adapter": FakeAdapter(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--session-label",
+            "recon-a",
+            "--evidence-root",
+            str(evidence_root),
+        ],
+    )
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    exported = json.loads(expected_output.read_text(encoding="utf-8"))
+
+    assert exit_code == 0
+    assert payload["session_label"] == "recon-a"
+    assert payload["export"] == {
+        "path": str(expected_output),
+        "written": True,
+        "session_label": "recon-a",
+        "evidence_root": str(evidence_root),
+        "explicit_path": False,
+    }
+    assert exported["export"]["path"] == str(expected_output)
+
+
+def test_reconciliation_snapshot_smoke_rejects_conflicting_export_targets(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_reconciliation_snapshot_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_reconciliation_snapshot_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--output-json",
+            str(tmp_path / "explicit.json"),
+            "--evidence-root",
+            str(tmp_path / "evidence-root"),
+        ],
+    )
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 1
+    assert payload["error_stage"] == "argument_validation"
+    assert payload["error_type"] == "ValueError"
+    assert "output_json conflicts with evidence_root" in payload["error_message"]
+
+
+def test_live_ops_snapshot_smoke_reports_structured_snapshot(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_live_ops_snapshot_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_live_ops_snapshot_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAdapter:
+        def capture_live_ops_snapshot_mainline(
+            self,
+            *,
+            timeout_seconds: int,
+            td_shared_flow_path,
+            td_isolated_flow_path,
+            md_flow_path,
+            td_flow_path,
+            query_flow_path,
+            observation_grace_seconds: float,
+            completion_grace_seconds: float,
+        ):
+            return CtpLiveOpsSnapshot(
+                startup_truth=CtpStartupTruthEvidenceMatrix(
+                    evidence_version="startup-truth-evidence-v1",
+                    captured_at_utc="2026-04-02T08:00:00Z",
+                    account_id="025292",
+                    disposition="rebuild_required",
+                    shared_flow_reuse_allowed=False,
+                    session_rotated=True,
+                    max_order_ref_reset=True,
+                    shared_flow_path="D:\\repo\\var\\td_flow_smoke",
+                    isolated_flow_path="D:\\repo\\output\\debug\\td_flow_isolated",
+                    shared_session_id=100,
+                    isolated_session_id=101,
+                    shared_max_order_ref=8,
+                    isolated_max_order_ref=1,
+                    shared_disconnect_count=1,
+                    isolated_disconnect_count=0,
+                    manual_review_codes=(),
+                    rebuild_required_codes=("shared_flow_requires_isolated_rebuild",),
+                    evidence_only_codes=("fresh_session_identity_observed",),
+                ),
+                md_truth=CtpMdTruthEvidenceMatrix(
+                    evidence_version="md-truth-evidence-v1",
+                    captured_at_utc="2026-04-02T08:01:00Z",
+                    account_id="025292",
+                    symbol="rb2610",
+                    disposition="evidence_only",
+                    startup_ready=True,
+                    restore_triggered=True,
+                    restore_succeeded=True,
+                    startup_flow_path="D:\\repo\\var\\md_flow_smoke",
+                    restored_flow_path="D:\\repo\\var\\md_flow_smoke",
+                    startup_first_tick_ts_epoch_us=1000,
+                    restored_first_tick_ts_epoch_us=2000,
+                    manual_review_codes=(),
+                    restore_required_codes=(),
+                    evidence_only_codes=("restore_resubscribe_triggered",),
+                ),
+                td_truth=CtpTdMergedEvidenceMatrix(
+                    evidence_version="td-merged-evidence-v1",
+                    captured_at_utc="2026-04-02T08:02:00Z",
+                    account_id="025292",
+                    disposition="manual_review_required",
+                    position_count=73,
+                    observed_callback_count=9,
+                    historical_callback_count=9,
+                    current_session_callback_count=0,
+                    available_ratio=0.214,
+                    margin_ratio=0.78,
+                    manual_review_codes=("available_ratio_warn",),
+                    boundary_codes=("historical_callbacks_present",),
+                    evidence_only_codes=("no_current_session_callbacks",),
+                ),
+                reconciliation=CtpReconciliationEvidence(
+                    evidence_version="reconciliation-evidence-v1",
+                    captured_at_utc="2026-04-02T08:03:00Z",
+                    account_id="025292",
+                    disposition="manual_review_required",
+                    requires_manual_review=True,
+                    finding_count=2,
+                    manual_review_codes=("available_ratio_warn",),
+                    evidence_only_codes=("dominant_exposure_watch",),
+                    position_line_count=73,
+                    symbol_count=41,
+                    gross_position_qty=183,
+                    available_ratio=0.214,
+                    margin_ratio=0.78,
+                    dominant_exposure_symbol="rb2610",
+                    dominant_exposure_abs_net_qty=3,
+                    top_exposures=(),
+                ),
+            )
+
+        def summarize_live_ops_snapshot(self, snapshot):
+            return CtpLiveOpsSnapshotSummary(
+                baseline="live-ops-snapshot-v1",
+                account_id="025292",
+                symbol="rb2610",
+                startup_disposition="rebuild_required",
+                md_disposition="evidence_only",
+                td_disposition="manual_review_required",
+                reconciliation_disposition="manual_review_required",
+                startup_shared_flow_reuse_allowed=False,
+                startup_session_rotated=True,
+                md_restore_succeeded=True,
+                position_count=73,
+                observed_callback_count=9,
+                historical_callback_count=9,
+                current_session_callback_count=0,
+                available_ratio=0.214,
+                margin_ratio=0.78,
+                manual_review_codes=("available_ratio_warn",),
+                rebuild_required_codes=("shared_flow_requires_isolated_rebuild",),
+                restore_required_codes=(),
+                boundary_codes=("historical_callbacks_present",),
+                evidence_only_codes=(
+                    "fresh_session_identity_observed",
+                    "restore_resubscribe_triggered",
+                    "no_current_session_callbacks",
+                ),
+            )
+
+        def evaluate_live_ops_policy(self, summary):
+            return CtpLiveOpsPolicyResult(
+                summary=summary,
+                disposition="manual_review_required",
+                findings=(
+                    CtpLiveOpsPolicyFinding(
+                        code="manual_review_codes_present",
+                        severity="warn",
+                        action="manual_review_required",
+                        metric="manual_review_codes",
+                        metric_value="available_ratio_warn",
+                        threshold="empty",
+                        message="Underlying truth layers raised manual review findings.",
+                    ),
+                    CtpLiveOpsPolicyFinding(
+                        code="startup_rebuild_required",
+                        severity="warn",
+                        action="rebuild_required",
+                        metric="startup_shared_flow_reuse_allowed",
+                        metric_value=False,
+                        threshold=True,
+                        message="TD startup truth still requires isolated rebuild-safe flow handling.",
+                    ),
+                ),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"live_ops_snapshot_adapter": FakeAdapter(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert payload["baseline"] == "live-ops-snapshot-v1"
+    assert payload["success"] is True
+    assert payload["failure_reason"] is None
+    assert payload["startup"]["disposition"] == "rebuild_required"
+    assert payload["md"]["symbol"] == "rb2610"
+    assert payload["td"]["boundary_codes"] == ["historical_callbacks_present"]
+    assert payload["reconciliation"]["requires_manual_review"] is True
+    assert payload["disposition"] == "manual_review_required"
+    assert payload["requires_manual_review"] is True
+    assert payload["manual_review_codes"] == ["available_ratio_warn"]
+    assert payload["finding_count"] == 2
+
+
+def test_live_ops_snapshot_smoke_reports_account_id_missing_failure(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_live_ops_snapshot_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_live_ops_snapshot_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAdapter:
+        def capture_live_ops_snapshot_mainline(
+            self,
+            *,
+            timeout_seconds: int,
+            td_shared_flow_path,
+            td_isolated_flow_path,
+            md_flow_path,
+            td_flow_path,
+            query_flow_path,
+            observation_grace_seconds: float,
+            completion_grace_seconds: float,
+        ):
+            return CtpLiveOpsSnapshot(
+                startup_truth=CtpStartupTruthEvidenceMatrix(
+                    evidence_version="startup-truth-evidence-v1",
+                    captured_at_utc="2026-04-02T08:00:00Z",
+                    account_id=None,
+                    disposition="evidence_only",
+                    shared_flow_reuse_allowed=True,
+                    session_rotated=False,
+                    max_order_ref_reset=True,
+                    shared_flow_path="D:\\repo\\var\\td_flow_smoke",
+                    isolated_flow_path="D:\\repo\\output\\debug\\td_flow_isolated",
+                    shared_session_id=100,
+                    isolated_session_id=101,
+                    shared_max_order_ref=8,
+                    isolated_max_order_ref=1,
+                    shared_disconnect_count=0,
+                    isolated_disconnect_count=0,
+                    manual_review_codes=(),
+                    rebuild_required_codes=(),
+                    evidence_only_codes=(),
+                ),
+                md_truth=CtpMdTruthEvidenceMatrix(
+                    evidence_version="md-truth-evidence-v1",
+                    captured_at_utc="2026-04-02T08:01:00Z",
+                    account_id=None,
+                    symbol="rb2610",
+                    disposition="evidence_only",
+                    startup_ready=True,
+                    restore_triggered=False,
+                    restore_succeeded=True,
+                    startup_flow_path="D:\\repo\\var\\md_flow_smoke",
+                    restored_flow_path=None,
+                    startup_first_tick_ts_epoch_us=1000,
+                    restored_first_tick_ts_epoch_us=None,
+                    manual_review_codes=(),
+                    restore_required_codes=(),
+                    evidence_only_codes=(),
+                ),
+                td_truth=CtpTdMergedEvidenceMatrix(
+                    evidence_version="td-merged-evidence-v1",
+                    captured_at_utc="2026-04-02T08:02:00Z",
+                    account_id=None,
+                    disposition="evidence_only",
+                    position_count=0,
+                    observed_callback_count=0,
+                    historical_callback_count=0,
+                    current_session_callback_count=0,
+                    available_ratio=None,
+                    margin_ratio=None,
+                    manual_review_codes=(),
+                    boundary_codes=(),
+                    evidence_only_codes=(),
+                ),
+                reconciliation=CtpReconciliationEvidence(
+                    evidence_version="reconciliation-evidence-v1",
+                    captured_at_utc="2026-04-02T08:03:00Z",
+                    account_id=None,
+                    disposition="evidence_only",
+                    requires_manual_review=False,
+                    finding_count=0,
+                    manual_review_codes=(),
+                    evidence_only_codes=(),
+                    position_line_count=0,
+                    symbol_count=0,
+                    gross_position_qty=0,
+                    available_ratio=None,
+                    margin_ratio=None,
+                    dominant_exposure_symbol=None,
+                    dominant_exposure_abs_net_qty=0,
+                    top_exposures=(),
+                ),
+            )
+
+        def summarize_live_ops_snapshot(self, snapshot):
+            return CtpLiveOpsSnapshotSummary(
+                baseline="live-ops-snapshot-v1",
+                account_id=None,
+                symbol="rb2610",
+                startup_disposition="evidence_only",
+                md_disposition="evidence_only",
+                td_disposition="evidence_only",
+                reconciliation_disposition="evidence_only",
+                startup_shared_flow_reuse_allowed=True,
+                startup_session_rotated=False,
+                md_restore_succeeded=True,
+                position_count=0,
+                observed_callback_count=0,
+                historical_callback_count=0,
+                current_session_callback_count=0,
+                available_ratio=None,
+                margin_ratio=None,
+                manual_review_codes=(),
+                rebuild_required_codes=(),
+                restore_required_codes=(),
+                boundary_codes=(),
+                evidence_only_codes=(),
+            )
+
+        def evaluate_live_ops_policy(self, summary):
+            return CtpLiveOpsPolicyResult(
+                summary=summary,
+                disposition="manual_review_required",
+                findings=(
+                    CtpLiveOpsPolicyFinding(
+                        code="missing_account_identity",
+                        severity="critical",
+                        action="manual_review_required",
+                        metric="account_id",
+                        metric_value=None,
+                        threshold="present",
+                        message="Live ops snapshot is missing account identity.",
+                    ),
+                ),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"live_ops_snapshot_adapter": FakeAdapter(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 1
+    assert payload["baseline"] == "live-ops-snapshot-v1"
+    assert payload["success"] is False
+    assert payload["failure_reason"] == "account_id_missing"
+    assert payload["account_id"] is None
+    assert payload["disposition"] == "manual_review_required"
+    assert payload["requires_manual_review"] is True
+
+
+def test_live_ops_snapshot_smoke_writes_session_labeled_export(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_live_ops_snapshot_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_live_ops_snapshot_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAdapter:
+        def capture_live_ops_snapshot_mainline(
+            self,
+            *,
+            timeout_seconds: int,
+            td_shared_flow_path,
+            td_isolated_flow_path,
+            md_flow_path,
+            td_flow_path,
+            query_flow_path,
+            observation_grace_seconds: float,
+            completion_grace_seconds: float,
+        ):
+            return CtpLiveOpsSnapshot(
+                startup_truth=CtpStartupTruthEvidenceMatrix(
+                    evidence_version="startup-truth-evidence-v1",
+                    captured_at_utc="2026-04-02T08:00:00Z",
+                    account_id="025292",
+                    disposition="evidence_only",
+                    shared_flow_reuse_allowed=True,
+                    session_rotated=False,
+                    max_order_ref_reset=True,
+                    shared_flow_path="D:\\repo\\var\\td_flow_smoke",
+                    isolated_flow_path=None,
+                    shared_session_id=100,
+                    isolated_session_id=None,
+                    shared_max_order_ref=8,
+                    isolated_max_order_ref=None,
+                    shared_disconnect_count=0,
+                    isolated_disconnect_count=0,
+                    manual_review_codes=(),
+                    rebuild_required_codes=(),
+                    evidence_only_codes=(),
+                ),
+                md_truth=CtpMdTruthEvidenceMatrix(
+                    evidence_version="md-truth-evidence-v1",
+                    captured_at_utc="2026-04-02T08:01:00Z",
+                    account_id="025292",
+                    symbol="rb2610",
+                    disposition="evidence_only",
+                    startup_ready=True,
+                    restore_triggered=False,
+                    restore_succeeded=True,
+                    startup_flow_path="D:\\repo\\var\\md_flow_smoke",
+                    restored_flow_path=None,
+                    startup_first_tick_ts_epoch_us=1000,
+                    restored_first_tick_ts_epoch_us=None,
+                    manual_review_codes=(),
+                    restore_required_codes=(),
+                    evidence_only_codes=(),
+                ),
+                td_truth=CtpTdMergedEvidenceMatrix(
+                    evidence_version="td-merged-evidence-v1",
+                    captured_at_utc="2026-04-02T08:02:00Z",
+                    account_id="025292",
+                    disposition="evidence_only",
+                    position_count=0,
+                    observed_callback_count=0,
+                    historical_callback_count=0,
+                    current_session_callback_count=0,
+                    available_ratio=0.52,
+                    margin_ratio=0.12,
+                    manual_review_codes=(),
+                    boundary_codes=(),
+                    evidence_only_codes=(),
+                ),
+                reconciliation=CtpReconciliationEvidence(
+                    evidence_version="reconciliation-evidence-v1",
+                    captured_at_utc="2026-04-02T08:03:00Z",
+                    account_id="025292",
+                    disposition="evidence_only",
+                    requires_manual_review=False,
+                    finding_count=0,
+                    manual_review_codes=(),
+                    evidence_only_codes=(),
+                    position_line_count=0,
+                    symbol_count=0,
+                    gross_position_qty=0,
+                    available_ratio=0.52,
+                    margin_ratio=0.12,
+                    dominant_exposure_symbol=None,
+                    dominant_exposure_abs_net_qty=0,
+                    top_exposures=(),
+                ),
+            )
+
+        def summarize_live_ops_snapshot(self, snapshot):
+            return CtpLiveOpsSnapshotSummary(
+                baseline="live-ops-snapshot-v1",
+                account_id="025292",
+                symbol="rb2610",
+                startup_disposition="evidence_only",
+                md_disposition="evidence_only",
+                td_disposition="evidence_only",
+                reconciliation_disposition="evidence_only",
+                startup_shared_flow_reuse_allowed=True,
+                startup_session_rotated=False,
+                md_restore_succeeded=True,
+                position_count=0,
+                observed_callback_count=0,
+                historical_callback_count=0,
+                current_session_callback_count=0,
+                available_ratio=0.52,
+                margin_ratio=0.12,
+                manual_review_codes=(),
+                rebuild_required_codes=(),
+                restore_required_codes=(),
+                boundary_codes=(),
+                evidence_only_codes=(),
+            )
+
+        def evaluate_live_ops_policy(self, summary):
+            return CtpLiveOpsPolicyResult(
+                summary=summary,
+                disposition="evidence_only",
+                findings=(),
+            )
+
+    evidence_root = tmp_path / "evidence-root"
+    expected_output = evidence_root / "ops-a" / "live_ops_snapshot.json"
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"live_ops_snapshot_adapter": FakeAdapter(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--session-label",
+            "ops-a",
+            "--evidence-root",
+            str(evidence_root),
+        ],
+    )
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    exported = json.loads(expected_output.read_text(encoding="utf-8"))
+
+    assert exit_code == 0
+    assert payload["flow_mode"] == "default_shared_flow"
+    assert payload["session_label"] == "ops-a"
+    assert payload["export"] == {
+        "path": str(expected_output),
+        "written": True,
+        "session_label": "ops-a",
+        "evidence_root": str(evidence_root),
+        "explicit_path": False,
+    }
+    assert exported["export"]["path"] == str(expected_output)
+
+
+def test_live_ops_snapshot_smoke_rejects_conflicting_export_targets(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_live_ops_snapshot_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_live_ops_snapshot_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--output-json",
+            str(tmp_path / "explicit.json"),
+            "--evidence-root",
+            str(tmp_path / "evidence-root"),
+        ],
+    )
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 1
+    assert payload["error_stage"] == "argument_validation"
+    assert payload["error_type"] == "ValueError"
+    assert "output_json conflicts with evidence_root" in payload["error_message"]
+
+
+def test_live_ops_policy_smoke_reports_structured_result(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_live_ops_policy_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_live_ops_policy_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAdapter:
+        def capture_live_ops_policy_mainline(
+            self,
+            *,
+            timeout_seconds: int,
+            td_shared_flow_path,
+            td_isolated_flow_path,
+            md_flow_path,
+            td_flow_path,
+            query_flow_path,
+            observation_grace_seconds: float,
+            completion_grace_seconds: float,
+        ):
+            return CtpLiveOpsPolicyResult(
+                summary=CtpLiveOpsSnapshotSummary(
+                    baseline="live-ops-snapshot-v1",
+                    account_id="025292",
+                    symbol="rb2610",
+                    startup_disposition="rebuild_required",
+                    md_disposition="evidence_only",
+                    td_disposition="manual_review_required",
+                    reconciliation_disposition="manual_review_required",
+                    startup_shared_flow_reuse_allowed=False,
+                    startup_session_rotated=True,
+                    md_restore_succeeded=True,
+                    position_count=73,
+                    observed_callback_count=9,
+                    historical_callback_count=9,
+                    current_session_callback_count=0,
+                    available_ratio=0.214,
+                    margin_ratio=0.78,
+                    manual_review_codes=("available_ratio_warn",),
+                    rebuild_required_codes=("shared_flow_requires_isolated_rebuild",),
+                    restore_required_codes=(),
+                    boundary_codes=("historical_callbacks_present",),
+                    evidence_only_codes=("no_current_session_callbacks",),
+                ),
+                disposition="manual_review_required",
+                findings=(
+                    CtpLiveOpsPolicyFinding(
+                        code="manual_review_codes_present",
+                        severity="warn",
+                        action="manual_review_required",
+                        metric="manual_review_codes",
+                        metric_value="available_ratio_warn",
+                        threshold="empty",
+                        message="Underlying truth layers raised manual review findings.",
+                    ),
+                ),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"live_ops_snapshot_adapter": FakeAdapter(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert payload["baseline"] == "live-ops-policy-v1"
+    assert payload["success"] is True
+    assert payload["failure_reason"] is None
+    assert payload["disposition"] == "manual_review_required"
+    assert payload["requires_manual_review"] is True
+    assert payload["finding_count"] == 1
+    assert payload["manual_review_codes"] == ["available_ratio_warn"]
+
+
+def test_live_ops_policy_smoke_reports_account_id_missing_failure(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_live_ops_policy_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_live_ops_policy_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAdapter:
+        def capture_live_ops_policy_mainline(
+            self,
+            *,
+            timeout_seconds: int,
+            td_shared_flow_path,
+            td_isolated_flow_path,
+            md_flow_path,
+            td_flow_path,
+            query_flow_path,
+            observation_grace_seconds: float,
+            completion_grace_seconds: float,
+        ):
+            return CtpLiveOpsPolicyResult(
+                summary=CtpLiveOpsSnapshotSummary(
+                    baseline="live-ops-snapshot-v1",
+                    account_id=None,
+                    symbol="rb2610",
+                    startup_disposition="evidence_only",
+                    md_disposition="evidence_only",
+                    td_disposition="evidence_only",
+                    reconciliation_disposition="evidence_only",
+                    startup_shared_flow_reuse_allowed=True,
+                    startup_session_rotated=False,
+                    md_restore_succeeded=True,
+                    position_count=0,
+                    observed_callback_count=0,
+                    historical_callback_count=0,
+                    current_session_callback_count=0,
+                    available_ratio=None,
+                    margin_ratio=None,
+                    manual_review_codes=(),
+                    rebuild_required_codes=(),
+                    restore_required_codes=(),
+                    boundary_codes=(),
+                    evidence_only_codes=(),
+                ),
+                disposition="manual_review_required",
+                findings=(
+                    CtpLiveOpsPolicyFinding(
+                        code="missing_account_identity",
+                        severity="critical",
+                        action="manual_review_required",
+                        metric="account_id",
+                        metric_value=None,
+                        threshold="present",
+                        message="Live ops policy is missing account identity.",
+                    ),
+                ),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"live_ops_snapshot_adapter": FakeAdapter(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 1
+    assert payload["baseline"] == "live-ops-policy-v1"
+    assert payload["success"] is False
+    assert payload["failure_reason"] == "account_id_missing"
+    assert payload["account_id"] is None
+    assert payload["disposition"] == "manual_review_required"
+
+
+def test_live_ops_policy_smoke_writes_session_labeled_export(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_live_ops_policy_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_live_ops_policy_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAdapter:
+        def capture_live_ops_policy_mainline(
+            self,
+            *,
+            timeout_seconds: int,
+            td_shared_flow_path,
+            td_isolated_flow_path,
+            md_flow_path,
+            td_flow_path,
+            query_flow_path,
+            observation_grace_seconds: float,
+            completion_grace_seconds: float,
+        ):
+            return CtpLiveOpsPolicyResult(
+                summary=CtpLiveOpsSnapshotSummary(
+                    baseline="live-ops-snapshot-v1",
+                    account_id="025292",
+                    symbol="rb2610",
+                    startup_disposition="evidence_only",
+                    md_disposition="evidence_only",
+                    td_disposition="evidence_only",
+                    reconciliation_disposition="evidence_only",
+                    startup_shared_flow_reuse_allowed=True,
+                    startup_session_rotated=False,
+                    md_restore_succeeded=True,
+                    position_count=0,
+                    observed_callback_count=0,
+                    historical_callback_count=0,
+                    current_session_callback_count=0,
+                    available_ratio=0.52,
+                    margin_ratio=0.12,
+                    manual_review_codes=(),
+                    rebuild_required_codes=(),
+                    restore_required_codes=(),
+                    boundary_codes=(),
+                    evidence_only_codes=(),
+                ),
+                disposition="evidence_only",
+                findings=(),
+            )
+
+    evidence_root = tmp_path / "evidence-root"
+    expected_output = evidence_root / "ops-policy-a" / "live_ops_policy.json"
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"live_ops_snapshot_adapter": FakeAdapter(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--session-label",
+            "ops-policy-a",
+            "--evidence-root",
+            str(evidence_root),
+        ],
+    )
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    exported = json.loads(expected_output.read_text(encoding="utf-8"))
+
+    assert exit_code == 0
+    assert payload["flow_mode"] == "default_shared_flow"
+    assert payload["session_label"] == "ops-policy-a"
+    assert payload["export"] == {
+        "path": str(expected_output),
+        "written": True,
+        "session_label": "ops-policy-a",
+        "evidence_root": str(evidence_root),
+        "explicit_path": False,
+    }
+    assert exported["export"]["path"] == str(expected_output)
+
+
+def test_live_ops_policy_smoke_rejects_conflicting_export_targets(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_live_ops_policy_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_live_ops_policy_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--output-json",
+            str(tmp_path / "explicit.json"),
+            "--evidence-root",
+            str(tmp_path / "evidence-root"),
+        ],
+    )
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 1
+    assert payload["error_stage"] == "argument_validation"
+    assert payload["error_type"] == "ValueError"
+    assert "output_json conflicts with evidence_root" in payload["error_message"]
+
+
+def test_live_ops_evidence_matrix_smoke_reports_structured_result(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_live_ops_evidence_matrix_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_live_ops_evidence_matrix_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAdapter:
+        def capture_live_ops_evidence_matrix_mainline(
+            self,
+            *,
+            timeout_seconds: int,
+            td_shared_flow_path,
+            td_isolated_flow_path,
+            md_flow_path,
+            td_flow_path,
+            query_flow_path,
+            observation_grace_seconds: float,
+            completion_grace_seconds: float,
+        ):
+            return CtpLiveOpsEvidenceMatrix(
+                evidence_version="live-ops-evidence-v1",
+                account_id="025292",
+                symbol="rb2610",
+                disposition="manual_review_required",
+                startup_disposition="rebuild_required",
+                md_disposition="evidence_only",
+                td_disposition="manual_review_required",
+                reconciliation_disposition="manual_review_required",
+                startup_shared_flow_reuse_allowed=False,
+                startup_session_rotated=True,
+                md_restore_succeeded=True,
+                position_count=73,
+                observed_callback_count=9,
+                historical_callback_count=9,
+                current_session_callback_count=0,
+                available_ratio=0.214,
+                margin_ratio=0.78,
+                manual_review_codes=("available_ratio_warn",),
+                rebuild_required_codes=("shared_flow_requires_isolated_rebuild",),
+                restore_required_codes=(),
+                boundary_codes=("historical_callbacks_present",),
+                evidence_only_codes=("no_current_session_callbacks",),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"live_ops_snapshot_adapter": FakeAdapter(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert payload["baseline"] == "live-ops-evidence-matrix-v1"
+    assert payload["success"] is True
+    assert payload["failure_reason"] is None
+    assert payload["disposition"] == "manual_review_required"
+    assert payload["requires_manual_review"] is True
+    assert payload["manual_review_codes"] == ["available_ratio_warn"]
+
+
+def test_live_ops_evidence_matrix_smoke_reports_account_id_missing_failure(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_live_ops_evidence_matrix_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_live_ops_evidence_matrix_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAdapter:
+        def capture_live_ops_evidence_matrix_mainline(
+            self,
+            *,
+            timeout_seconds: int,
+            td_shared_flow_path,
+            td_isolated_flow_path,
+            md_flow_path,
+            td_flow_path,
+            query_flow_path,
+            observation_grace_seconds: float,
+            completion_grace_seconds: float,
+        ):
+            return CtpLiveOpsEvidenceMatrix(
+                evidence_version="live-ops-evidence-v1",
+                account_id=None,
+                symbol="rb2610",
+                disposition="manual_review_required",
+                startup_disposition="evidence_only",
+                md_disposition="evidence_only",
+                td_disposition="evidence_only",
+                reconciliation_disposition="evidence_only",
+                startup_shared_flow_reuse_allowed=True,
+                startup_session_rotated=False,
+                md_restore_succeeded=True,
+                position_count=0,
+                observed_callback_count=0,
+                historical_callback_count=0,
+                current_session_callback_count=0,
+                available_ratio=None,
+                margin_ratio=None,
+                manual_review_codes=(),
+                rebuild_required_codes=(),
+                restore_required_codes=(),
+                boundary_codes=(),
+                evidence_only_codes=(),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"live_ops_snapshot_adapter": FakeAdapter(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 1
+    assert payload["baseline"] == "live-ops-evidence-matrix-v1"
+    assert payload["success"] is False
+    assert payload["failure_reason"] == "account_id_missing"
+    assert payload["account_id"] is None
+
+
+def test_live_ops_evidence_matrix_smoke_writes_session_labeled_export(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_live_ops_evidence_matrix_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_live_ops_evidence_matrix_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAdapter:
+        def capture_live_ops_evidence_matrix_mainline(
+            self,
+            *,
+            timeout_seconds: int,
+            td_shared_flow_path,
+            td_isolated_flow_path,
+            md_flow_path,
+            td_flow_path,
+            query_flow_path,
+            observation_grace_seconds: float,
+            completion_grace_seconds: float,
+        ):
+            return CtpLiveOpsEvidenceMatrix(
+                evidence_version="live-ops-evidence-v1",
+                account_id="025292",
+                symbol="rb2610",
+                disposition="evidence_only",
+                startup_disposition="evidence_only",
+                md_disposition="evidence_only",
+                td_disposition="evidence_only",
+                reconciliation_disposition="evidence_only",
+                startup_shared_flow_reuse_allowed=True,
+                startup_session_rotated=False,
+                md_restore_succeeded=True,
+                position_count=0,
+                observed_callback_count=0,
+                historical_callback_count=0,
+                current_session_callback_count=0,
+                available_ratio=0.52,
+                margin_ratio=0.12,
+                manual_review_codes=(),
+                rebuild_required_codes=(),
+                restore_required_codes=(),
+                boundary_codes=(),
+                evidence_only_codes=(),
+            )
+
+    evidence_root = tmp_path / "evidence-root"
+    expected_output = evidence_root / "ops-evidence-a" / "live_ops_evidence_matrix.json"
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"live_ops_snapshot_adapter": FakeAdapter(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--session-label",
+            "ops-evidence-a",
+            "--evidence-root",
+            str(evidence_root),
+        ],
+    )
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    exported = json.loads(expected_output.read_text(encoding="utf-8"))
+
+    assert exit_code == 0
+    assert payload["flow_mode"] == "default_shared_flow"
+    assert payload["session_label"] == "ops-evidence-a"
+    assert payload["export"] == {
+        "path": str(expected_output),
+        "written": True,
+        "session_label": "ops-evidence-a",
+        "evidence_root": str(evidence_root),
+        "explicit_path": False,
+    }
+    assert exported["export"]["path"] == str(expected_output)
+
+
+def test_live_ops_evidence_matrix_smoke_rejects_conflicting_export_targets(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_live_ops_evidence_matrix_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_live_ops_evidence_matrix_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--output-json",
+            str(tmp_path / "explicit.json"),
+            "--evidence-root",
+            str(tmp_path / "evidence-root"),
+        ],
+    )
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 1
+    assert payload["error_stage"] == "argument_validation"
+    assert payload["error_type"] == "ValueError"
+    assert "output_json conflicts with evidence_root" in payload["error_message"]
+
+
+def test_td_truth_merge_snapshot_smoke_reports_structured_snapshot(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_td_truth_merge_snapshot_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_td_truth_merge_snapshot_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAdapter:
+        def capture_truth_merge_snapshot_mainline(
+            self,
+            *,
+            timeout_seconds: int,
+            flow_path,
+            observation_grace_seconds: float,
+            completion_grace_seconds: float,
+        ):
+            return CtpTdTruthMergeSnapshot(
+                order_truth=CtpTdOrderTruthEvidenceMatrix(
+                    evidence_version="td-order-truth-evidence-v1",
+                    captured_at_utc="2026-04-02T08:10:00Z",
+                    account_id="025292",
+                    disposition="boundary_required",
+                    observed_callback_count=9,
+                    historical_callback_count=9,
+                    delayed_callback_count=0,
+                    current_session_callback_count=0,
+                    first_historical_order_id="49456082",
+                    first_current_session_order_id=None,
+                    manual_review_codes=(),
+                    boundary_codes=("historical_callbacks_present",),
+                    evidence_only_codes=("no_current_session_callbacks",),
+                ),
+                positions=CtpPositionQueryBaseline(
+                    request_id="query-positions-1",
+                    query_code=0,
+                    completed=True,
+                    timed_out=False,
+                    no_positions=False,
+                    position_count=73,
+                    positions=(),
+                ),
+                account=CtpAccountQueryBaseline(
+                    request_id="query-account-1",
+                    query_code=0,
+                    completed=True,
+                    timed_out=False,
+                    account=CtpAccountRecord(
+                        account_id="025292",
+                        balance=1000000.0,
+                        available=214000.0,
+                        margin=780000.0,
+                        commission=35.0,
+                        close_profit=1200.0,
+                        position_profit=-230.0,
+                    ),
+                ),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"truth_merge_adapter": FakeAdapter(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert payload["baseline"] == "td-truth-merge-snapshot-v1"
+    assert payload["success"] is True
+    assert payload["failure_reason"] is None
+    assert payload["order_truth"]["disposition"] == "boundary_required"
+    assert payload["order_truth"]["boundary_codes"] == ["historical_callbacks_present"]
+    assert payload["positions"]["position_count"] == 73
+    assert payload["account"]["account_id"] == "025292"
+
+
+def test_td_truth_merge_snapshot_smoke_reports_positions_incomplete_failure(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_td_truth_merge_snapshot_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_td_truth_merge_snapshot_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAdapter:
+        def capture_truth_merge_snapshot_mainline(
+            self,
+            *,
+            timeout_seconds: int,
+            flow_path,
+            observation_grace_seconds: float,
+            completion_grace_seconds: float,
+        ):
+            return CtpTdTruthMergeSnapshot(
+                order_truth=CtpTdOrderTruthEvidenceMatrix(
+                    evidence_version="td-order-truth-evidence-v1",
+                    captured_at_utc="2026-04-02T08:10:00Z",
+                    account_id="025292",
+                    disposition="boundary_required",
+                    observed_callback_count=0,
+                    historical_callback_count=0,
+                    delayed_callback_count=0,
+                    current_session_callback_count=0,
+                    first_historical_order_id=None,
+                    first_current_session_order_id=None,
+                    manual_review_codes=(),
+                    boundary_codes=(),
+                    evidence_only_codes=(),
+                ),
+                positions=CtpPositionQueryBaseline(
+                    request_id="query-positions-1",
+                    query_code=0,
+                    completed=False,
+                    timed_out=False,
+                    no_positions=False,
+                    position_count=0,
+                    positions=(),
+                ),
+                account=CtpAccountQueryBaseline(
+                    request_id="query-account-1",
+                    query_code=0,
+                    completed=True,
+                    timed_out=False,
+                    account=CtpAccountRecord(
+                        account_id="025292",
+                        balance=1000000.0,
+                        available=214000.0,
+                        margin=780000.0,
+                        commission=35.0,
+                        close_profit=1200.0,
+                        position_profit=-230.0,
+                    ),
+                ),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"truth_merge_adapter": FakeAdapter(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 1
+    assert payload["baseline"] == "td-truth-merge-snapshot-v1"
+    assert payload["success"] is False
+    assert payload["failure_reason"] == "positions_incomplete"
+
+
+def test_td_truth_merge_snapshot_smoke_writes_isolated_flow_export(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_td_truth_merge_snapshot_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_td_truth_merge_snapshot_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    flow_path = tmp_path / "isolated-flow-dir"
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAdapter:
+        def capture_truth_merge_snapshot_mainline(
+            self,
+            *,
+            timeout_seconds: int,
+            flow_path,
+            observation_grace_seconds: float,
+            completion_grace_seconds: float,
+        ):
+            return CtpTdTruthMergeSnapshot(
+                order_truth=CtpTdOrderTruthEvidenceMatrix(
+                    evidence_version="td-order-truth-evidence-v1",
+                    captured_at_utc="2026-04-02T08:10:00Z",
+                    account_id="025292",
+                    disposition="boundary_required",
+                    observed_callback_count=1,
+                    historical_callback_count=0,
+                    delayed_callback_count=0,
+                    current_session_callback_count=1,
+                    first_historical_order_id=None,
+                    first_current_session_order_id="49456090",
+                    manual_review_codes=(),
+                    boundary_codes=(),
+                    evidence_only_codes=("current_session_callbacks_present",),
+                ),
+                positions=CtpPositionQueryBaseline(
+                    request_id="query-positions-1",
+                    query_code=0,
+                    completed=True,
+                    timed_out=False,
+                    no_positions=True,
+                    position_count=0,
+                    positions=(),
+                ),
+                account=CtpAccountQueryBaseline(
+                    request_id="query-account-1",
+                    query_code=0,
+                    completed=True,
+                    timed_out=False,
+                    account=CtpAccountRecord(
+                        account_id="025292",
+                        balance=1000000.0,
+                        available=214000.0,
+                        margin=780000.0,
+                        commission=35.0,
+                        close_profit=1200.0,
+                        position_profit=-230.0,
+                    ),
+                ),
+            )
+
+    evidence_root = tmp_path / "evidence-root"
+    expected_output = evidence_root / "isolated-flow" / "td_truth_merge_snapshot.json"
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"truth_merge_adapter": FakeAdapter(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--flow-path",
+            str(flow_path),
+            "--evidence-root",
+            str(evidence_root),
+        ],
+    )
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    exported = json.loads(expected_output.read_text(encoding="utf-8"))
+
+    assert exit_code == 0
+    assert payload["flow_path"] == str(flow_path)
+    assert payload["flow_mode"] == "explicit_override"
+    assert payload["session_label"] == "isolated-flow"
+    assert payload["export"] == {
+        "path": str(expected_output),
+        "written": True,
+        "session_label": "isolated-flow",
+        "evidence_root": str(evidence_root),
+        "explicit_path": False,
+    }
+    assert exported["export"]["path"] == str(expected_output)
+    assert payload["positions"]["completed"] is True
+
+
+def test_reconciliation_policy_smoke_reports_structured_result(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_reconciliation_policy_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_reconciliation_policy_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAdapter:
+        def capture_policy_result_mainline(self, *, timeout_seconds: int, completion_grace_seconds: float):
+            summary = CtpReconciliationSummary(
+                position_request_id="query-positions-1",
+                account_request_id="query-account-1",
+                account_id="025292",
+                position_line_count=2,
+                symbol_count=1,
+                total_long_qty=3,
+                total_short_qty=0,
+                gross_position_qty=3,
+                total_position_cost=61234.5,
+                account_balance=1000000.0,
+                account_available=214000.0,
+                account_margin=780000.0,
+                available_ratio=0.214,
+                margin_ratio=0.78,
+                dominant_exposure_symbol="rb2610",
+                dominant_exposure_exchange="SHFE",
+                dominant_exposure_abs_net_qty=3,
+                exposures=(),
+            )
+            return CtpReconciliationPolicyResult(
+                summary=summary,
+                disposition="manual_review_required",
+                requires_manual_review=True,
+                findings=(
+                    CtpReconciliationPolicyFinding(
+                        code="available_ratio_warn",
+                        severity="warn",
+                        action="manual_review_required",
+                        metric="available_ratio",
+                        metric_value=0.214,
+                        threshold=0.25,
+                        message="Available ratio is below the baseline comfort threshold.",
+                    ),
+                ),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"reconciliation_adapter": FakeAdapter(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert payload["baseline"] == "reconciliation-policy-v1"
+    assert payload["success"] is True
+    assert payload["failure_reason"] is None
+    assert payload["account_id"] == "025292"
+    assert payload["disposition"] == "manual_review_required"
+    assert payload["requires_manual_review"] is True
+
+
+def test_reconciliation_policy_smoke_reports_findings_missing_failure(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_reconciliation_policy_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_reconciliation_policy_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAdapter:
+        def capture_policy_result_mainline(self, *, timeout_seconds: int, completion_grace_seconds: float):
+            summary = CtpReconciliationSummary(
+                position_request_id="query-positions-1",
+                account_request_id="query-account-1",
+                account_id="025292",
+                position_line_count=0,
+                symbol_count=0,
+                total_long_qty=0,
+                total_short_qty=0,
+                gross_position_qty=0,
+                total_position_cost=0.0,
+                account_balance=1000000.0,
+                account_available=214000.0,
+                account_margin=780000.0,
+                available_ratio=0.214,
+                margin_ratio=0.78,
+                dominant_exposure_symbol=None,
+                dominant_exposure_exchange=None,
+                dominant_exposure_abs_net_qty=0,
+                exposures=(),
+            )
+            return CtpReconciliationPolicyResult(
+                summary=summary,
+                disposition="clear",
+                requires_manual_review=False,
+                findings=(),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"reconciliation_adapter": FakeAdapter(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 1
+    assert payload["baseline"] == "reconciliation-policy-v1"
+    assert payload["success"] is False
+    assert payload["failure_reason"] == "findings_missing"
+
+
+def test_reconciliation_policy_smoke_writes_session_labeled_export(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_reconciliation_policy_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_reconciliation_policy_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAdapter:
+        def capture_policy_result_mainline(self, *, timeout_seconds: int, completion_grace_seconds: float):
+            summary = CtpReconciliationSummary(
+                position_request_id="query-positions-1",
+                account_request_id="query-account-1",
+                account_id="025292",
+                position_line_count=2,
+                symbol_count=1,
+                total_long_qty=3,
+                total_short_qty=0,
+                gross_position_qty=3,
+                total_position_cost=61234.5,
+                account_balance=1000000.0,
+                account_available=214000.0,
+                account_margin=780000.0,
+                available_ratio=0.214,
+                margin_ratio=0.78,
+                dominant_exposure_symbol="rb2610",
+                dominant_exposure_exchange="SHFE",
+                dominant_exposure_abs_net_qty=3,
+                exposures=(),
+            )
+            return CtpReconciliationPolicyResult(
+                summary=summary,
+                disposition="manual_review_required",
+                requires_manual_review=True,
+                findings=(
+                    CtpReconciliationPolicyFinding(
+                        code="available_ratio_warn",
+                        severity="warn",
+                        action="manual_review_required",
+                        metric="available_ratio",
+                        metric_value=0.214,
+                        threshold=0.25,
+                        message="Available ratio is below the baseline comfort threshold.",
+                    ),
+                ),
+            )
+
+    evidence_root = tmp_path / "evidence-root"
+    expected_output = evidence_root / "recon-session" / "reconciliation_policy.json"
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"reconciliation_adapter": FakeAdapter(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--session-label",
+            "recon-session",
+            "--evidence-root",
+            str(evidence_root),
+        ],
+    )
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+    exported = json.loads(expected_output.read_text(encoding="utf-8"))
+
+    assert exit_code == 0
+    assert payload["session_label"] == "recon-session"
+    assert payload["export"] == {
+        "path": str(expected_output),
+        "written": True,
+        "session_label": "recon-session",
+        "evidence_root": str(evidence_root),
+        "explicit_path": False,
+    }
+    assert exported["export"]["path"] == str(expected_output)
+
+
+def test_reconciliation_policy_smoke_rejects_conflicting_export_targets(
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_reconciliation_policy_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_reconciliation_policy_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    monkeypatch_argv = [
+        str(script_path),
+        "--config",
+        str(tmp_path / "fake.json"),
+        "--output-json",
+        str(tmp_path / "payload.json"),
+        "--evidence-root",
+        str(tmp_path / "evidence-root"),
+    ]
+    original_argv = sys.argv
+    try:
+        sys.argv = monkeypatch_argv
+        exit_code = module.main()
+    finally:
+        sys.argv = original_argv
+
+    payload = json.loads(capsys.readouterr().out)
+    assert exit_code == 1
+    assert payload["baseline"] == "reconciliation-policy-v1"
+    assert payload["failure_reason"] == "exception"
+    assert payload["error_stage"] == "argument_validation"
+    assert payload["error_type"] == "ValueError"
+
+
+
+def test_reconciliation_evidence_smoke_reports_structured_result(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_reconciliation_evidence_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_reconciliation_evidence_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAdapter:
+        def capture_evidence_mainline(self, *, timeout_seconds: int, completion_grace_seconds: float):
+            return CtpReconciliationEvidence(
+                evidence_version="reconciliation-evidence-v1",
+                captured_at_utc="2026-04-02T08:03:00Z",
+                account_id="025292",
+                disposition="manual_review_required",
+                requires_manual_review=True,
+                finding_count=2,
+                manual_review_codes=("available_ratio_warn",),
+                evidence_only_codes=("dominant_exposure_watch",),
+                position_line_count=73,
+                symbol_count=41,
+                gross_position_qty=183,
+                available_ratio=0.214,
+                margin_ratio=0.78,
+                dominant_exposure_symbol="rb2610",
+                dominant_exposure_abs_net_qty=3,
+                top_exposures=(),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"reconciliation_adapter": FakeAdapter(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert payload["baseline"] == "reconciliation-evidence-v1"
+    assert payload["success"] is True
+    assert payload["failure_reason"] is None
+    assert payload["account_id"] == "025292"
+    assert payload["finding_count"] == 2
+
+
+def test_reconciliation_evidence_smoke_reports_account_missing_failure(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_reconciliation_evidence_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_reconciliation_evidence_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAdapter:
+        def capture_evidence_mainline(self, *, timeout_seconds: int, completion_grace_seconds: float):
+            return CtpReconciliationEvidence(
+                evidence_version="reconciliation-evidence-v1",
+                captured_at_utc="2026-04-02T08:03:00Z",
+                account_id=None,
+                disposition="evidence_only",
+                requires_manual_review=False,
+                finding_count=0,
+                manual_review_codes=(),
+                evidence_only_codes=(),
+                position_line_count=0,
+                symbol_count=0,
+                gross_position_qty=0,
+                available_ratio=None,
+                margin_ratio=None,
+                dominant_exposure_symbol=None,
+                dominant_exposure_abs_net_qty=0,
+                top_exposures=(),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"reconciliation_adapter": FakeAdapter(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 1
+    assert payload["baseline"] == "reconciliation-evidence-v1"
+    assert payload["success"] is False
+    assert payload["failure_reason"] == "account_id_missing"
+
+
+def test_reconciliation_evidence_smoke_writes_session_labeled_export(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_reconciliation_evidence_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_reconciliation_evidence_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAdapter:
+        def capture_evidence_mainline(self, *, timeout_seconds: int, completion_grace_seconds: float):
+            return CtpReconciliationEvidence(
+                evidence_version="reconciliation-evidence-v1",
+                captured_at_utc="2026-04-02T08:03:00Z",
+                account_id="025292",
+                disposition="manual_review_required",
+                requires_manual_review=True,
+                finding_count=2,
+                manual_review_codes=("available_ratio_warn",),
+                evidence_only_codes=("dominant_exposure_watch",),
+                position_line_count=73,
+                symbol_count=41,
+                gross_position_qty=183,
+                available_ratio=0.214,
+                margin_ratio=0.78,
+                dominant_exposure_symbol="rb2610",
+                dominant_exposure_abs_net_qty=3,
+                top_exposures=(),
+            )
+
+    evidence_root = tmp_path / "evidence-root"
+    expected_output = evidence_root / "recon-session" / "reconciliation_evidence.json"
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"reconciliation_adapter": FakeAdapter(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--session-label",
+            "recon-session",
+            "--evidence-root",
+            str(evidence_root),
+        ],
+    )
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+    exported = json.loads(expected_output.read_text(encoding="utf-8"))
+
+    assert exit_code == 0
+    assert payload["session_label"] == "recon-session"
+    assert payload["export"] == {
+        "path": str(expected_output),
+        "written": True,
+        "session_label": "recon-session",
+        "evidence_root": str(evidence_root),
+        "explicit_path": False,
+    }
+    assert exported["export"]["path"] == str(expected_output)
+
+
+def test_reconciliation_evidence_smoke_rejects_conflicting_export_targets(
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_reconciliation_evidence_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_reconciliation_evidence_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    original_argv = sys.argv
+    try:
+        sys.argv = [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--output-json",
+            str(tmp_path / "payload.json"),
+            "--evidence-root",
+            str(tmp_path / "evidence-root"),
+        ]
+        exit_code = module.main()
+    finally:
+        sys.argv = original_argv
+
+    payload = json.loads(capsys.readouterr().out)
+    assert exit_code == 1
+    assert payload["baseline"] == "reconciliation-evidence-v1"
+    assert payload["failure_reason"] == "exception"
+    assert payload["error_stage"] == "argument_validation"
+    assert payload["error_type"] == "ValueError"
+
+
+def test_td_order_truth_smoke_reports_structured_result(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_td_order_truth_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_td_order_truth_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeExecutionClient:
+        def capture_td_order_truth_baseline_mainline(
+            self,
+            *,
+            timeout_seconds: int,
+            flow_path,
+            observation_grace_seconds: float,
+        ):
+            return CtpTdOrderTruthBaseline(
+                flow_path="D:/repo/output/debug/td-order-truth",
+                flow_mode="isolated",
+                ready=True,
+                login_success=True,
+                settlement_code=0,
+                login_front_id=11,
+                login_session_id=22,
+                login_max_order_ref=100,
+                disconnect_count=0,
+                disconnect_reasons=(),
+                observed_callback_count=1,
+                observed_order_event_count=1,
+                observed_trade_event_count=0,
+                no_callbacks_observed=False,
+                first_order_id="49456082",
+                first_order_ref="1001",
+                first_session_id=22,
+                first_front_id=11,
+                first_is_trade=False,
+                observed_callbacks=(
+                    CtpTdObservedCallback(
+                        order_id="49456082",
+                        order_ref="1001",
+                        front_id=11,
+                        session_id=22,
+                        is_trade=False,
+                        ts_epoch_us=1775052501781380,
+                        status=1,
+                    ),
+                ),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"execution_client": FakeExecutionClient(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert payload["baseline"] == "td-order-truth-v1"
+    assert payload["success"] is True
+    assert payload["failure_reason"] is None
+    assert payload["ready"] is True
+    assert payload["observed_callbacks"][0]["order_id"] == "49456082"
+
+
+def test_td_order_truth_smoke_reports_bootstrap_not_ready_failure(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_td_order_truth_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_td_order_truth_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeExecutionClient:
+        def capture_td_order_truth_baseline_mainline(
+            self,
+            *,
+            timeout_seconds: int,
+            flow_path,
+            observation_grace_seconds: float,
+        ):
+            return CtpTdOrderTruthBaseline(
+                flow_path="D:/repo/output/debug/td-order-truth",
+                flow_mode="isolated",
+                ready=False,
+                login_success=False,
+                settlement_code=-1,
+                login_front_id=None,
+                login_session_id=None,
+                login_max_order_ref=None,
+                disconnect_count=0,
+                disconnect_reasons=(),
+                observed_callback_count=0,
+                observed_order_event_count=0,
+                observed_trade_event_count=0,
+                no_callbacks_observed=True,
+                first_order_id=None,
+                first_order_ref=None,
+                first_session_id=None,
+                first_front_id=None,
+                first_is_trade=None,
+                observed_callbacks=(),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"execution_client": FakeExecutionClient(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 1
+    assert payload["baseline"] == "td-order-truth-v1"
+    assert payload["success"] is False
+    assert payload["failure_reason"] == "bootstrap_not_ready"
+
+
+def test_md_startup_truth_smoke_reports_structured_result(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_md_startup_truth_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_md_startup_truth_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeDataClient:
+        def capture_md_startup_truth_mainline(self, *, timeout_seconds: int, flow_path):
+            return CtpMdStartupTruthEvidence(
+                flow_path="D:/repo/var/md_flow_smoke",
+                flow_mode="default_shared_flow",
+                selected_symbols=("rb2610",),
+                ready=True,
+                login_success=True,
+                login_error_id=0,
+                subscribe_code=0,
+                first_tick_symbol="rb2610",
+                first_tick_last=3137.0,
+                first_tick_bid=3136.0,
+                first_tick_ask=3138.0,
+                first_tick_ts_epoch_us=1775115509127070,
+                disconnect_count=0,
+                disconnect_reasons=(),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(module, "build_ctp_stack", lambda config: {"data_client": FakeDataClient(), "runtime_bridge": FakeBridge()})
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 0
+    assert payload["baseline"] == "md-startup-truth-v1"
+    assert payload["success"] is True
+    assert payload["failure_reason"] is None
+    assert payload["first_tick_symbol"] == "rb2610"
+
+
+def test_md_startup_truth_smoke_reports_first_tick_missing_failure(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_md_startup_truth_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_md_startup_truth_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeDataClient:
+        def capture_md_startup_truth_mainline(self, *, timeout_seconds: int, flow_path):
+            return CtpMdStartupTruthEvidence(
+                flow_path="D:/repo/var/md_flow_smoke",
+                flow_mode="default_shared_flow",
+                selected_symbols=("rb2610",),
+                ready=True,
+                login_success=True,
+                login_error_id=0,
+                subscribe_code=0,
+                first_tick_symbol=None,
+                first_tick_last=None,
+                first_tick_bid=None,
+                first_tick_ask=None,
+                first_tick_ts_epoch_us=None,
+                disconnect_count=0,
+                disconnect_reasons=(),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(module, "build_ctp_stack", lambda config: {"data_client": FakeDataClient(), "runtime_bridge": FakeBridge()})
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 1
+    assert payload["baseline"] == "md-startup-truth-v1"
+    assert payload["success"] is False
+    assert payload["failure_reason"] == "first_tick_missing"
+
+
+def test_md_startup_truth_smoke_writes_isolated_flow_export(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_md_startup_truth_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_md_startup_truth_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeDataClient:
+        def capture_md_startup_truth_mainline(self, *, timeout_seconds: int, flow_path):
+            return CtpMdStartupTruthEvidence(
+                flow_path=str(flow_path),
+                flow_mode="explicit_override",
+                selected_symbols=("rb2610",),
+                ready=True,
+                login_success=True,
+                login_error_id=0,
+                subscribe_code=0,
+                first_tick_symbol="rb2610",
+                first_tick_last=3137.0,
+                first_tick_bid=3136.0,
+                first_tick_ask=3138.0,
+                first_tick_ts_epoch_us=1775115509127070,
+                disconnect_count=0,
+                disconnect_reasons=(),
+            )
+
+    flow_path = tmp_path / "isolated-flow"
+    evidence_root = tmp_path / "evidence-root"
+    expected_output = evidence_root / "isolated-flow" / "md_startup_truth.json"
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(module, "build_ctp_stack", lambda config: {"data_client": FakeDataClient(), "runtime_bridge": FakeBridge()})
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--flow-path",
+            str(flow_path),
+            "--evidence-root",
+            str(evidence_root),
+        ],
+    )
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+    exported = json.loads(expected_output.read_text(encoding="utf-8"))
+
+    assert exit_code == 0
+    assert payload["flow_mode"] == "explicit_override"
+    assert payload["session_label"] == "isolated-flow"
+    assert payload["export"] == {
+        "path": str(expected_output),
+        "written": True,
+        "session_label": "isolated-flow",
+        "evidence_root": str(evidence_root),
+        "explicit_path": False,
+    }
+    assert exported["export"]["path"] == str(expected_output)
+
+
+def test_md_startup_truth_smoke_rejects_conflicting_export_targets(
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_md_startup_truth_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_md_startup_truth_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    original_argv = sys.argv
+    try:
+        sys.argv = [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--output-json",
+            str(tmp_path / "payload.json"),
+            "--evidence-root",
+            str(tmp_path / "evidence-root"),
+        ]
+        exit_code = module.main()
+    finally:
+        sys.argv = original_argv
+
+    payload = json.loads(capsys.readouterr().out)
+    assert exit_code == 1
+    assert payload["baseline"] == "md-startup-truth-v1"
+    assert payload["failure_reason"] == "exception"
+    assert payload["error_stage"] == "argument_validation"
+    assert payload["error_type"] == "ValueError"
+
+
+def test_md_restore_policy_smoke_reports_structured_result(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_md_restore_policy_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_md_restore_policy_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeDataClient:
+        def capture_md_restore_policy_mainline(self, **kwargs):
+            startup_truth = CtpMdStartupTruthEvidence(
+                flow_path="D:/repo/var/md_flow_smoke",
+                flow_mode="default_shared_flow",
+                selected_symbols=("rb2610",),
+                ready=True,
+                login_success=True,
+                login_error_id=0,
+                subscribe_code=0,
+                first_tick_symbol="rb2610",
+                first_tick_last=3137.0,
+                first_tick_bid=3136.0,
+                first_tick_ask=3138.0,
+                first_tick_ts_epoch_us=100,
+                disconnect_count=0,
+                disconnect_reasons=(),
+            )
+            restored_truth = CtpMdStartupTruthEvidence(
+                flow_path="D:/repo/var/md_flow_smoke",
+                flow_mode="default_shared_flow",
+                selected_symbols=("rb2610",),
+                ready=True,
+                login_success=True,
+                login_error_id=0,
+                subscribe_code=0,
+                first_tick_symbol="rb2610",
+                first_tick_last=3138.0,
+                first_tick_bid=3137.0,
+                first_tick_ask=3138.0,
+                first_tick_ts_epoch_us=200,
+                disconnect_count=0,
+                disconnect_reasons=(),
+            )
+            return CtpMdRestorePolicyResult(
+                startup_truth=startup_truth,
+                restored_truth=restored_truth,
+                restore_result=CtpMdRestoreResult(
+                    triggered=True,
+                    restored_symbols=("rb2610",),
+                    bootstrap_state=CtpMdBootstrapState(started=True, connect_request_id="md-connect-3", subscribe_request_ids=["md-subscribe-4"]),
+                ),
+                disposition="evidence_only",
+                restore_succeeded=True,
+                findings=(
+                    CtpMdRestorePolicyFinding(
+                        code="restore_resubscribe_triggered",
+                        severity="info",
+                        action="evidence_only",
+                        metric="restored_symbols",
+                        metric_value="rb2610",
+                        threshold="non-empty",
+                        message="MD restore re-submitted the tracked symbols.",
+                    ),
+                ),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(module, "build_ctp_stack", lambda config: {"data_client": FakeDataClient(), "runtime_bridge": FakeBridge()})
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 0
+    assert payload["baseline"] == "md-restore-policy-v1"
+    assert payload["success"] is True
+    assert payload["failure_reason"] is None
+    assert payload["restore_succeeded"] is True
+
+
+def test_md_restore_policy_smoke_reports_restore_not_succeeded_failure(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_md_restore_policy_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_md_restore_policy_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeDataClient:
+        def capture_md_restore_policy_mainline(self, **kwargs):
+            truth = CtpMdStartupTruthEvidence(
+                flow_path="D:/repo/var/md_flow_smoke",
+                flow_mode="default_shared_flow",
+                selected_symbols=("rb2610",),
+                ready=True,
+                login_success=True,
+                login_error_id=0,
+                subscribe_code=0,
+                first_tick_symbol="rb2610",
+                first_tick_last=3137.0,
+                first_tick_bid=3136.0,
+                first_tick_ask=3138.0,
+                first_tick_ts_epoch_us=100,
+                disconnect_count=0,
+                disconnect_reasons=(),
+            )
+            return CtpMdRestorePolicyResult(
+                startup_truth=truth,
+                restored_truth=truth,
+                restore_result=CtpMdRestoreResult(
+                    triggered=True,
+                    restored_symbols=("rb2610",),
+                    bootstrap_state=CtpMdBootstrapState(started=True, connect_request_id="md-connect-3", subscribe_request_ids=["md-subscribe-4"]),
+                ),
+                disposition="restore_required",
+                restore_succeeded=False,
+                findings=(
+                    CtpMdRestorePolicyFinding(
+                        code="restore_tick_missing",
+                        severity="warn",
+                        action="restore_required",
+                        metric="restored_first_tick_ts_epoch_us",
+                        metric_value="",
+                        threshold="non-empty",
+                        message="MD restore did not produce a new tick.",
+                    ),
+                ),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(module, "build_ctp_stack", lambda config: {"data_client": FakeDataClient(), "runtime_bridge": FakeBridge()})
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 1
+    assert payload["baseline"] == "md-restore-policy-v1"
+    assert payload["success"] is False
+    assert payload["failure_reason"] == "restore_not_succeeded"
+
+
+def test_md_restore_policy_smoke_writes_isolated_flow_export(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_md_restore_policy_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_md_restore_policy_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeDataClient:
+        def capture_md_restore_policy_mainline(self, **kwargs):
+            startup_truth = CtpMdStartupTruthEvidence(
+                flow_path="D:/repo/var/md_flow_smoke",
+                flow_mode="default_shared_flow",
+                selected_symbols=("rb2610",),
+                ready=True,
+                login_success=True,
+                login_error_id=0,
+                subscribe_code=0,
+                first_tick_symbol="rb2610",
+                first_tick_last=3137.0,
+                first_tick_bid=3136.0,
+                first_tick_ask=3138.0,
+                first_tick_ts_epoch_us=100,
+                disconnect_count=0,
+                disconnect_reasons=(),
+            )
+            restored_truth = CtpMdStartupTruthEvidence(
+                flow_path="D:/repo/output/debug/md_flow_isolated",
+                flow_mode="explicit_override",
+                selected_symbols=("rb2610",),
+                ready=True,
+                login_success=True,
+                login_error_id=0,
+                subscribe_code=0,
+                first_tick_symbol="rb2610",
+                first_tick_last=3138.0,
+                first_tick_bid=3137.0,
+                first_tick_ask=3138.0,
+                first_tick_ts_epoch_us=200,
+                disconnect_count=0,
+                disconnect_reasons=(),
+            )
+            return CtpMdRestorePolicyResult(
+                startup_truth=startup_truth,
+                restored_truth=restored_truth,
+                restore_result=CtpMdRestoreResult(
+                    triggered=True,
+                    restored_symbols=("rb2610",),
+                    bootstrap_state=CtpMdBootstrapState(started=True, connect_request_id="md-connect-3", subscribe_request_ids=["md-subscribe-4"]),
+                ),
+                disposition="evidence_only",
+                restore_succeeded=True,
+                findings=(
+                    CtpMdRestorePolicyFinding(
+                        code="restore_resubscribe_triggered",
+                        severity="info",
+                        action="evidence_only",
+                        metric="restored_symbols",
+                        metric_value="rb2610",
+                        threshold="non-empty",
+                        message="MD restore re-submitted the tracked symbols.",
+                    ),
+                ),
+            )
+
+    evidence_root = tmp_path / "evidence-root"
+    flow_path = tmp_path / "isolated-flow"
+    expected_output = evidence_root / "isolated-flow" / "md_restore_policy.json"
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(module, "build_ctp_stack", lambda config: {"data_client": FakeDataClient(), "runtime_bridge": FakeBridge()})
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--flow-path",
+            str(flow_path),
+            "--evidence-root",
+            str(evidence_root),
+        ],
+    )
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+    exported = json.loads(expected_output.read_text(encoding="utf-8"))
+
+    assert exit_code == 0
+    assert payload["flow_mode"] == "explicit_override"
+    assert payload["session_label"] == "isolated-flow"
+    assert payload["export"] == {
+        "path": str(expected_output),
+        "written": True,
+        "session_label": "isolated-flow",
+        "evidence_root": str(evidence_root),
+        "explicit_path": False,
+    }
+    assert exported["export"]["path"] == str(expected_output)
+
+
+def test_md_restore_policy_smoke_rejects_conflicting_export_targets(
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_md_restore_policy_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_md_restore_policy_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    original_argv = sys.argv
+    try:
+        sys.argv = [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--output-json",
+            str(tmp_path / "payload.json"),
+            "--evidence-root",
+            str(tmp_path / "evidence-root"),
+        ]
+        exit_code = module.main()
+    finally:
+        sys.argv = original_argv
+
+    payload = json.loads(capsys.readouterr().out)
+    assert exit_code == 1
+    assert payload["baseline"] == "md-restore-policy-v1"
+    assert payload["failure_reason"] == "exception"
+    assert payload["error_stage"] == "argument_validation"
+    assert payload["error_type"] == "ValueError"
+
+
+def test_md_truth_evidence_matrix_smoke_reports_structured_result(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_md_truth_evidence_matrix_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_md_truth_evidence_matrix_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeDataClient:
+        def capture_md_truth_evidence_matrix_mainline(self, **kwargs):
+            return CtpMdTruthEvidenceMatrix(
+                evidence_version="md-truth-evidence-v1",
+                captured_at_utc="2026-04-02T08:01:00Z",
+                account_id="025292",
+                symbol="rb2610",
+                disposition="evidence_only",
+                startup_ready=True,
+                restore_triggered=True,
+                restore_succeeded=True,
+                startup_flow_path="D:/repo/var/md_flow_smoke",
+                restored_flow_path="D:/repo/var/md_flow_smoke",
+                startup_first_tick_ts_epoch_us=1000,
+                restored_first_tick_ts_epoch_us=2000,
+                manual_review_codes=(),
+                restore_required_codes=(),
+                evidence_only_codes=("restore_resubscribe_triggered",),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(module, "build_ctp_stack", lambda config: {"data_client": FakeDataClient(), "runtime_bridge": FakeBridge()})
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 0
+    assert payload["baseline"] == "md-truth-evidence-matrix-v1"
+    assert payload["success"] is True
+    assert payload["failure_reason"] is None
+    assert payload["symbol"] == "rb2610"
+
+
+def test_md_truth_evidence_matrix_smoke_reports_account_missing_failure(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_md_truth_evidence_matrix_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_md_truth_evidence_matrix_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeDataClient:
+        def capture_md_truth_evidence_matrix_mainline(self, **kwargs):
+            return CtpMdTruthEvidenceMatrix(
+                evidence_version="md-truth-evidence-v1",
+                captured_at_utc="2026-04-02T08:01:00Z",
+                account_id=None,
+                symbol="rb2610",
+                disposition="evidence_only",
+                startup_ready=True,
+                restore_triggered=True,
+                restore_succeeded=True,
+                startup_flow_path="D:/repo/var/md_flow_smoke",
+                restored_flow_path="D:/repo/var/md_flow_smoke",
+                startup_first_tick_ts_epoch_us=1000,
+                restored_first_tick_ts_epoch_us=2000,
+                manual_review_codes=(),
+                restore_required_codes=(),
+                evidence_only_codes=(),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(module, "build_ctp_stack", lambda config: {"data_client": FakeDataClient(), "runtime_bridge": FakeBridge()})
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 1
+    assert payload["baseline"] == "md-truth-evidence-matrix-v1"
+    assert payload["success"] is False
+    assert payload["failure_reason"] == "account_id_missing"
+
+
+def test_md_truth_evidence_matrix_smoke_writes_isolated_flow_export(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_md_truth_evidence_matrix_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_md_truth_evidence_matrix_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeDataClient:
+        def capture_md_truth_evidence_matrix_mainline(self, **kwargs):
+            return CtpMdTruthEvidenceMatrix(
+                evidence_version="md-truth-evidence-v1",
+                captured_at_utc="2026-04-02T08:01:00Z",
+                account_id="025292",
+                symbol="rb2610",
+                disposition="evidence_only",
+                startup_ready=True,
+                restore_triggered=True,
+                restore_succeeded=True,
+                startup_flow_path="D:/repo/output/debug/md_flow_isolated",
+                restored_flow_path="D:/repo/output/debug/md_flow_isolated",
+                startup_first_tick_ts_epoch_us=1000,
+                restored_first_tick_ts_epoch_us=2000,
+                manual_review_codes=(),
+                restore_required_codes=(),
+                evidence_only_codes=("restore_resubscribe_triggered",),
+            )
+
+    evidence_root = tmp_path / "evidence-root"
+    flow_path = tmp_path / "isolated-flow"
+    expected_output = evidence_root / "isolated-flow" / "md_truth_evidence_matrix.json"
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(module, "build_ctp_stack", lambda config: {"data_client": FakeDataClient(), "runtime_bridge": FakeBridge()})
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--flow-path",
+            str(flow_path),
+            "--evidence-root",
+            str(evidence_root),
+        ],
+    )
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+    exported = json.loads(expected_output.read_text(encoding="utf-8"))
+
+    assert exit_code == 0
+    assert payload["flow_mode"] == "explicit_override"
+    assert payload["session_label"] == "isolated-flow"
+    assert payload["export"] == {
+        "path": str(expected_output),
+        "written": True,
+        "session_label": "isolated-flow",
+        "evidence_root": str(evidence_root),
+        "explicit_path": False,
+    }
+    assert exported["export"]["path"] == str(expected_output)
+
+
+def test_md_truth_evidence_matrix_smoke_rejects_conflicting_export_targets(
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_md_truth_evidence_matrix_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_md_truth_evidence_matrix_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    original_argv = sys.argv
+    try:
+        sys.argv = [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--output-json",
+            str(tmp_path / "payload.json"),
+            "--evidence-root",
+            str(tmp_path / "evidence-root"),
+        ]
+        exit_code = module.main()
+    finally:
+        sys.argv = original_argv
+
+    payload = json.loads(capsys.readouterr().out)
+    assert exit_code == 1
+    assert payload["baseline"] == "md-truth-evidence-matrix-v1"
+    assert payload["failure_reason"] == "exception"
+    assert payload["error_stage"] == "argument_validation"
+    assert payload["error_type"] == "ValueError"
+
+
+def test_td_order_truth_evidence_matrix_smoke_reports_structured_result(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_td_order_truth_evidence_matrix_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_td_order_truth_evidence_matrix_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeExecutionClient:
+        def capture_td_order_truth_evidence_matrix_mainline(
+            self,
+            *,
+            timeout_seconds: int,
+            flow_path,
+            observation_grace_seconds: float,
+        ):
+            return CtpTdOrderTruthEvidenceMatrix(
+                evidence_version="td-order-truth-evidence-v1",
+                captured_at_utc="2026-04-02T08:10:00Z",
+                account_id="025292",
+                disposition="boundary_required",
+                observed_callback_count=9,
+                historical_callback_count=9,
+                delayed_callback_count=0,
+                current_session_callback_count=0,
+                first_historical_order_id="49456082",
+                first_current_session_order_id=None,
+                manual_review_codes=(),
+                boundary_codes=("historical_callbacks_present",),
+                evidence_only_codes=("no_current_session_callbacks",),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"execution_client": FakeExecutionClient(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert payload["baseline"] == "td-order-truth-evidence-matrix-v1"
+    assert payload["success"] is True
+    assert payload["failure_reason"] is None
+    assert payload["account_id"] == "025292"
+    assert payload["boundary_codes"] == ["historical_callbacks_present"]
+
+
+def test_td_order_truth_evidence_matrix_smoke_reports_account_missing_failure(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_td_order_truth_evidence_matrix_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_td_order_truth_evidence_matrix_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeExecutionClient:
+        def capture_td_order_truth_evidence_matrix_mainline(
+            self,
+            *,
+            timeout_seconds: int,
+            flow_path,
+            observation_grace_seconds: float,
+        ):
+            return CtpTdOrderTruthEvidenceMatrix(
+                evidence_version="td-order-truth-evidence-v1",
+                captured_at_utc="2026-04-02T08:10:00Z",
+                account_id=None,
+                disposition="evidence_only",
+                observed_callback_count=0,
+                historical_callback_count=0,
+                delayed_callback_count=0,
+                current_session_callback_count=0,
+                first_historical_order_id=None,
+                first_current_session_order_id=None,
+                manual_review_codes=(),
+                boundary_codes=(),
+                evidence_only_codes=(),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"execution_client": FakeExecutionClient(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 1
+    assert payload["baseline"] == "td-order-truth-evidence-matrix-v1"
+    assert payload["success"] is False
+    assert payload["failure_reason"] == "account_id_missing"
+
+
+def test_td_order_truth_smoke_writes_isolated_flow_export(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_td_order_truth_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_td_order_truth_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeExecutionClient:
+        def capture_td_order_truth_baseline_mainline(
+            self,
+            *,
+            timeout_seconds: int,
+            flow_path,
+            observation_grace_seconds: float,
+        ):
+            return CtpTdOrderTruthBaseline(
+                flow_path=str(flow_path),
+                flow_mode="explicit_override",
+                ready=True,
+                login_success=True,
+                settlement_code=0,
+                login_front_id=11,
+                login_session_id=22,
+                login_max_order_ref=100,
+                disconnect_count=0,
+                disconnect_reasons=(),
+                observed_callback_count=1,
+                observed_order_event_count=1,
+                observed_trade_event_count=0,
+                no_callbacks_observed=False,
+                first_order_id="49456082",
+                first_order_ref="1001",
+                first_session_id=22,
+                first_front_id=11,
+                first_is_trade=False,
+                observed_callbacks=(),
+            )
+
+    flow_path = tmp_path / "isolated-flow"
+    evidence_root = tmp_path / "evidence-root"
+    expected_output = evidence_root / "isolated-flow" / "td_order_truth.json"
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"execution_client": FakeExecutionClient(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--flow-path",
+            str(flow_path),
+            "--evidence-root",
+            str(evidence_root),
+        ],
+    )
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+    exported = json.loads(expected_output.read_text(encoding="utf-8"))
+
+    assert exit_code == 0
+    assert payload["flow_path"] == str(flow_path)
+    assert payload["flow_mode"] == "explicit_override"
+    assert payload["session_label"] == "isolated-flow"
+    assert payload["export"] == {
+        "path": str(expected_output),
+        "written": True,
+        "session_label": "isolated-flow",
+        "evidence_root": str(evidence_root),
+        "explicit_path": False,
+    }
+    assert exported["export"]["path"] == str(expected_output)
+
+
+def test_td_order_truth_smoke_rejects_conflicting_export_targets(
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_td_order_truth_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_td_order_truth_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    original_argv = sys.argv
+    try:
+        sys.argv = [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--output-json",
+            str(tmp_path / "payload.json"),
+            "--evidence-root",
+            str(tmp_path / "evidence-root"),
+        ]
+        exit_code = module.main()
+    finally:
+        sys.argv = original_argv
+
+    payload = json.loads(capsys.readouterr().out)
+    assert exit_code == 1
+    assert payload["baseline"] == "td-order-truth-v1"
+    assert payload["failure_reason"] == "exception"
+    assert payload["error_stage"] == "argument_validation"
+    assert payload["error_type"] == "ValueError"
+
+
+def test_td_order_truth_evidence_matrix_smoke_writes_isolated_flow_export(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_td_order_truth_evidence_matrix_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_td_order_truth_evidence_matrix_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeExecutionClient:
+        def capture_td_order_truth_evidence_matrix_mainline(
+            self,
+            *,
+            timeout_seconds: int,
+            flow_path,
+            observation_grace_seconds: float,
+        ):
+            return CtpTdOrderTruthEvidenceMatrix(
+                evidence_version="td-order-truth-evidence-v1",
+                captured_at_utc="2026-04-02T08:10:00Z",
+                account_id="025292",
+                disposition="boundary_required",
+                observed_callback_count=9,
+                historical_callback_count=9,
+                delayed_callback_count=0,
+                current_session_callback_count=0,
+                first_historical_order_id="49456082",
+                first_current_session_order_id=None,
+                manual_review_codes=(),
+                boundary_codes=("historical_callbacks_present",),
+                evidence_only_codes=("no_current_session_callbacks",),
+            )
+
+    flow_path = tmp_path / "isolated-flow"
+    evidence_root = tmp_path / "evidence-root"
+    expected_output = evidence_root / "isolated-flow" / "td_order_truth_evidence_matrix.json"
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"execution_client": FakeExecutionClient(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--flow-path",
+            str(flow_path),
+            "--evidence-root",
+            str(evidence_root),
+        ],
+    )
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+    exported = json.loads(expected_output.read_text(encoding="utf-8"))
+
+    assert exit_code == 0
+    assert payload["flow_mode"] == "explicit_override"
+    assert payload["session_label"] == "isolated-flow"
+    assert payload["export"] == {
+        "path": str(expected_output),
+        "written": True,
+        "session_label": "isolated-flow",
+        "evidence_root": str(evidence_root),
+        "explicit_path": False,
+    }
+    assert exported["export"]["path"] == str(expected_output)
+
+
+def test_td_order_truth_evidence_matrix_smoke_rejects_conflicting_export_targets(
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_td_order_truth_evidence_matrix_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_td_order_truth_evidence_matrix_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    original_argv = sys.argv
+    try:
+        sys.argv = [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--output-json",
+            str(tmp_path / "payload.json"),
+            "--evidence-root",
+            str(tmp_path / "evidence-root"),
+        ]
+        exit_code = module.main()
+    finally:
+        sys.argv = original_argv
+
+    payload = json.loads(capsys.readouterr().out)
+    assert exit_code == 1
+    assert payload["baseline"] == "td-order-truth-evidence-matrix-v1"
+    assert payload["failure_reason"] == "exception"
+    assert payload["error_stage"] == "argument_validation"
+    assert payload["error_type"] == "ValueError"
+
+
+def test_td_merged_evidence_matrix_smoke_reports_structured_result(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_td_merged_evidence_matrix_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_td_merged_evidence_matrix_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAdapter:
+        def capture_merged_evidence_matrix_mainline(
+            self,
+            *,
+            timeout_seconds: int,
+            flow_path,
+            observation_grace_seconds: float,
+            completion_grace_seconds: float,
+        ):
+            return CtpTdMergedEvidenceMatrix(
+                evidence_version="td-merged-evidence-v1",
+                captured_at_utc="2026-04-02T08:12:00Z",
+                account_id="025292",
+                disposition="manual_review_required",
+                position_count=73,
+                observed_callback_count=9,
+                historical_callback_count=9,
+                current_session_callback_count=0,
+                available_ratio=0.214,
+                margin_ratio=0.78,
+                manual_review_codes=("available_ratio_warn",),
+                boundary_codes=("historical_callbacks_present",),
+                evidence_only_codes=("no_current_session_callbacks",),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"truth_merge_adapter": FakeAdapter(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert payload["baseline"] == "td-merged-evidence-matrix-v1"
+    assert payload["success"] is True
+    assert payload["failure_reason"] is None
+    assert payload["account_id"] == "025292"
+    assert payload["manual_review_codes"] == ["available_ratio_warn"]
+
+
+def test_td_merged_evidence_matrix_smoke_reports_account_missing_failure(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_td_merged_evidence_matrix_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_td_merged_evidence_matrix_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAdapter:
+        def capture_merged_evidence_matrix_mainline(
+            self,
+            *,
+            timeout_seconds: int,
+            flow_path,
+            observation_grace_seconds: float,
+            completion_grace_seconds: float,
+        ):
+            return CtpTdMergedEvidenceMatrix(
+                evidence_version="td-merged-evidence-v1",
+                captured_at_utc="2026-04-02T08:12:00Z",
+                account_id=None,
+                disposition="evidence_only",
+                position_count=0,
+                observed_callback_count=0,
+                historical_callback_count=0,
+                current_session_callback_count=0,
+                available_ratio=None,
+                margin_ratio=None,
+                manual_review_codes=(),
+                boundary_codes=(),
+                evidence_only_codes=(),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"truth_merge_adapter": FakeAdapter(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 1
+    assert payload["baseline"] == "td-merged-evidence-matrix-v1"
+    assert payload["success"] is False
+    assert payload["failure_reason"] == "account_id_missing"
+
+
+def test_td_merged_evidence_matrix_smoke_writes_isolated_flow_export(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_td_merged_evidence_matrix_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_td_merged_evidence_matrix_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAdapter:
+        def capture_merged_evidence_matrix_mainline(
+            self,
+            *,
+            timeout_seconds: int,
+            flow_path,
+            observation_grace_seconds: float,
+            completion_grace_seconds: float,
+        ):
+            return CtpTdMergedEvidenceMatrix(
+                evidence_version="td-merged-evidence-v1",
+                captured_at_utc="2026-04-02T08:12:00Z",
+                account_id="025292",
+                disposition="manual_review_required",
+                position_count=73,
+                observed_callback_count=9,
+                historical_callback_count=9,
+                current_session_callback_count=0,
+                available_ratio=0.214,
+                margin_ratio=0.78,
+                manual_review_codes=("available_ratio_warn",),
+                boundary_codes=("historical_callbacks_present",),
+                evidence_only_codes=("no_current_session_callbacks",),
+            )
+
+    flow_path = tmp_path / "isolated-flow"
+    evidence_root = tmp_path / "evidence-root"
+    expected_output = evidence_root / "isolated-flow" / "td_merged_evidence_matrix.json"
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"truth_merge_adapter": FakeAdapter(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--flow-path",
+            str(flow_path),
+            "--evidence-root",
+            str(evidence_root),
+        ],
+    )
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+    exported = json.loads(expected_output.read_text(encoding="utf-8"))
+
+    assert exit_code == 0
+    assert payload["flow_path"] == str(flow_path)
+    assert payload["flow_mode"] == "explicit_override"
+    assert payload["session_label"] == "isolated-flow"
+    assert payload["export"] == {
+        "path": str(expected_output),
+        "written": True,
+        "session_label": "isolated-flow",
+        "evidence_root": str(evidence_root),
+        "explicit_path": False,
+    }
+    assert exported["export"]["path"] == str(expected_output)
+
+
+def test_td_merged_evidence_matrix_smoke_rejects_conflicting_export_targets(
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_td_merged_evidence_matrix_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_td_merged_evidence_matrix_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    original_argv = sys.argv
+    try:
+        sys.argv = [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--output-json",
+            str(tmp_path / "payload.json"),
+            "--evidence-root",
+            str(tmp_path / "evidence-root"),
+        ]
+        exit_code = module.main()
+    finally:
+        sys.argv = original_argv
+
+    payload = json.loads(capsys.readouterr().out)
+    assert exit_code == 1
+    assert payload["baseline"] == "td-merged-evidence-matrix-v1"
+    assert payload["failure_reason"] == "exception"
+    assert payload["error_stage"] == "argument_validation"
+    assert payload["error_type"] == "ValueError"
+
+
+def test_startup_truth_smoke_reports_structured_result(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_startup_truth_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_startup_truth_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAdapter:
+        def capture_td_startup_truth_mainline(self, *, timeout_seconds: int, flow_path):
+            return CtpTdStartupTruthEvidence(
+                flow_path="D:/repo/var/td_flow_smoke",
+                flow_mode="default_shared_flow",
+                ready=True,
+                login_success=True,
+                settlement_code=0,
+                front_id=11,
+                session_id=22,
+                max_order_ref=101,
+                disconnect_count=0,
+                disconnect_reasons=(),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(module, "build_ctp_stack", lambda config: {"startup_truth_adapter": FakeAdapter(), "runtime_bridge": FakeBridge()})
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 0
+    assert payload["baseline"] == "td-startup-truth-v1"
+    assert payload["success"] is True
+    assert payload["failure_reason"] is None
+    assert payload["session_id"] == 22
+
+
+def test_startup_truth_smoke_reports_login_failed_failure(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_startup_truth_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_startup_truth_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAdapter:
+        def capture_td_startup_truth_mainline(self, *, timeout_seconds: int, flow_path):
+            return CtpTdStartupTruthEvidence(
+                flow_path="D:/repo/var/td_flow_smoke",
+                flow_mode="default_shared_flow",
+                ready=True,
+                login_success=False,
+                settlement_code=-1,
+                front_id=None,
+                session_id=None,
+                max_order_ref=None,
+                disconnect_count=0,
+                disconnect_reasons=(),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(module, "build_ctp_stack", lambda config: {"startup_truth_adapter": FakeAdapter(), "runtime_bridge": FakeBridge()})
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 1
+    assert payload["baseline"] == "td-startup-truth-v1"
+    assert payload["success"] is False
+    assert payload["failure_reason"] == "login_failed"
+
+
+def test_startup_truth_evidence_matrix_smoke_reports_structured_result(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_startup_truth_evidence_matrix_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_startup_truth_evidence_matrix_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAdapter:
+        def capture_evidence_matrix_mainline(self, **kwargs):
+            return CtpStartupTruthEvidenceMatrix(
+                evidence_version="td-startup-truth-evidence-v1",
+                captured_at_utc="2026-04-02T08:15:00Z",
+                account_id="025292",
+                disposition="rebuild_required",
+                shared_flow_reuse_allowed=False,
+                session_rotated=True,
+                max_order_ref_reset=True,
+                shared_flow_path="D:/repo/var/shared",
+                isolated_flow_path="D:/repo/var/isolated",
+                shared_session_id=21,
+                isolated_session_id=22,
+                shared_max_order_ref=100,
+                isolated_max_order_ref=1,
+                shared_disconnect_count=0,
+                isolated_disconnect_count=0,
+                manual_review_codes=(),
+                rebuild_required_codes=("session_id_not_rotated",),
+                evidence_only_codes=(),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(module, "build_ctp_stack", lambda config: {"startup_truth_adapter": FakeAdapter(), "runtime_bridge": FakeBridge()})
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 0
+    assert payload["baseline"] == "td-startup-truth-evidence-matrix-v1"
+    assert payload["success"] is True
+    assert payload["failure_reason"] is None
+    assert payload["disposition"] == "rebuild_required"
+
+
+def test_startup_truth_evidence_matrix_smoke_reports_account_missing_failure(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_startup_truth_evidence_matrix_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_startup_truth_evidence_matrix_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAdapter:
+        def capture_evidence_matrix_mainline(self, **kwargs):
+            return CtpStartupTruthEvidenceMatrix(
+                evidence_version="td-startup-truth-evidence-v1",
+                captured_at_utc="2026-04-02T08:15:00Z",
+                account_id=None,
+                disposition="evidence_only",
+                shared_flow_reuse_allowed=True,
+                session_rotated=False,
+                max_order_ref_reset=False,
+                shared_flow_path="D:/repo/var/shared",
+                isolated_flow_path="D:/repo/var/isolated",
+                shared_session_id=None,
+                isolated_session_id=None,
+                shared_max_order_ref=None,
+                isolated_max_order_ref=None,
+                shared_disconnect_count=0,
+                isolated_disconnect_count=0,
+                manual_review_codes=(),
+                rebuild_required_codes=(),
+                evidence_only_codes=(),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(module, "build_ctp_stack", lambda config: {"startup_truth_adapter": FakeAdapter(), "runtime_bridge": FakeBridge()})
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 1
+    assert payload["baseline"] == "td-startup-truth-evidence-matrix-v1"
+    assert payload["success"] is False
+    assert payload["failure_reason"] == "account_id_missing"
+
+
+def test_startup_truth_smoke_writes_isolated_flow_export(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_startup_truth_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_startup_truth_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAdapter:
+        def capture_td_startup_truth_mainline(self, *, timeout_seconds: int, flow_path):
+            return CtpTdStartupTruthEvidence(
+                flow_path=str(flow_path),
+                flow_mode="explicit_override",
+                ready=True,
+                login_success=True,
+                settlement_code=0,
+                front_id=11,
+                session_id=22,
+                max_order_ref=101,
+                disconnect_count=0,
+                disconnect_reasons=(),
+            )
+
+    flow_path = tmp_path / "isolated-flow"
+    evidence_root = tmp_path / "evidence-root"
+    expected_output = evidence_root / "isolated-flow" / "startup_truth.json"
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(module, "build_ctp_stack", lambda config: {"startup_truth_adapter": FakeAdapter(), "runtime_bridge": FakeBridge()})
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--flow-path",
+            str(flow_path),
+            "--evidence-root",
+            str(evidence_root),
+        ],
+    )
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+    exported = json.loads(expected_output.read_text(encoding="utf-8"))
+
+    assert exit_code == 0
+    assert payload["flow_mode"] == "explicit_override"
+    assert payload["session_label"] == "isolated-flow"
+    assert payload["export"] == {
+        "path": str(expected_output),
+        "written": True,
+        "session_label": "isolated-flow",
+        "evidence_root": str(evidence_root),
+        "explicit_path": False,
+    }
+    assert exported["export"]["path"] == str(expected_output)
+
+
+def test_startup_truth_smoke_rejects_conflicting_export_targets(
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_startup_truth_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_startup_truth_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    original_argv = sys.argv
+    try:
+        sys.argv = [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--output-json",
+            str(tmp_path / "payload.json"),
+            "--evidence-root",
+            str(tmp_path / "evidence-root"),
+        ]
+        exit_code = module.main()
+    finally:
+        sys.argv = original_argv
+
+    payload = json.loads(capsys.readouterr().out)
+    assert exit_code == 1
+    assert payload["baseline"] == "td-startup-truth-v1"
+    assert payload["failure_reason"] == "exception"
+    assert payload["error_stage"] == "argument_validation"
+    assert payload["error_type"] == "ValueError"
+
+
+def test_startup_truth_evidence_matrix_smoke_writes_isolated_flow_export(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_startup_truth_evidence_matrix_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_startup_truth_evidence_matrix_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAdapter:
+        def capture_evidence_matrix_mainline(self, **kwargs):
+            return CtpStartupTruthEvidenceMatrix(
+                evidence_version="td-startup-truth-evidence-v1",
+                captured_at_utc="2026-04-02T08:15:00Z",
+                account_id="025292",
+                disposition="rebuild_required",
+                shared_flow_reuse_allowed=False,
+                session_rotated=True,
+                max_order_ref_reset=True,
+                shared_flow_path="D:/repo/var/shared",
+                isolated_flow_path="D:/repo/var/isolated",
+                shared_session_id=21,
+                isolated_session_id=22,
+                shared_max_order_ref=100,
+                isolated_max_order_ref=1,
+                shared_disconnect_count=0,
+                isolated_disconnect_count=0,
+                manual_review_codes=(),
+                rebuild_required_codes=("session_id_not_rotated",),
+                evidence_only_codes=(),
+            )
+
+    evidence_root = tmp_path / "evidence-root"
+    isolated_flow_path = tmp_path / "isolated-flow"
+    expected_output = evidence_root / "isolated-flow" / "startup_truth_evidence_matrix.json"
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(module, "build_ctp_stack", lambda config: {"startup_truth_adapter": FakeAdapter(), "runtime_bridge": FakeBridge()})
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--isolated-flow-path",
+            str(isolated_flow_path),
+            "--evidence-root",
+            str(evidence_root),
+        ],
+    )
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+    exported = json.loads(expected_output.read_text(encoding="utf-8"))
+
+    assert exit_code == 0
+    assert payload["flow_mode"] == "explicit_override"
+    assert payload["session_label"] == "isolated-flow"
+    assert payload["export"] == {
+        "path": str(expected_output),
+        "written": True,
+        "session_label": "isolated-flow",
+        "evidence_root": str(evidence_root),
+        "explicit_path": False,
+    }
+    assert exported["export"]["path"] == str(expected_output)
+
+
+def test_startup_truth_evidence_matrix_smoke_rejects_conflicting_export_targets(
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_startup_truth_evidence_matrix_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_startup_truth_evidence_matrix_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    original_argv = sys.argv
+    try:
+        sys.argv = [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--output-json",
+            str(tmp_path / "payload.json"),
+            "--evidence-root",
+            str(tmp_path / "evidence-root"),
+        ]
+        exit_code = module.main()
+    finally:
+        sys.argv = original_argv
+
+    payload = json.loads(capsys.readouterr().out)
+    assert exit_code == 1
+    assert payload["baseline"] == "td-startup-truth-evidence-matrix-v1"
+    assert payload["failure_reason"] == "exception"
+    assert payload["error_stage"] == "argument_validation"
+    assert payload["error_type"] == "ValueError"
+
+
+def test_session_rebuild_policy_smoke_reports_structured_result(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_session_rebuild_policy_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_session_rebuild_policy_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAdapter:
+        def capture_session_rebuild_policy_mainline(self, **kwargs):
+            shared_truth = CtpTdStartupTruthEvidence(
+                flow_path="D:/repo/var/shared",
+                flow_mode="default_shared_flow",
+                ready=True,
+                login_success=True,
+                settlement_code=0,
+                front_id=11,
+                session_id=21,
+                max_order_ref=100,
+                disconnect_count=0,
+                disconnect_reasons=(),
+            )
+            isolated_truth = CtpTdStartupTruthEvidence(
+                flow_path="D:/repo/var/isolated",
+                flow_mode="explicit_override",
+                ready=True,
+                login_success=True,
+                settlement_code=0,
+                front_id=12,
+                session_id=22,
+                max_order_ref=1,
+                disconnect_count=0,
+                disconnect_reasons=(),
+            )
+            return CtpSessionRebuildPolicyResult(
+                shared_truth=shared_truth,
+                isolated_truth=isolated_truth,
+                disposition="manual_review_required",
+                shared_flow_reuse_allowed=False,
+                session_rotated=True,
+                max_order_ref_reset=True,
+                findings=(
+                    CtpSessionRebuildFinding(
+                        code="shared_flow_reuse_disabled",
+                        severity="warn",
+                        action="manual_review_required",
+                        metric="shared_flow_reuse_allowed",
+                        metric_value="false",
+                        threshold="true",
+                        message="Shared flow reuse is disabled.",
+                    ),
+                ),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(module, "build_ctp_stack", lambda config: {"startup_truth_adapter": FakeAdapter(), "runtime_bridge": FakeBridge()})
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 0
+    assert payload["baseline"] == "td-session-rebuild-policy-v1"
+    assert payload["success"] is True
+    assert payload["failure_reason"] is None
+    assert payload["disposition"] == "manual_review_required"
+
+
+def test_session_rebuild_policy_smoke_reports_findings_missing_failure(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_session_rebuild_policy_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_session_rebuild_policy_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAdapter:
+        def capture_session_rebuild_policy_mainline(self, **kwargs):
+            truth = CtpTdStartupTruthEvidence(
+                flow_path="D:/repo/var/shared",
+                flow_mode="default_shared_flow",
+                ready=True,
+                login_success=True,
+                settlement_code=0,
+                front_id=11,
+                session_id=21,
+                max_order_ref=100,
+                disconnect_count=0,
+                disconnect_reasons=(),
+            )
+            return CtpSessionRebuildPolicyResult(
+                shared_truth=truth,
+                isolated_truth=truth,
+                disposition="clear",
+                shared_flow_reuse_allowed=True,
+                session_rotated=False,
+                max_order_ref_reset=False,
+                findings=(),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(module, "build_ctp_stack", lambda config: {"startup_truth_adapter": FakeAdapter(), "runtime_bridge": FakeBridge()})
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 1
+    assert payload["baseline"] == "td-session-rebuild-policy-v1"
+    assert payload["success"] is False
+    assert payload["failure_reason"] == "findings_missing"
+
+
+def test_session_rebuild_policy_smoke_writes_isolated_flow_export(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_session_rebuild_policy_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_session_rebuild_policy_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAdapter:
+        def capture_session_rebuild_policy_mainline(self, **kwargs):
+            shared_truth = CtpTdStartupTruthEvidence(
+                flow_path="D:/repo/var/shared",
+                flow_mode="default_shared_flow",
+                ready=True,
+                login_success=True,
+                settlement_code=0,
+                front_id=11,
+                session_id=21,
+                max_order_ref=100,
+                disconnect_count=0,
+                disconnect_reasons=(),
+            )
+            isolated_truth = CtpTdStartupTruthEvidence(
+                flow_path="D:/repo/var/isolated",
+                flow_mode="explicit_override",
+                ready=True,
+                login_success=True,
+                settlement_code=0,
+                front_id=12,
+                session_id=22,
+                max_order_ref=1,
+                disconnect_count=0,
+                disconnect_reasons=(),
+            )
+            return CtpSessionRebuildPolicyResult(
+                shared_truth=shared_truth,
+                isolated_truth=isolated_truth,
+                disposition="manual_review_required",
+                shared_flow_reuse_allowed=False,
+                session_rotated=True,
+                max_order_ref_reset=True,
+                findings=(
+                    CtpSessionRebuildFinding(
+                        code="shared_flow_reuse_disabled",
+                        severity="warn",
+                        action="manual_review_required",
+                        metric="shared_flow_reuse_allowed",
+                        metric_value="false",
+                        threshold="true",
+                        message="Shared flow reuse is disabled.",
+                    ),
+                ),
+            )
+
+    evidence_root = tmp_path / "evidence-root"
+    isolated_flow_path = tmp_path / "isolated-flow"
+    expected_output = evidence_root / "isolated-flow" / "session_rebuild_policy.json"
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(module, "build_ctp_stack", lambda config: {"startup_truth_adapter": FakeAdapter(), "runtime_bridge": FakeBridge()})
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--isolated-flow-path",
+            str(isolated_flow_path),
+            "--evidence-root",
+            str(evidence_root),
+        ],
+    )
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+    exported = json.loads(expected_output.read_text(encoding="utf-8"))
+
+    assert exit_code == 0
+    assert payload["flow_mode"] == "explicit_override"
+    assert payload["session_label"] == "isolated-flow"
+    assert payload["export"] == {
+        "path": str(expected_output),
+        "written": True,
+        "session_label": "isolated-flow",
+        "evidence_root": str(evidence_root),
+        "explicit_path": False,
+    }
+    assert exported["export"]["path"] == str(expected_output)
+
+
+def test_session_rebuild_policy_smoke_rejects_conflicting_export_targets(
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_session_rebuild_policy_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_session_rebuild_policy_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    original_argv = sys.argv
+    try:
+        sys.argv = [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--output-json",
+            str(tmp_path / "payload.json"),
+            "--evidence-root",
+            str(tmp_path / "evidence-root"),
+        ]
+        exit_code = module.main()
+    finally:
+        sys.argv = original_argv
+
+    payload = json.loads(capsys.readouterr().out)
+    assert exit_code == 1
+    assert payload["baseline"] == "td-session-rebuild-policy-v1"
+    assert payload["failure_reason"] == "exception"
+    assert payload["error_stage"] == "argument_validation"
+    assert payload["error_type"] == "ValueError"
+
+
+def test_td_historical_callback_boundary_smoke_reports_structured_result(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_td_historical_callback_boundary_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_td_historical_callback_boundary_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeExecutionClient:
+        def capture_historical_callback_boundary_policy_mainline(self, **kwargs):
+            baseline = CtpTdOrderTruthBaseline(
+                flow_path="D:/repo/var/td-order-truth",
+                flow_mode="isolated",
+                ready=True,
+                login_success=True,
+                settlement_code=0,
+                login_front_id=11,
+                login_session_id=22,
+                login_max_order_ref=100,
+                disconnect_count=0,
+                disconnect_reasons=(),
+                observed_callback_count=9,
+                observed_order_event_count=9,
+                observed_trade_event_count=0,
+                no_callbacks_observed=False,
+                first_order_id="49456082",
+                first_order_ref="1001",
+                first_session_id=22,
+                first_front_id=11,
+                first_is_trade=False,
+                observed_callbacks=(),
+            )
+            return CtpTdHistoricalCallbackBoundaryPolicyResult(
+                baseline=baseline,
+                disposition="boundary_required",
+                historical_callback_count=9,
+                delayed_callback_count=0,
+                current_session_callback_count=0,
+                first_historical_order_id="49456082",
+                first_current_session_order_id=None,
+                findings=(
+                    CtpTdHistoricalCallbackBoundaryFinding(
+                        code="historical_callbacks_present",
+                        severity="info",
+                        action="boundary_required",
+                        metric="historical_callback_count",
+                        metric_value=9,
+                        threshold=0,
+                        message="Historical callbacks are present in the flow.",
+                    ),
+                ),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(module, "build_ctp_stack", lambda config: {"execution_client": FakeExecutionClient(), "runtime_bridge": FakeBridge()})
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 0
+    assert payload["baseline"] == "td-historical-callback-boundary-v1"
+    assert payload["success"] is True
+    assert payload["failure_reason"] is None
+    assert payload["disposition"] == "boundary_required"
+
+
+def test_td_historical_callback_boundary_smoke_reports_bootstrap_not_ready_failure(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_td_historical_callback_boundary_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_td_historical_callback_boundary_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeExecutionClient:
+        def capture_historical_callback_boundary_policy_mainline(self, **kwargs):
+            baseline = CtpTdOrderTruthBaseline(
+                flow_path="D:/repo/var/td-order-truth",
+                flow_mode="isolated",
+                ready=False,
+                login_success=False,
+                settlement_code=-1,
+                login_front_id=None,
+                login_session_id=None,
+                login_max_order_ref=None,
+                disconnect_count=0,
+                disconnect_reasons=(),
+                observed_callback_count=0,
+                observed_order_event_count=0,
+                observed_trade_event_count=0,
+                no_callbacks_observed=True,
+                first_order_id=None,
+                first_order_ref=None,
+                first_session_id=None,
+                first_front_id=None,
+                first_is_trade=None,
+                observed_callbacks=(),
+            )
+            return CtpTdHistoricalCallbackBoundaryPolicyResult(
+                baseline=baseline,
+                disposition="evidence_only",
+                historical_callback_count=0,
+                delayed_callback_count=0,
+                current_session_callback_count=0,
+                first_historical_order_id=None,
+                first_current_session_order_id=None,
+                findings=(),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(module, "build_ctp_stack", lambda config: {"execution_client": FakeExecutionClient(), "runtime_bridge": FakeBridge()})
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 1
+    assert payload["baseline"] == "td-historical-callback-boundary-v1"
+    assert payload["success"] is False
+    assert payload["failure_reason"] == "bootstrap_not_ready"
+
+
+def test_td_historical_callback_boundary_smoke_writes_isolated_flow_export(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_td_historical_callback_boundary_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_td_historical_callback_boundary_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeExecutionClient:
+        def capture_historical_callback_boundary_policy_mainline(self, **kwargs):
+            baseline = CtpTdOrderTruthBaseline(
+                flow_path="D:/repo/var/td-order-truth",
+                flow_mode="isolated",
+                ready=True,
+                login_success=True,
+                settlement_code=0,
+                login_front_id=11,
+                login_session_id=22,
+                login_max_order_ref=100,
+                disconnect_count=0,
+                disconnect_reasons=(),
+                observed_callback_count=9,
+                observed_order_event_count=9,
+                observed_trade_event_count=0,
+                no_callbacks_observed=False,
+                first_order_id="49456082",
+                first_order_ref="1001",
+                first_session_id=22,
+                first_front_id=11,
+                first_is_trade=False,
+                observed_callbacks=(),
+            )
+            return CtpTdHistoricalCallbackBoundaryPolicyResult(
+                baseline=baseline,
+                disposition="boundary_required",
+                historical_callback_count=9,
+                delayed_callback_count=0,
+                current_session_callback_count=0,
+                first_historical_order_id="49456082",
+                first_current_session_order_id=None,
+                findings=(
+                    CtpTdHistoricalCallbackBoundaryFinding(
+                        code="historical_callbacks_present",
+                        severity="info",
+                        action="boundary_required",
+                        metric="historical_callback_count",
+                        metric_value=9,
+                        threshold=0,
+                        message="Historical callbacks are present in the flow.",
+                    ),
+                ),
+            )
+
+    evidence_root = tmp_path / "evidence-root"
+    flow_path = tmp_path / "isolated-flow"
+    expected_output = evidence_root / "isolated-flow" / "td_historical_callback_boundary.json"
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(module, "build_ctp_stack", lambda config: {"execution_client": FakeExecutionClient(), "runtime_bridge": FakeBridge()})
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--flow-path",
+            str(flow_path),
+            "--evidence-root",
+            str(evidence_root),
+        ],
+    )
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+    exported = json.loads(expected_output.read_text(encoding="utf-8"))
+
+    assert exit_code == 0
+    assert payload["flow_mode"] == "explicit_override"
+    assert payload["session_label"] == "isolated-flow"
+    assert payload["export"] == {
+        "path": str(expected_output),
+        "written": True,
+        "session_label": "isolated-flow",
+        "evidence_root": str(evidence_root),
+        "explicit_path": False,
+    }
+    assert exported["export"]["path"] == str(expected_output)
+
+
+def test_td_historical_callback_boundary_smoke_rejects_conflicting_export_targets(
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_td_historical_callback_boundary_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_td_historical_callback_boundary_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    original_argv = sys.argv
+    try:
+        sys.argv = [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--output-json",
+            str(tmp_path / "payload.json"),
+            "--evidence-root",
+            str(tmp_path / "evidence-root"),
+        ]
+        exit_code = module.main()
+    finally:
+        sys.argv = original_argv
+
+    payload = json.loads(capsys.readouterr().out)
+    assert exit_code == 1
+    assert payload["baseline"] == "td-historical-callback-boundary-v1"
+    assert payload["failure_reason"] == "exception"
+    assert payload["error_stage"] == "argument_validation"
+    assert payload["error_type"] == "ValueError"
+
+
+def test_td_login_smoke_reports_structured_result(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+    from types import SimpleNamespace
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_td_login_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_td_login_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeApi:
+        def __init__(self):
+            self._login_callback = None
+            self._disconnect_callback = None
+
+        def create(self, flow_path):
+            return object()
+
+        def set_login_callback(self, handle, callback):
+            self._login_callback = callback
+
+        def set_front_disconnected_callback(self, handle, callback):
+            self._disconnect_callback = callback
+
+        def init(self, handle, td_front):
+            return 0
+
+        def authenticate(self, handle, app_id, auth_code, product_info):
+            return 0
+
+        def login(self, handle, broker_id, user_id, password):
+            self._login_callback(
+                SimpleNamespace(
+                    success=True,
+                    error_id=0,
+                    error_message="",
+                    front_id=11,
+                    session_id=22,
+                    max_order_ref=101,
+                )
+            )
+            return 0
+
+        def confirm_settlement(self, handle):
+            return 0
+
+        def dispose(self, handle):
+            return None
+
+    fake_api = FakeApi()
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: CtpAdapterConfig(broker_id="9999", user_id="025292", password="secret", td_front="tcp://front", app_id="app", auth_code="auth", product_info="prod")))
+    monkeypatch.setattr(module.CtpTdApi, "load", lambda root: fake_api)
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json"), "--timeout-seconds", "0"])
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 0
+    assert payload["baseline"] == "td-login-smoke-v1"
+    assert payload["success"] is True
+    assert payload["failure_reason"] is None
+    assert payload["session_id"] == 22
+
+
+def test_td_login_smoke_reports_login_response_missing_failure(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_td_login_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_td_login_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeApi:
+        def create(self, flow_path):
+            return object()
+
+        def set_login_callback(self, handle, callback):
+            return None
+
+        def set_front_disconnected_callback(self, handle, callback):
+            return None
+
+        def init(self, handle, td_front):
+            return 0
+
+        def authenticate(self, handle, app_id, auth_code, product_info):
+            return 0
+
+        def login(self, handle, broker_id, user_id, password):
+            return 0
+
+        def confirm_settlement(self, handle):
+            return 0
+
+        def dispose(self, handle):
+            return None
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: CtpAdapterConfig(broker_id="9999", user_id="025292", password="secret", td_front="tcp://front", app_id="app", auth_code="auth", product_info="prod")))
+    monkeypatch.setattr(module.CtpTdApi, "load", lambda root: FakeApi())
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json"), "--timeout-seconds", "0"])
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 1
+    assert payload["baseline"] == "td-login-smoke-v1"
+    assert payload["success"] is False
+    assert payload["failure_reason"] == "login_response_missing"
+
+
+def test_td_login_smoke_writes_isolated_flow_export(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+    from types import SimpleNamespace
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_td_login_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_td_login_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeApi:
+        def __init__(self):
+            self._login_callback = None
+
+        def create(self, flow_path):
+            assert flow_path == tmp_path / "td-login-flow"
+            return object()
+
+        def set_login_callback(self, handle, callback):
+            self._login_callback = callback
+
+        def set_front_disconnected_callback(self, handle, callback):
+            return None
+
+        def init(self, handle, td_front):
+            return 0
+
+        def authenticate(self, handle, app_id, auth_code, product_info):
+            return 0
+
+        def login(self, handle, broker_id, user_id, password):
+            assert self._login_callback is not None
+            self._login_callback(
+                SimpleNamespace(
+                    success=True,
+                    error_id=0,
+                    error_message="",
+                    front_id=11,
+                    session_id=22,
+                    max_order_ref=101,
+                )
+            )
+            return 0
+
+        def confirm_settlement(self, handle):
+            return 0
+
+        def dispose(self, handle):
+            return None
+
+    evidence_root = tmp_path / "evidence-root"
+    expected_output = evidence_root / "isolated-flow" / "td_login_smoke.json"
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: CtpAdapterConfig(broker_id="9999", user_id="025292", password="secret", td_front="tcp://front", app_id="app", auth_code="auth", product_info="prod")))
+    monkeypatch.setattr(module.CtpTdApi, "load", lambda root: FakeApi())
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--timeout-seconds",
+            "0",
+            "--flow-path",
+            str(tmp_path / "td-login-flow"),
+            "--evidence-root",
+            str(evidence_root),
+        ],
+    )
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+    exported = json.loads(expected_output.read_text(encoding="utf-8"))
+
+    assert exit_code == 0
+    assert payload["flow_mode"] == "explicit_override"
+    assert payload["session_label"] == "isolated-flow"
+    assert payload["export"] == {
+        "path": str(expected_output),
+        "written": True,
+        "session_label": "isolated-flow",
+        "evidence_root": str(evidence_root),
+        "explicit_path": False,
+    }
+    assert exported["export"]["path"] == str(expected_output)
+
+
+def test_td_login_smoke_rejects_conflicting_export_targets(
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_td_login_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_td_login_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    original_argv = sys.argv
+    try:
+        sys.argv = [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--output-json",
+            str(tmp_path / "payload.json"),
+            "--evidence-root",
+            str(tmp_path / "evidence-root"),
+        ]
+        exit_code = module.main()
+    finally:
+        sys.argv = original_argv
+
+    payload = json.loads(capsys.readouterr().out)
+    assert exit_code == 1
+    assert payload["baseline"] == "td-login-smoke-v1"
+    assert payload["failure_reason"] == "exception"
+    assert payload["error_stage"] == "argument_validation"
+    assert payload["error_type"] == "ValueError"
+    assert "output_json conflicts with evidence_root" in payload["error_message"]
+
+
+def test_nautilus_live_smoke_reports_structured_result(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+    from types import SimpleNamespace
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_nautilus_live_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_nautilus_live_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeKind:
+        def __init__(self, value: str):
+            self.value = value
+
+    class FakeEvent:
+        def __init__(self, kind: str, venue_symbol: str | None = None, payload: dict[str, object] | None = None):
+            self.kind = FakeKind(kind)
+            self.venue_symbol = venue_symbol
+            self.payload = payload or {}
+
+    class FakeBridge:
+        def drain_events(self):
+            return [
+                FakeEvent("tick", venue_symbol="rb2610"),
+                FakeEvent("login_succeeded", payload={"channel": "td"}),
+                FakeEvent("settlement_confirmed"),
+            ]
+
+    class FakeDataClient:
+        def bootstrap_market_data_mainline(self):
+            return SimpleNamespace(started=True, connect_request_id="md-connect-1", subscribe_request_ids=("sub-1",))
+
+        def run_live_md_smoke(self, *, timeout_seconds: int):
+            return SimpleNamespace(
+                init_code=0,
+                login_request_code=0,
+                subscribe_code=0,
+                login_success=True,
+                login_error_id=0,
+                first_tick_symbol="rb2610",
+                first_tick_last=3510.0,
+                first_tick_bid=3509.0,
+                first_tick_ask=3511.0,
+                first_tick_ts_epoch_us=1775052501781380,
+            )
+
+    class FakeExecutionClient:
+        def run_live_td_readiness_smoke(self, *, timeout_seconds: int):
+            return SimpleNamespace(
+                init_code=0,
+                authenticate_code=0,
+                login_code=0,
+                settlement_code=0,
+                login_success=True,
+                login_error_id=0,
+                front_id=11,
+                session_id=22,
+                max_order_ref=101,
+                disconnects=[],
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: CtpAdapterConfig(instruments=("rb2610",))))
+    monkeypatch.setattr(module, "build_ctp_stack", lambda config: {"data_client": FakeDataClient(), "execution_client": FakeExecutionClient(), "runtime_bridge": FakeBridge()})
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 0
+    assert payload["baseline"] == "nautilus-live-smoke-v1"
+    assert payload["success"] is True
+    assert payload["failure_reason"] is None
+    assert payload["bridge_td_login_seen"] is True
+    assert payload["bridge_settlement_seen"] is True
+
+
+def test_nautilus_live_smoke_reports_td_login_failed_failure(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+    from types import SimpleNamespace
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_nautilus_live_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_nautilus_live_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+    class FakeDataClient:
+        def bootstrap_market_data_mainline(self):
+            return SimpleNamespace(started=True, connect_request_id="md-connect-1", subscribe_request_ids=("sub-1",))
+
+        def run_live_md_smoke(self, *, timeout_seconds: int):
+            return SimpleNamespace(
+                init_code=0,
+                login_request_code=0,
+                subscribe_code=0,
+                login_success=True,
+                login_error_id=0,
+                first_tick_symbol="rb2610",
+                first_tick_last=3510.0,
+                first_tick_bid=3509.0,
+                first_tick_ask=3511.0,
+                first_tick_ts_epoch_us=1775052501781380,
+            )
+
+    class FakeExecutionClient:
+        def run_live_td_readiness_smoke(self, *, timeout_seconds: int):
+            return SimpleNamespace(
+                init_code=-9000,
+                authenticate_code=-9000,
+                login_code=-9000,
+                settlement_code=-1,
+                login_success=False,
+                login_error_id=7,
+                front_id=None,
+                session_id=None,
+                max_order_ref=None,
+                disconnects=[],
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: CtpAdapterConfig(instruments=("rb2610",))))
+    monkeypatch.setattr(module, "build_ctp_stack", lambda config: {"data_client": FakeDataClient(), "execution_client": FakeExecutionClient(), "runtime_bridge": FakeBridge()})
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 1
+    assert payload["baseline"] == "nautilus-live-smoke-v1"
+    assert payload["success"] is False
+    assert payload["failure_reason"] == "td_login_failed"
+
+
+def test_repo_debug_smoke_reports_structured_result(
+    monkeypatch,
+    capsys,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_repo_debug_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_repo_debug_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    monkeypatch.setattr(
+        module,
+        "collect_repo_debug_smoke_snapshot",
+        lambda: {
+            "probe_scope": "repo_only_debug_bootstrap",
+            "td_probe_mode": "public_pyo3_scaffold_before_c3",
+            "formal_live_td_entrypoint": "python scripts/ctp_nautilus_live_smoke.py --config <path>",
+            "formal_live_td_path": "execution_client.run_live_td_readiness_smoke -> native.td_ctypes -> ctp_native.dll",
+            "runtime_package_file": "D:/repo/src/ctp_runtime/__init__.py",
+            "runtime_native_module_file": "D:/repo/src/ctp_runtime/_ctp_runtime.pyd",
+            "has_internal_md_live_session": True,
+            "scaffold_not_implemented": -9000,
+            "invalid_handle": -9001,
+            "md_init_code": -9000,
+            "md_login_code": -9000,
+            "md_subscribe_code": -9000,
+            "td_init_code": -9000,
+            "td_authenticate_code": -9000,
+            "td_login_code": -9000,
+            "md_init_after_dispose_code": -9001,
+        },
+    )
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 0
+    assert payload["baseline"] == "repo-debug-smoke-v1"
+    assert payload["success"] is True
+    assert payload["failure_reason"] is None
+    assert payload["td_probe_mode"] == "public_pyo3_scaffold_before_c3"
+
+
+def test_repo_debug_smoke_reports_scaffold_contract_mismatch_failure(
+    monkeypatch,
+    capsys,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_repo_debug_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_repo_debug_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    monkeypatch.setattr(
+        module,
+        "collect_repo_debug_smoke_snapshot",
+        lambda: {
+            "probe_scope": "repo_only_debug_bootstrap",
+            "td_probe_mode": "public_pyo3_scaffold_before_c3",
+            "formal_live_td_entrypoint": "python scripts/ctp_nautilus_live_smoke.py --config <path>",
+            "formal_live_td_path": "execution_client.run_live_td_readiness_smoke -> native.td_ctypes -> ctp_native.dll",
+            "runtime_package_file": "D:/repo/src/ctp_runtime/__init__.py",
+            "runtime_native_module_file": "D:/repo/src/ctp_runtime/_ctp_runtime.pyd",
+            "has_internal_md_live_session": True,
+            "scaffold_not_implemented": -9000,
+            "invalid_handle": -9001,
+            "md_init_code": -9000,
+            "md_login_code": -9000,
+            "md_subscribe_code": -9000,
+            "td_init_code": -9000,
+            "td_authenticate_code": -9000,
+            "td_login_code": -42,
+            "md_init_after_dispose_code": -9001,
+        },
+    )
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 1
+    assert payload["baseline"] == "repo-debug-smoke-v1"
+    assert payload["success"] is False
+    assert payload["failure_reason"] == "scaffold_contract_mismatch"
+
+
+def test_td_merged_reconciliation_policy_smoke_reports_structured_result(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_td_merged_reconciliation_policy_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_td_merged_reconciliation_policy_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAdapter:
+        def capture_merged_reconciliation_policy_mainline(
+            self,
+            *,
+            timeout_seconds: int,
+            flow_path,
+            observation_grace_seconds: float,
+            completion_grace_seconds: float,
+        ):
+            return CtpTdMergedReconciliationPolicyResult(
+                snapshot=CtpTdTruthMergeSnapshot(
+                    order_truth=CtpTdOrderTruthEvidenceMatrix(
+                        evidence_version="td-order-truth-evidence-v1",
+                        captured_at_utc="2026-04-02T08:10:00Z",
+                        account_id="025292",
+                        disposition="boundary_required",
+                        observed_callback_count=9,
+                        historical_callback_count=9,
+                        delayed_callback_count=0,
+                        current_session_callback_count=0,
+                        first_historical_order_id="49456082",
+                        first_current_session_order_id=None,
+                        manual_review_codes=(),
+                        boundary_codes=("historical_callbacks_present",),
+                        evidence_only_codes=("no_current_session_callbacks",),
+                    ),
+                    positions=CtpPositionQueryBaseline(
+                        request_id="query-positions-1",
+                        query_code=0,
+                        completed=True,
+                        timed_out=False,
+                        no_positions=False,
+                        position_count=73,
+                        positions=(),
+                    ),
+                    account=CtpAccountQueryBaseline(
+                        request_id="query-account-1",
+                        query_code=0,
+                        completed=True,
+                        timed_out=False,
+                        account=CtpAccountRecord(
+                            account_id="025292",
+                            balance=1000000.0,
+                            available=214000.0,
+                            margin=780000.0,
+                            commission=35.0,
+                            close_profit=1200.0,
+                            position_profit=-230.0,
+                        ),
+                    ),
+                ),
+                disposition="manual_review_required",
+                available_ratio=0.214,
+                margin_ratio=0.78,
+                findings=(
+                    CtpTdMergedReconciliationFinding(
+                        code="historical_callbacks_present",
+                        severity="warn",
+                        action="boundary_required",
+                        metric="historical_callback_count",
+                        metric_value=9,
+                        threshold=0,
+                        message="Merged snapshot still contains historical callback residue and must preserve that boundary.",
+                    ),
+                    CtpTdMergedReconciliationFinding(
+                        code="available_ratio_warn",
+                        severity="warn",
+                        action="manual_review_required",
+                        metric="available_ratio",
+                        metric_value=0.214,
+                        threshold=0.25,
+                        message="Available ratio is below the merged truth comfort threshold.",
+                    ),
+                ),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"truth_merge_adapter": FakeAdapter(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert payload["baseline"] == "td-merged-reconciliation-policy-v1"
+    assert payload["success"] is True
+    assert payload["failure_reason"] is None
+    assert payload["order_truth"]["boundary_codes"] == ["historical_callbacks_present"]
+    assert payload["positions"]["position_count"] == 73
+    assert payload["account"]["account_id"] == "025292"
+    assert payload["disposition"] == "manual_review_required"
+    assert payload["manual_review_codes"] == ["available_ratio_warn"]
+    assert payload["boundary_codes"] == ["historical_callbacks_present"]
+
+
+def test_td_merged_reconciliation_policy_smoke_reports_positions_incomplete_failure(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_td_merged_reconciliation_policy_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_td_merged_reconciliation_policy_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAdapter:
+        def capture_merged_reconciliation_policy_mainline(
+            self,
+            *,
+            timeout_seconds: int,
+            flow_path,
+            observation_grace_seconds: float,
+            completion_grace_seconds: float,
+        ):
+            return CtpTdMergedReconciliationPolicyResult(
+                snapshot=CtpTdTruthMergeSnapshot(
+                    order_truth=CtpTdOrderTruthEvidenceMatrix(
+                        evidence_version="td-order-truth-evidence-v1",
+                        captured_at_utc="2026-04-02T08:10:00Z",
+                        account_id="025292",
+                        disposition="clear",
+                        observed_callback_count=0,
+                        historical_callback_count=0,
+                        delayed_callback_count=0,
+                        current_session_callback_count=0,
+                        first_historical_order_id=None,
+                        first_current_session_order_id=None,
+                        manual_review_codes=(),
+                        boundary_codes=(),
+                        evidence_only_codes=(),
+                    ),
+                    positions=CtpPositionQueryBaseline(
+                        request_id="query-positions-1",
+                        query_code=0,
+                        completed=False,
+                        timed_out=False,
+                        no_positions=False,
+                        position_count=0,
+                        positions=(),
+                    ),
+                    account=CtpAccountQueryBaseline(
+                        request_id="query-account-1",
+                        query_code=0,
+                        completed=True,
+                        timed_out=False,
+                        account=CtpAccountRecord(
+                            account_id="025292",
+                            balance=1000000.0,
+                            available=214000.0,
+                            margin=780000.0,
+                            commission=35.0,
+                            close_profit=1200.0,
+                            position_profit=-230.0,
+                        ),
+                    ),
+                ),
+                disposition="evidence_only",
+                available_ratio=0.214,
+                margin_ratio=0.78,
+                findings=(),
+            )
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"truth_merge_adapter": FakeAdapter(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(sys, "argv", [str(script_path), "--config", str(tmp_path / "fake.json")])
+
+    exit_code = module.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 1
+    assert payload["baseline"] == "td-merged-reconciliation-policy-v1"
+    assert payload["success"] is False
+    assert payload["failure_reason"] == "positions_incomplete"
+
+
+def test_td_merged_reconciliation_policy_smoke_writes_isolated_flow_export(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_td_merged_reconciliation_policy_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_td_merged_reconciliation_policy_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+        def drain_submitted_commands(self):
+            return []
+
+    class FakeAdapter:
+        def capture_merged_reconciliation_policy_mainline(
+            self,
+            *,
+            timeout_seconds: int,
+            flow_path,
+            observation_grace_seconds: float,
+            completion_grace_seconds: float,
+        ):
+            return CtpTdMergedReconciliationPolicyResult(
+                snapshot=CtpTdTruthMergeSnapshot(
+                    order_truth=CtpTdOrderTruthEvidenceMatrix(
+                        evidence_version="td-order-truth-evidence-v1",
+                        captured_at_utc="2026-04-02T08:10:00Z",
+                        account_id="025292",
+                        disposition="boundary_required",
+                        observed_callback_count=9,
+                        historical_callback_count=9,
+                        delayed_callback_count=0,
+                        current_session_callback_count=0,
+                        first_historical_order_id="49456082",
+                        first_current_session_order_id=None,
+                        manual_review_codes=(),
+                        boundary_codes=("historical_callbacks_present",),
+                        evidence_only_codes=("no_current_session_callbacks",),
+                    ),
+                    positions=CtpPositionQueryBaseline(
+                        request_id="query-positions-1",
+                        query_code=0,
+                        completed=True,
+                        timed_out=False,
+                        no_positions=False,
+                        position_count=73,
+                        positions=(),
+                    ),
+                    account=CtpAccountQueryBaseline(
+                        request_id="query-account-1",
+                        query_code=0,
+                        completed=True,
+                        timed_out=False,
+                        account=CtpAccountRecord(
+                            account_id="025292",
+                            balance=1000000.0,
+                            available=214000.0,
+                            margin=780000.0,
+                            commission=35.0,
+                            close_profit=1200.0,
+                            position_profit=-230.0,
+                        ),
+                    ),
+                ),
+                disposition="manual_review_required",
+                available_ratio=0.214,
+                margin_ratio=0.78,
+                findings=(
+                    CtpTdMergedReconciliationFinding(
+                        code="historical_callbacks_present",
+                        severity="warn",
+                        action="boundary_required",
+                        metric="historical_callback_count",
+                        metric_value=9,
+                        threshold=0,
+                        message="Merged snapshot still contains historical callback residue and must preserve that boundary.",
+                    ),
+                    CtpTdMergedReconciliationFinding(
+                        code="available_ratio_warn",
+                        severity="warn",
+                        action="manual_review_required",
+                        metric="available_ratio",
+                        metric_value=0.214,
+                        threshold=0.25,
+                        message="Available ratio is below the merged truth comfort threshold.",
+                    ),
+                ),
+            )
+
+    flow_path = tmp_path / "isolated-flow"
+    evidence_root = tmp_path / "evidence-root"
+    expected_output = evidence_root / "isolated-flow" / "td_merged_reconciliation_policy.json"
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(lambda cls, path: object()))
+    monkeypatch.setattr(
+        module,
+        "build_ctp_stack",
+        lambda config: {"truth_merge_adapter": FakeAdapter(), "runtime_bridge": FakeBridge()},
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--flow-path",
+            str(flow_path),
+            "--evidence-root",
+            str(evidence_root),
+        ],
+    )
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+    exported = json.loads(expected_output.read_text(encoding="utf-8"))
+
+    assert exit_code == 0
+    assert payload["flow_path"] == str(flow_path)
+    assert payload["flow_mode"] == "explicit_override"
+    assert payload["session_label"] == "isolated-flow"
+    assert payload["export"] == {
+        "path": str(expected_output),
+        "written": True,
+        "session_label": "isolated-flow",
+        "evidence_root": str(evidence_root),
+        "explicit_path": False,
+    }
+    assert exported["export"]["path"] == str(expected_output)
+
+
+def test_td_merged_reconciliation_policy_smoke_rejects_conflicting_export_targets(
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_td_merged_reconciliation_policy_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_td_merged_reconciliation_policy_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    original_argv = sys.argv
+    try:
+        sys.argv = [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--output-json",
+            str(tmp_path / "payload.json"),
+            "--evidence-root",
+            str(tmp_path / "evidence-root"),
+        ]
+        exit_code = module.main()
+    finally:
+        sys.argv = original_argv
+
+    payload = json.loads(capsys.readouterr().out)
+    assert exit_code == 1
+    assert payload["baseline"] == "td-merged-reconciliation-policy-v1"
+    assert payload["failure_reason"] == "exception"
+    assert payload["error_stage"] == "argument_validation"
+    assert payload["error_type"] == "ValueError"
 
 
 # ─── PyO3 bridge scaffold contracts (C1: bridge-and-cutover-design) ───────────
@@ -5005,6 +14335,23 @@ def test_pyo3_internal_md_live_session_symbol_is_available() -> None:
     import ctp_runtime._ctp_runtime as native_runtime
 
     assert hasattr(native_runtime, "CtpMdLiveSession")  # [CONTRACT-LOCK: data_client MD mainline depends on the internal PyO3 CtpMdLiveSession symbol remaining importable]
+
+
+def test_pyo3_internal_td_live_session_symbol_is_available() -> None:
+    import ctp_runtime._ctp_runtime as native_runtime
+
+    assert hasattr(native_runtime, "CtpTdLiveSession")  # [CONTRACT-LOCK: execution_client TD bootstrap mainline depends on the internal PyO3 CtpTdLiveSession symbol remaining importable]
+
+
+def test_pyo3_internal_td_live_session_exposes_td_callback_contract() -> None:
+    import ctp_runtime._ctp_runtime as native_runtime
+
+    td_live_session = native_runtime.CtpTdLiveSession
+
+    assert hasattr(td_live_session, "set_exec_callback")  # [CONTRACT-LOCK: merged reconciliation and order-truth mainline depend on TD live sessions exposing set_exec_callback at runtime]
+    assert hasattr(td_live_session, "set_instrument_callback")  # [CONTRACT-LOCK: instrument query mainline depends on TD live sessions exposing set_instrument_callback at runtime]
+    assert hasattr(td_live_session, "set_position_callback")  # [CONTRACT-LOCK: position query mainline depends on TD live sessions exposing set_position_callback at runtime]
+    assert hasattr(td_live_session, "set_account_callback")  # [CONTRACT-LOCK: account query mainline depends on TD live sessions exposing set_account_callback at runtime]
 
 
 def test_run_live_md_smoke_uses_pyo3_md_live_session_mainline(
@@ -5139,3 +14486,132 @@ def test_run_live_md_smoke_fails_fast_when_pyo3_md_bridge_unavailable(monkeypatc
         assert False, "expected PyO3 MD bridge failure to propagate"
     except RuntimeError as exc:
         assert "PyO3 MD bridge unavailable" in str(exc)  # [CONTRACT-LOCK: MD smoke must fail fast when the PyO3 bridge is unavailable instead of silently falling back to ctypes]
+
+
+def test_run_live_td_readiness_smoke_uses_pyo3_td_live_session_mainline(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    import nautilus_ctp_adapter.adapters.ctp.execution_client as execution_client_module
+
+    records: dict[str, object] = {}
+
+    class FailIfCtypesTdApiUsed:
+        @classmethod
+        def load(cls, base_dir):
+            raise AssertionError("run_live_td_readiness_smoke must not fall back to ctypes CtpTdApi")
+
+    class FakeTdLiveSession:
+        def __init__(self, flow_path: str) -> None:
+            records["flow_path"] = Path(flow_path)
+            records["session_factory_used"] = True
+            self._login_callback = None
+            self._disconnect_callback = None
+
+        def set_login_callback(self, callback) -> None:
+            self._login_callback = callback
+
+        def set_front_disconnected_callback(self, callback) -> None:
+            self._disconnect_callback = callback
+
+        def init(self, front: str) -> int:
+            records["front"] = front
+            return 0
+
+        def authenticate(self, appid: str, auth_code: str, product_info: str) -> int:
+            records["authenticate_args"] = (appid, auth_code, product_info)
+            return 0
+
+        def login(self, broker: str, user: str, password: str) -> int:
+            records["login_args"] = (broker, user, password)
+
+            class LoginResponse:
+                success = True
+                error_id = 0
+                error_message = ""
+                front_id = 11
+                session_id = 22
+                max_order_ref = 100
+
+            assert self._login_callback is not None
+            self._login_callback(LoginResponse())
+            return 0
+
+        def confirm_settlement(self) -> int:
+            records["settlement_called"] = True
+            return 0
+
+        def dispose(self) -> None:
+            records["disposed"] = True
+
+    monkeypatch.setattr(execution_client_module, "CtpTdApi", FailIfCtypesTdApiUsed, raising=False)
+    monkeypatch.setattr(
+        execution_client_module,
+        "_create_td_live_session",
+        lambda flow_path: FakeTdLiveSession(str(flow_path)),
+    )
+
+    config = CtpAdapterConfig.from_dict(
+        {
+            "BrokerID": "0155",
+            "UserID": "025292",
+            "Password": "secret",
+            "AppID": "client_iq_3.6.2",
+            "AuthCode": "RFLEXUGHCKIKWGPC",
+            "ProductInfo": "iQuant",
+            "Pricer": "tcp://106.75.173.28:51213",
+            "Host": "tcp://106.75.173.28:51205",
+            "Instruments": ["rb2610"],
+        }
+    )
+    execution_client = build_ctp_stack(config)["execution_client"]
+
+    result = execution_client.run_live_td_readiness_smoke(timeout_seconds=1, flow_path=tmp_path / "td_flow")
+    events = execution_client.runtime_bridge.drain_events()
+
+    assert records["session_factory_used"] is True  # [CONTRACT-LOCK: TD readiness smoke must construct the PyO3 TD live session mainline instead of ctypes CtpTdApi]
+    assert records["settlement_called"] is True
+    assert records["disposed"] is True
+    assert result.init_code == 0
+    assert result.authenticate_code == 0
+    assert result.login_code == 0
+    assert result.settlement_code == 0
+    assert result.login_success is True
+    assert result.front_id == 11
+    assert result.session_id == 22
+    assert result.max_order_ref == 100
+    assert [event.kind for event in events] == [
+        CtpRuntimeEventKind.LOGIN_SUCCEEDED,
+        CtpRuntimeEventKind.SETTLEMENT_CONFIRMED,
+    ]  # [CONTRACT-LOCK: PyO3 TD readiness mainline must still emit LOGIN_SUCCEEDED then SETTLEMENT_CONFIRMED into the runtime bridge]
+
+
+def test_run_live_td_readiness_smoke_fails_fast_when_pyo3_td_bridge_unavailable(monkeypatch) -> None:
+    import nautilus_ctp_adapter.adapters.ctp.execution_client as execution_client_module
+
+    monkeypatch.setattr(
+        execution_client_module,
+        "_create_td_live_session",
+        lambda flow_path: (_ for _ in ()).throw(RuntimeError("PyO3 TD bridge unavailable")),
+    )
+
+    config = CtpAdapterConfig.from_dict(
+        {
+            "BrokerID": "0155",
+            "UserID": "025292",
+            "Password": "secret",
+            "AppID": "client_iq_3.6.2",
+            "AuthCode": "RFLEXUGHCKIKWGPC",
+            "ProductInfo": "iQuant",
+            "Pricer": "tcp://106.75.173.28:51213",
+            "Host": "tcp://106.75.173.28:51205",
+            "Instruments": ["rb2610"],
+        }
+    )
+    execution_client = build_ctp_stack(config)["execution_client"]
+
+    try:
+        execution_client.run_live_td_readiness_smoke(timeout_seconds=1)
+        assert False, "expected PyO3 TD bridge failure to propagate"
+    except RuntimeError as exc:
+        assert "PyO3 TD bridge unavailable" in str(exc)  # [CONTRACT-LOCK: TD readiness smoke must fail fast when the PyO3 bridge is unavailable instead of silently falling back to ctypes]

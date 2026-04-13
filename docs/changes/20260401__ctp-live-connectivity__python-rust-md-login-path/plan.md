@@ -32,7 +32,7 @@ dependencies:
 - capability_id: ctp-md-mainline-path
 - capability_name: Python/Rust 主线行情登录路径 / Python-Rust market-data mainline path
 - long_term_target: /D:/Nautilus/nautilus_ctp_adapter/docs/architecture/rust-python-adapter-split.md
-- secondary_targets: /D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/ctp-live-connectivity/README.md
+- secondary_targets: /D:/Nautilus/nautilus_ctp_adapter/docs/topics/ctp-live-connectivity.md
 - decision_target: /D:/Nautilus/nautilus_ctp_adapter/docs/architecture/platform-neutral-ctp-runtime.md
 - affects_long_term_rules: 是
 - change_type: 纯实现

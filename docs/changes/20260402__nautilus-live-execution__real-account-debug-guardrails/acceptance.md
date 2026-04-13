@@ -4,11 +4,11 @@
 **变更目录 / Change Root**：./
 **状态**：✅ 已完成
 **日期**：2026-04-02
-**范围**：`docs/topics/roadmap/nautilus_adapter/nautilus-live-execution/`、`src/nautilus_ctp_adapter/adapters/ctp/`、`cfgs/`、`tests/`
+**范围**：`docs/topics/nautilus-live-execution/`、`src/nautilus_ctp_adapter/adapters/ctp/`、`cfgs/`、`tests/`
 **change-id**：20260402__nautilus-live-execution__real-account-debug-guardrails
 **关联 plan**：./plan.md
 **关联 ai_constraints**：./ai_constraints.md
-**长期归宿 / Long-Term Target**：/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/nautilus-live-execution/README.md
+**长期归宿 / Long-Term Target**：/D:/Nautilus/nautilus_ctp_adapter/docs/topics/nautilus-live-execution.md
 
 <!-- AI-STATUS-BEGIN -->
 ```yaml
@@ -56,8 +56,8 @@ scenarios:
 
 | # | 证据类型 | 路径/链接 | 说明 |
 | --- | --- | --- | --- |
-| 1 | roadmap 规则 | `/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/nautilus-live-execution/README.md` | Topic 级 guardrails |
-| 2 | mainline 规则 | `/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/nautilus-ctp-adapter-mainline/README.md` | 仓级 guardrails |
+| 1 | roadmap 规则 | `/D:/Nautilus/nautilus_ctp_adapter/docs/topics/nautilus-live-execution.md` | Topic 级 guardrails |
+| 2 | mainline 规则 | `/D:/Nautilus/nautilus_ctp_adapter/docs/topics/nautilus-ctp-adapter-mainline.md` | 仓级 guardrails |
 | 3 | contract 锁定 | `/D:/Nautilus/nautilus_ctp_adapter/tests/test_smoke_import.py` | config + precheck 测试 |
 
 ## 十、Contract/Function 锁定证据（可选）

@@ -12,13 +12,22 @@ if str(SRC_ROOT) not in sys.path:
 from nautilus_ctp_adapter.repo_debug_smoke import collect_repo_debug_smoke_snapshot
 
 
+BASELINE = "repo-debug-smoke-v1"
+
+
+def _emit_payload(payload: dict[str, object]) -> None:
+    print(json.dumps(payload, ensure_ascii=False))
+
+
 def main() -> int:
     snapshot = collect_repo_debug_smoke_snapshot()
-    print(json.dumps(snapshot, ensure_ascii=False, indent=2))
 
     scaffold_code = snapshot["scaffold_not_implemented"]
     invalid_handle = snapshot["invalid_handle"]
-    success = (
+    failure_reason = None
+    if not snapshot["has_internal_md_live_session"]:
+        failure_reason = "internal_md_live_session_missing"
+    elif not (
         snapshot["has_internal_md_live_session"]
         and snapshot["md_init_code"] == scaffold_code
         and snapshot["md_login_code"] == scaffold_code
@@ -27,8 +36,18 @@ def main() -> int:
         and snapshot["td_authenticate_code"] == scaffold_code
         and snapshot["td_login_code"] == scaffold_code
         and snapshot["md_init_after_dispose_code"] == invalid_handle
+    ):
+        failure_reason = "scaffold_contract_mismatch"
+
+    _emit_payload(
+        {
+            "baseline": BASELINE,
+            "success": failure_reason is None,
+            "failure_reason": failure_reason,
+            **snapshot,
+        }
     )
-    return 0 if success else 1
+    return 0 if failure_reason is None else 1
 
 
 if __name__ == "__main__":

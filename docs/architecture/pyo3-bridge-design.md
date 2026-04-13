@@ -1,7 +1,7 @@
 # PyO3 Bridge Design / PyO3 桥接设计
 
 **更新日期**：2026-04-10
-**状态**：C2 已完成首个 live mainline 切片（MD 主路径已切到 internal live session，C3–C4 待实现）
+**状态**：C4 已完成（MD + TD consumer mainline 已切到 internal live session；ctypes 仅保留兼容 / test helper 边界）
 **关联 change**：`docs/changes/20260410__rust-ctp-runtime-cutover__bridge-and-cutover-design/`
 
 ---
@@ -29,7 +29,7 @@ rust/
 **关键约束**：
 
 - `ctp_runtime_core` 同时保留 `rlib`（被 `ctp_py` 引用）和 `cdylib`（仍产出 `ctp_native.dll`）。
-- C4 之前，`ctypes` 路径（`CtpMdApi` / `CtpTdApi`）保持完整可用，不提前删除。
+- C4 完成后，`ctypes` 路径（`CtpMdApi` / `CtpTdApi`）不再承担 adapter consumer 正式主路径，只保留兼容 / test helper 角色；是否物理删除另开后续 change。
 - `ctp_py` 是独立 crate，不污染 `ctp_runtime_core` 的 cdylib ABI。
 
 ---
@@ -111,6 +111,31 @@ session.dispose()
 
 说明：为保持 C1 已验收的 public scaffold contract 不变，C2 不直接改变公开 `CtpMdSession` 语义，而是新增 internal `CtpMdLiveSession` 给 `CtpDataClient` 主路径使用。
 
+### CtpTdLiveSession（internal mainline helper, C3-C4）
+
+```python
+from ctp_runtime._ctp_runtime import CtpTdLiveSession
+
+session = CtpTdLiveSession("D:/repo/var/td_flow_smoke")
+session.set_login_callback(callback)
+session.set_front_disconnected_callback(callback)
+session.set_exec_callback(callback)
+session.set_instrument_callback(callback)
+session.set_position_callback(callback)
+session.set_account_callback(callback)
+session.init("tcp://...")
+session.authenticate("client_iq_3.6.2", "AUTH", "iQuant")
+session.login("0155", "025292", "secret")
+session.confirm_settlement()
+session.qry_instrument("rb2610")
+session.qry_position()
+session.qry_account()
+session.order_send(...)
+session.dispose()
+```
+
+说明：C3 先把 TD bootstrap/readiness 切到 internal live session；C4 再把 instrument/query/order-truth/live-order consumer 全量切到同一 internal TD bridge，而不改变公开 `CtpTdSession` 的 scaffold 语义。
+
 ---
 
 ## 5. C1–C4 Cutover 序列 / Cutover Sequence
@@ -118,9 +143,9 @@ session.dispose()
 | Phase | change slug | 目标 |
 | --- | --- | --- |
 | **C1** | `bridge-and-cutover-design` | 冻结 API 设计，搭建 ctp_py scaffold，确认 maturin 链路可用 |
-| **C2** | `md-pyO3-live-path` | internal `CtpMdLiveSession` 接入真实 thost MD API，并让 `CtpDataClient` 替代 `CtpMdApi` ctypes path |
-| **C3** | `td-pyO3-live-path` | TD bootstrap/readiness 切到 PyO3 internal live session |
-| **C4** | `ctypes-retirement` | 删除 ctypes bridge (`native/md_ctypes.py`, `native/td_ctypes.py`)，archive ctypes-related tests |
+| **C2** | `rust-owned-md-runtime-bridge` | internal `CtpMdLiveSession` 接入真实 thost MD API，并让 `CtpDataClient` 替代 `CtpMdApi` ctypes path |
+| **C3** | `rust-owned-td-bootstrap-runtime` | TD bootstrap/readiness 切到 PyO3 internal live session |
+| **C4** | `python-native-path-retirement` | adapter consumer 全量切到 bridge；ctypes 退出 mainline，仅保留兼容 / test helper 边界 |
 
 ---
 
@@ -167,8 +192,10 @@ python -m pytest tests/test_smoke_import.py -k "pyo3_bridge or run_live_md_smoke
 4. **无宿主逻辑入 Rust**：所有 Python 侧策略（重连、日志、timeout）仍在 Python adapter 层完成，Rust 只暴露最薄的 session 接口。
 5. **Windows import bootstrap 是正式链路的一部分**：`src/ctp_runtime/__init__.py` 必须先注册 `vendor/ctp/bin` DLL 目录，再导入 `_ctp_runtime.pyd`，否则 `.pyd` 的 vendor 依赖无法解析。
 
-## 9. C2 Closeout / C2 收口
+## 9. C2-C4 Closeout / C2-C4 收口
 
-1. `CtpDataClient.run_live_md_smoke()` 已切到 `CtpMdLiveSession`。
-2. `CtpMdApi` 保留在历史 boundary 中，但不再是 MD smoke 主路径。
-3. `python scripts/check_rust_gate.py` 通过，`python -m pytest tests/ -q` 为 `88 passed`。
+1. `CtpDataClient.run_live_md_smoke()` 已切到 `CtpMdLiveSession`，MD consumer 不再把 `CtpMdApi` 当主路径。
+2. `CtpExecutionClient.run_live_td_readiness_smoke()`、`capture_td_order_truth_baseline_mainline()`、`run_live_position_query_smoke()`、`run_live_account_query_smoke()` 与 `run_order_lifecycle_smoke_baseline(dry_run=false)` 已切到 `CtpTdLiveSession`。
+3. `CtpInstrumentProvider.run_live_instrument_smoke()` 已切到 `CtpTdLiveSession`，consumer 层已无 `CtpTdApi` / `CtpMdApi` mainline import。
+4. `python scripts/check_rust_gate.py` 通过，`python scripts/ctp_repo_debug_smoke.py` 通过，`python -m pytest tests/ -q` 为 `95 passed`。
+5. C4 结论不是“物理删除 ctypes 文件”，而是“consumer mainline retired, helper kept”；后续是否彻底删除 compat boundary 另开 change 决策。

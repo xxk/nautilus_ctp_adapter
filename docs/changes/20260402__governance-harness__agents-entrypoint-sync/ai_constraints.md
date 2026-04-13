@@ -6,7 +6,7 @@
 ## 启动前提
 
 1. 读取当前 `AGENTS.md` 全文，确认 step 5 的当前链接文字和路径，再动手。
-2. 读取 `docs/topics/roadmap/nautilus_adapter/nautilus-live-marketdata/README.md` 文件头，确认 `**状态**` = `进行中`，再动手。
+2. 读取 `docs/topics/nautilus-live-marketdata.md` 文件头，确认 `**状态**` = `进行中`，再动手。
 
 ## 边界
 

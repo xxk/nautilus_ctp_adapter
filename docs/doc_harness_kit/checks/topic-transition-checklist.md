@@ -27,9 +27,9 @@
 
 1. `docs/changes/README.md`
    同步新的 active change 链接。
-2. `docs/topics/roadmap/<domain>/<topic-id>/README.md`
+2. `docs/topics/<topic-id>.md`
    更新前一个 topic 的 `状态`、当前 topic 的 `当前 first action` 和 AI-TASK-QUEUE。
-3. `docs/topics/roadmap/nautilus_adapter/nautilus-ctp-adapter-mainline/README.md`
+3. `docs/topics/nautilus-ctp-adapter-mainline.md`
    同步 master roadmap 当前活动 topic 与 next action。
 
 ## 验证命令

@@ -8,7 +8,7 @@
 **change-id**：20260403__md-startup-truth-and-restore__md-restore-policy
 **关联 plan**：./plan.md
 **关联 ai_constraints**：./ai_constraints.md
-**长期归宿 / Long-Term Target**：/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/md-startup-truth-and-restore/README.md
+**长期归宿 / Long-Term Target**：/D:/Nautilus/nautilus_ctp_adapter/docs/topics/md-startup-truth-and-restore.md
 
 <!-- AI-STATUS-BEGIN -->
 ```yaml

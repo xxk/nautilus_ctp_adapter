@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 import time
 
-from nautilus_ctp_adapter.native import CtpTdApi, NativeExecView, NativePositionView, NativeTradingAccountView
+from nautilus_ctp_adapter.native import NativeExecView, NativePositionView, NativeTradingAccountView
 from nautilus_ctp_adapter.runtime import (
     CtpAccountRecord,
     CtpPositionRecord,
@@ -18,6 +18,16 @@ from nautilus_ctp_adapter.runtime import (
 )
 
 from .config import CtpAdapterConfig, CtpExecutionGuardrails
+
+
+def _create_td_live_session(flow_path: Path):
+    try:
+        from ctp_runtime._ctp_runtime import CtpTdLiveSession
+    except ImportError as exc:
+        raise RuntimeError(
+            "PyO3 TD bridge unavailable; run maturin develop or pip install -e . before TD bootstrap smoke"
+        ) from exc
+    return CtpTdLiveSession(str(flow_path))
 
 
 @dataclass(slots=True)
@@ -209,6 +219,31 @@ class CtpTdHistoricalCallbackBoundaryPolicyResult:
     current_session_callback_count: int
     first_historical_order_id: str | None
     first_current_session_order_id: str | None
+    findings: tuple[CtpTdHistoricalCallbackBoundaryFinding, ...]
+
+
+@dataclass(slots=True)
+class CtpTdOrderTradeSnapshot:
+    baseline: CtpTdOrderTruthBaseline
+    disposition: str
+    observed_order_event_count: int
+    observed_trade_event_count: int
+    no_order_events: bool
+    no_trade_events: bool
+    historical_order_count: int
+    historical_trade_count: int
+    delayed_order_count: int
+    delayed_trade_count: int
+    historical_residue_order_count: int
+    historical_residue_trade_count: int
+    current_session_order_count: int
+    current_session_trade_count: int
+    first_order_event_id: str | None
+    first_trade_event_id: str | None
+    first_historical_order_id: str | None
+    first_historical_trade_id: str | None
+    first_current_session_order_id: str | None
+    first_current_session_trade_id: str | None
     findings: tuple[CtpTdHistoricalCallbackBoundaryFinding, ...]
 
 
@@ -543,25 +578,22 @@ class CtpExecutionClient:
         if missing:
             raise ValueError(f"missing config fields: {missing}")
 
-        api = CtpTdApi.load(self._repository_root())
         effective_flow_path = Path(flow_path) if flow_path else self._default_flow_path()
         effective_flow_path.mkdir(parents=True, exist_ok=True)
-        handle = api.create(effective_flow_path)
+        session = _create_td_live_session(effective_flow_path)
         state: dict[str, object] = {"login": None, "disconnects": []}
 
         try:
-            api.set_login_callback(handle, lambda resp: self._on_td_login_callback(resp, state))
-            api.set_front_disconnected_callback(handle, lambda reason: self._on_td_disconnect(reason, state))
+            session.set_login_callback(lambda resp: self._on_td_login_callback(resp, state))
+            session.set_front_disconnected_callback(lambda reason: self._on_td_disconnect(reason, state))
 
-            init_code = api.init(handle, self._config.td_front)
-            authenticate_code = api.authenticate(
-                handle,
+            init_code = session.init(self._config.td_front)
+            authenticate_code = session.authenticate(
                 self._config.app_id,
                 self._config.auth_code,
                 self._config.product_info,
             )
-            login_code = api.login(
-                handle,
+            login_code = session.login(
                 self._config.broker_id,
                 self._config.user_id,
                 self._config.password,
@@ -574,7 +606,7 @@ class CtpExecutionClient:
             login = state["login"]
             settlement_code = -1
             if login is not None and login.success:
-                settlement_code = api.confirm_settlement(handle)
+                settlement_code = session.confirm_settlement()
                 self._runtime_bridge.push_event(
                     CtpRuntimeEvent(
                         kind=CtpRuntimeEventKind.SETTLEMENT_CONFIRMED,
@@ -596,7 +628,7 @@ class CtpExecutionClient:
                 disconnects=list(state["disconnects"]),
             )
         finally:
-            api.dispose(handle)
+            session.dispose()
 
     def capture_td_order_truth_baseline_mainline(
         self,
@@ -606,10 +638,9 @@ class CtpExecutionClient:
         observation_grace_seconds: float = 1.5,
     ) -> CtpTdOrderTruthBaseline:
         bootstrap_state = self.bootstrap_execution_mainline()
-        api = CtpTdApi.load(self._repository_root())
         effective_flow_path = self.resolve_td_flow_path(flow_path)
         effective_flow_path.mkdir(parents=True, exist_ok=True)
-        handle = api.create(effective_flow_path)
+        session = _create_td_live_session(effective_flow_path)
         state: dict[str, object] = {
             "login": None,
             "disconnects": [],
@@ -617,19 +648,17 @@ class CtpExecutionClient:
         }
 
         try:
-            api.set_login_callback(handle, lambda resp: self._on_td_login_callback(resp, state))
-            api.set_front_disconnected_callback(handle, lambda reason: self._on_td_disconnect(reason, state))
-            api.set_exec_callback(handle, lambda exec_view: self._on_td_exec_observation_callback(exec_view, state))
+            session.set_login_callback(lambda resp: self._on_td_login_callback(resp, state))
+            session.set_front_disconnected_callback(lambda reason: self._on_td_disconnect(reason, state))
+            session.set_exec_callback(lambda exec_view: self._on_td_exec_observation_callback(exec_view, state))
 
-            init_code = api.init(handle, self._config.td_front)
-            authenticate_code = api.authenticate(
-                handle,
+            init_code = session.init(self._config.td_front)
+            authenticate_code = session.authenticate(
                 self._config.app_id,
                 self._config.auth_code,
                 self._config.product_info,
             )
-            login_code = api.login(
-                handle,
+            login_code = session.login(
                 self._config.broker_id,
                 self._config.user_id,
                 self._config.password,
@@ -649,7 +678,7 @@ class CtpExecutionClient:
                 and login is not None
                 and login.success
             ):
-                settlement_code = api.confirm_settlement(handle)
+                settlement_code = session.confirm_settlement()
                 ready = settlement_code == 0
                 if ready:
                     self._runtime_bridge.push_event(
@@ -700,7 +729,7 @@ class CtpExecutionClient:
                 ),
             )
         finally:
-            api.dispose(handle)
+            session.dispose()
 
     def evaluate_historical_callback_boundary_policy(
         self,
@@ -853,6 +882,253 @@ class CtpExecutionClient:
         )
         return self.evaluate_historical_callback_boundary_policy(baseline)
 
+    def evaluate_order_trade_snapshot(
+        self,
+        baseline: CtpTdOrderTruthBaseline,
+    ) -> CtpTdOrderTradeSnapshot:
+        findings: list[CtpTdHistoricalCallbackBoundaryFinding] = []
+
+        if not baseline.ready:
+            findings.append(
+                CtpTdHistoricalCallbackBoundaryFinding(
+                    code="order_trade_snapshot_unready",
+                    severity="critical",
+                    action="manual_review_required",
+                    metric="ready",
+                    metric_value=str(baseline.ready),
+                    threshold="true",
+                    message="TD order/trade snapshot is not ready enough to classify read-only order/trade evidence.",
+                )
+            )
+
+        if baseline.login_front_id is None or baseline.login_session_id is None:
+            findings.append(
+                CtpTdHistoricalCallbackBoundaryFinding(
+                    code="missing_login_identity",
+                    severity="critical",
+                    action="manual_review_required",
+                    metric="login_session_identity",
+                    metric_value=None,
+                    threshold="present",
+                    message="Current TD login identity is missing, so read-only order/trade snapshot cannot be trusted.",
+                )
+            )
+
+        historical_order_count = 0
+        historical_trade_count = 0
+        delayed_order_count = 0
+        delayed_trade_count = 0
+        current_session_order_count = 0
+        current_session_trade_count = 0
+        first_order_event_id = None
+        first_trade_event_id = None
+        first_historical_order_id = None
+        first_historical_trade_id = None
+        first_current_session_order_id = None
+        first_current_session_trade_id = None
+
+        for callback in baseline.observed_callbacks:
+            if callback.is_trade:
+                if first_trade_event_id is None:
+                    first_trade_event_id = callback.order_id or None
+            elif first_order_event_id is None:
+                first_order_event_id = callback.order_id or None
+
+            same_session = (
+                baseline.login_front_id is not None
+                and baseline.login_session_id is not None
+                and callback.front_id == baseline.login_front_id
+                and callback.session_id == baseline.login_session_id
+            )
+            callback_order_ref = self._parse_native_int(callback.order_ref)
+            is_delayed = (
+                same_session
+                and baseline.login_max_order_ref is not None
+                and callback_order_ref is not None
+                and callback_order_ref <= baseline.login_max_order_ref
+            )
+
+            if not same_session:
+                if callback.is_trade:
+                    historical_trade_count += 1
+                    if first_historical_trade_id is None:
+                        first_historical_trade_id = callback.order_id or None
+                else:
+                    historical_order_count += 1
+                    if first_historical_order_id is None:
+                        first_historical_order_id = callback.order_id or None
+                continue
+
+            if is_delayed:
+                if callback.is_trade:
+                    delayed_trade_count += 1
+                    if first_historical_trade_id is None:
+                        first_historical_trade_id = callback.order_id or None
+                else:
+                    delayed_order_count += 1
+                    if first_historical_order_id is None:
+                        first_historical_order_id = callback.order_id or None
+                continue
+
+            if callback.is_trade:
+                current_session_trade_count += 1
+                if first_current_session_trade_id is None:
+                    first_current_session_trade_id = callback.order_id or None
+            else:
+                current_session_order_count += 1
+                if first_current_session_order_id is None:
+                    first_current_session_order_id = callback.order_id or None
+
+        if baseline.observed_order_event_count == 0:
+            findings.append(
+                CtpTdHistoricalCallbackBoundaryFinding(
+                    code="no_order_events_observed",
+                    severity="info",
+                    action="evidence_only",
+                    metric="observed_order_event_count",
+                    metric_value=0,
+                    threshold="> 0 optional",
+                    message="No order callbacks were observed during the read-only TD snapshot window.",
+                )
+            )
+
+        if baseline.observed_trade_event_count == 0:
+            findings.append(
+                CtpTdHistoricalCallbackBoundaryFinding(
+                    code="no_trade_events_observed",
+                    severity="info",
+                    action="evidence_only",
+                    metric="observed_trade_event_count",
+                    metric_value=0,
+                    threshold="> 0 optional",
+                    message="No trade callbacks were observed during the read-only TD snapshot window.",
+                )
+            )
+
+        if historical_order_count > 0:
+            findings.append(
+                CtpTdHistoricalCallbackBoundaryFinding(
+                    code="historical_order_events_present",
+                    severity="warn",
+                    action="boundary_required",
+                    metric="historical_order_count",
+                    metric_value=historical_order_count,
+                    threshold=0,
+                    message="Observed order callbacks whose front/session identity does not match the current login truth.",
+                )
+            )
+
+        if historical_trade_count > 0:
+            findings.append(
+                CtpTdHistoricalCallbackBoundaryFinding(
+                    code="historical_trade_events_present",
+                    severity="warn",
+                    action="boundary_required",
+                    metric="historical_trade_count",
+                    metric_value=historical_trade_count,
+                    threshold=0,
+                    message="Observed trade callbacks whose front/session identity does not match the current login truth.",
+                )
+            )
+
+        if delayed_order_count > 0:
+            findings.append(
+                CtpTdHistoricalCallbackBoundaryFinding(
+                    code="delayed_order_events_present",
+                    severity="warn",
+                    action="boundary_required",
+                    metric="delayed_order_count",
+                    metric_value=delayed_order_count,
+                    threshold=0,
+                    message="Observed order callbacks that match the current session but use order refs at or below the login baseline.",
+                )
+            )
+
+        if delayed_trade_count > 0:
+            findings.append(
+                CtpTdHistoricalCallbackBoundaryFinding(
+                    code="delayed_trade_events_present",
+                    severity="warn",
+                    action="boundary_required",
+                    metric="delayed_trade_count",
+                    metric_value=delayed_trade_count,
+                    threshold=0,
+                    message="Observed trade callbacks that match the current session but use order refs at or below the login baseline.",
+                )
+            )
+
+        if current_session_order_count > 0:
+            findings.append(
+                CtpTdHistoricalCallbackBoundaryFinding(
+                    code="current_session_order_events_present",
+                    severity="info",
+                    action="evidence_only",
+                    metric="current_session_order_count",
+                    metric_value=current_session_order_count,
+                    threshold=0,
+                    message="Observed order callbacks that belong to the current TD session identity.",
+                )
+            )
+
+        if current_session_trade_count > 0:
+            findings.append(
+                CtpTdHistoricalCallbackBoundaryFinding(
+                    code="current_session_trade_events_present",
+                    severity="info",
+                    action="evidence_only",
+                    metric="current_session_trade_count",
+                    metric_value=current_session_trade_count,
+                    threshold=0,
+                    message="Observed trade callbacks that belong to the current TD session identity.",
+                )
+            )
+
+        disposition = "clear"
+        if any(finding.action == "manual_review_required" for finding in findings):
+            disposition = "manual_review_required"
+        elif any(finding.action == "boundary_required" for finding in findings):
+            disposition = "boundary_required"
+        elif findings:
+            disposition = "evidence_only"
+
+        return CtpTdOrderTradeSnapshot(
+            baseline=baseline,
+            disposition=disposition,
+            observed_order_event_count=baseline.observed_order_event_count,
+            observed_trade_event_count=baseline.observed_trade_event_count,
+            no_order_events=baseline.observed_order_event_count == 0,
+            no_trade_events=baseline.observed_trade_event_count == 0,
+            historical_order_count=historical_order_count,
+            historical_trade_count=historical_trade_count,
+            delayed_order_count=delayed_order_count,
+            delayed_trade_count=delayed_trade_count,
+            historical_residue_order_count=historical_order_count + delayed_order_count,
+            historical_residue_trade_count=historical_trade_count + delayed_trade_count,
+            current_session_order_count=current_session_order_count,
+            current_session_trade_count=current_session_trade_count,
+            first_order_event_id=first_order_event_id,
+            first_trade_event_id=first_trade_event_id,
+            first_historical_order_id=first_historical_order_id,
+            first_historical_trade_id=first_historical_trade_id,
+            first_current_session_order_id=first_current_session_order_id,
+            first_current_session_trade_id=first_current_session_trade_id,
+            findings=tuple(findings),
+        )
+
+    def capture_td_order_trade_snapshot_mainline(
+        self,
+        *,
+        timeout_seconds: int = 20,
+        flow_path: str | Path | None = None,
+        observation_grace_seconds: float = 1.5,
+    ) -> CtpTdOrderTradeSnapshot:
+        baseline = self.capture_td_order_truth_baseline_mainline(
+            timeout_seconds=timeout_seconds,
+            flow_path=flow_path,
+            observation_grace_seconds=observation_grace_seconds,
+        )
+        return self.evaluate_order_trade_snapshot(baseline)
+
     def build_td_order_truth_evidence_matrix(
         self,
         result: CtpTdHistoricalCallbackBoundaryPolicyResult,
@@ -933,38 +1209,37 @@ class CtpExecutionClient:
             )
         )
 
-        api = CtpTdApi.load(self._repository_root())
         effective_flow_path = Path(flow_path) if flow_path else self._default_flow_path()
         effective_flow_path.mkdir(parents=True, exist_ok=True)
-        handle = api.create(effective_flow_path)
+        session = _create_td_live_session(effective_flow_path)
         state: dict[str, object] = {
             "login": None,
             "disconnects": [],
             "position_views": [],
             "last_position_ts": None,
+            "positions_complete": False,
         }
 
         try:
-            api.set_login_callback(handle, lambda resp: self._on_td_login_callback(resp, state))
-            api.set_front_disconnected_callback(handle, lambda reason: self._on_td_disconnect(reason, state))
-            api.set_position_callback(
-                handle,
-                lambda position_view: self._on_td_position_callback(
+            session.set_login_callback(lambda resp: self._on_td_login_callback(resp, state))
+            session.set_front_disconnected_callback(lambda reason: self._on_td_disconnect(reason, state))
+            session.set_position_callback(
+                lambda position_view, req_id, is_last: self._on_td_position_callback(
                     position_view,
                     request_id=request_id,
+                    req_id=req_id,
+                    is_last=is_last,
                     state=state,
                 ),
             )
 
-            init_code = api.init(handle, self._config.td_front)
-            authenticate_code = api.authenticate(
-                handle,
+            init_code = session.init(self._config.td_front)
+            authenticate_code = session.authenticate(
                 self._config.app_id,
                 self._config.auth_code,
                 self._config.product_info,
             )
-            login_code = api.login(
-                handle,
+            login_code = session.login(
                 self._config.broker_id,
                 self._config.user_id,
                 self._config.password,
@@ -1000,7 +1275,7 @@ class CtpExecutionClient:
                     disconnects=list(state["disconnects"]),
                 )
 
-            settlement_code = api.confirm_settlement(handle)
+            settlement_code = session.confirm_settlement()
             if settlement_code != 0:
                 return CtpPositionQuerySmokeResult(
                     bootstrap=bootstrap,
@@ -1014,15 +1289,13 @@ class CtpExecutionClient:
                     disconnects=list(state["disconnects"]),
                 )
 
-            query_code = api.qry_position(handle)
+            query_code = session.qry_position()
             while time.time() < deadline:
-                if state["last_position_ts"] is not None:
-                    silence_seconds = time.time() - float(state["last_position_ts"])
-                    if silence_seconds >= completion_grace_seconds:
-                        break
+                if state["positions_complete"]:
+                    break
                 time.sleep(0.1)
 
-            timed_out = state["last_position_ts"] is None and time.time() >= deadline
+            timed_out = not bool(state["positions_complete"]) and time.time() >= deadline
             self._runtime_bridge.push_event(
                 CtpRuntimeEvent(
                     kind=CtpRuntimeEventKind.POSITION,
@@ -1047,7 +1320,7 @@ class CtpExecutionClient:
                 disconnects=list(state["disconnects"]),
             )
         finally:
-            api.dispose(handle)
+            session.dispose()
 
     def run_live_account_query_smoke(
         self,
@@ -1083,10 +1356,9 @@ class CtpExecutionClient:
             )
         )
 
-        api = CtpTdApi.load(self._repository_root())
         effective_flow_path = Path(flow_path) if flow_path else self._default_flow_path()
         effective_flow_path.mkdir(parents=True, exist_ok=True)
-        handle = api.create(effective_flow_path)
+        session = _create_td_live_session(effective_flow_path)
         state: dict[str, object] = {
             "login": None,
             "disconnects": [],
@@ -1094,10 +1366,9 @@ class CtpExecutionClient:
         }
 
         try:
-            api.set_login_callback(handle, lambda resp: self._on_td_login_callback(resp, state))
-            api.set_front_disconnected_callback(handle, lambda reason: self._on_td_disconnect(reason, state))
-            api.set_account_callback(
-                handle,
+            session.set_login_callback(lambda resp: self._on_td_login_callback(resp, state))
+            session.set_front_disconnected_callback(lambda reason: self._on_td_disconnect(reason, state))
+            session.set_account_callback(
                 lambda account_view: self._on_td_account_callback(
                     account_view,
                     request_id=request_id,
@@ -1105,15 +1376,13 @@ class CtpExecutionClient:
                 ),
             )
 
-            init_code = api.init(handle, self._config.td_front)
-            authenticate_code = api.authenticate(
-                handle,
+            init_code = session.init(self._config.td_front)
+            authenticate_code = session.authenticate(
                 self._config.app_id,
                 self._config.auth_code,
                 self._config.product_info,
             )
-            login_code = api.login(
-                handle,
+            login_code = session.login(
                 self._config.broker_id,
                 self._config.user_id,
                 self._config.password,
@@ -1145,7 +1414,7 @@ class CtpExecutionClient:
                     disconnects=list(state["disconnects"]),
                 )
 
-            settlement_code = api.confirm_settlement(handle)
+            settlement_code = session.confirm_settlement()
             if settlement_code != 0:
                 return CtpAccountQuerySmokeResult(
                     bootstrap=bootstrap,
@@ -1157,7 +1426,7 @@ class CtpExecutionClient:
                     disconnects=list(state["disconnects"]),
                 )
 
-            query_code = api.qry_account(handle)
+            query_code = session.qry_account()
             while time.time() < deadline and state["account_view"] is None:
                 time.sleep(0.1)
 
@@ -1172,7 +1441,7 @@ class CtpExecutionClient:
                 disconnects=list(state["disconnects"]),
             )
         finally:
-            api.dispose(handle)
+            session.dispose()
 
     def select_level1_price(
         self,
@@ -1291,10 +1560,9 @@ class CtpExecutionClient:
         flow_path: str | Path | None,
     ) -> CtpOrderLifecycleSmokeResult:
         bootstrap_state = self.bootstrap_execution_mainline()
-        api = CtpTdApi.load(self._repository_root())
         effective_flow_path = Path(flow_path) if flow_path else self._default_live_order_flow_path()
         effective_flow_path.mkdir(parents=True, exist_ok=True)
-        handle = api.create(effective_flow_path)
+        session = _create_td_live_session(effective_flow_path)
         state: dict[str, object] = {
             "login": None,
             "disconnects": [],
@@ -1309,19 +1577,17 @@ class CtpExecutionClient:
         }
 
         try:
-            api.set_login_callback(handle, lambda resp: self._on_td_login_callback(resp, state))
-            api.set_front_disconnected_callback(handle, lambda reason: self._on_td_disconnect(reason, state))
-            api.set_exec_callback(handle, lambda exec_view: self._on_td_exec_callback_with_state(exec_view, state))
+            session.set_login_callback(lambda resp: self._on_td_login_callback(resp, state))
+            session.set_front_disconnected_callback(lambda reason: self._on_td_disconnect(reason, state))
+            session.set_exec_callback(lambda exec_view: self._on_td_exec_callback_with_state(exec_view, state))
 
-            init_code = api.init(handle, self._config.td_front)
-            authenticate_code = api.authenticate(
-                handle,
+            init_code = session.init(self._config.td_front)
+            authenticate_code = session.authenticate(
                 self._config.app_id,
                 self._config.auth_code,
                 self._config.product_info,
             )
-            login_code = api.login(
-                handle,
+            login_code = session.login(
                 self._config.broker_id,
                 self._config.user_id,
                 self._config.password,
@@ -1334,7 +1600,7 @@ class CtpExecutionClient:
             login = state["login"]
             settlement_code = -1
             if login is not None and login.success:
-                settlement_code = api.confirm_settlement(handle)
+                settlement_code = session.confirm_settlement()
                 self._runtime_bridge.push_event(
                     CtpRuntimeEvent(
                         kind=CtpRuntimeEventKind.SETTLEMENT_CONFIRMED,
@@ -1385,9 +1651,8 @@ class CtpExecutionClient:
             state["expected_quantity"] = submit_intent.quantity
             state["pre_send_exec_view_count"] = len(state["exec_views"])
             self.submit_mapped_order(mapped_submit)
-            native_code = api.order_send(
-                handle,
-                order_id=mapped_submit.client_order_id or "",
+            native_code = session.order_send(
+                order_id=str(mapped_submit.order_ref),
                 symbol=submit_intent.instrument_id,
                 price=submit_intent.limit_price,
                 qty=submit_intent.quantity,
@@ -1419,7 +1684,7 @@ class CtpExecutionClient:
                 matched_execs=list(state["matched_exec_events"]),
             )
         finally:
-            api.dispose(handle)
+            session.dispose()
 
     def _normalize_native_text(self, value: str | None) -> str:
         return "" if value is None else value.strip()
@@ -1586,37 +1851,46 @@ class CtpExecutionClient:
 
     def _on_td_position_callback(
         self,
-        position_view: NativePositionView,
+        position_view: NativePositionView | None,
         *,
         request_id: str,
+        req_id: int,
+        is_last: bool,
         state: dict[str, object],
     ) -> None:
-        state["position_views"].append(position_view)
-        state["last_position_ts"] = time.time()
-        self._runtime_bridge.push_event(
-            CtpRuntimeEvent(
-                kind=CtpRuntimeEventKind.POSITION,
-                request_id=request_id,
-                venue_symbol=position_view.symbol,
-                payload={
-                    "broker_id": position_view.broker_id,
-                    "investor_id": position_view.investor_id,
-                    "direction": self._native_position_direction_value(position_view.pos_direction),
-                    "hedge_flag": str(position_view.hedge_flag),
-                    "date_type": str(position_view.date_type),
-                    "position_qty": str(position_view.position),
-                    "yd_position_qty": str(position_view.yd_position),
-                    "td_position_qty": str(position_view.today_position),
-                    "position_cost": str(position_view.position_cost),
-                    "open_cost": str(position_view.open_cost),
-                    "exchange_margin": str(position_view.exchange_margin),
-                    "use_margin": str(position_view.use_margin),
-                    "position_profit": str(position_view.position_profit),
-                    "ts_epoch_us": str(position_view.ts_epoch_us),
-                    "snapshot_complete": "false",
-                },
+        if position_view is not None:
+            state["position_views"].append(position_view)
+            state["last_position_ts"] = time.time()
+            self._runtime_bridge.push_event(
+                CtpRuntimeEvent(
+                    kind=CtpRuntimeEventKind.POSITION,
+                    request_id=request_id,
+                    venue_symbol=position_view.symbol,
+                    payload={
+                        "broker_id": position_view.broker_id,
+                        "investor_id": position_view.investor_id,
+                        "direction": self._native_position_direction_value(position_view.pos_direction),
+                        "hedge_flag": str(position_view.hedge_flag),
+                        "date_type": str(position_view.date_type),
+                        "position_qty": str(position_view.position),
+                        "yd_position_qty": str(position_view.yd_position),
+                        "td_position_qty": str(position_view.today_position),
+                        "position_cost": str(position_view.position_cost),
+                        "open_cost": str(position_view.open_cost),
+                        "exchange_margin": str(position_view.exchange_margin),
+                        "use_margin": str(position_view.use_margin),
+                        "position_profit": str(position_view.position_profit),
+                        "ts_epoch_us": str(position_view.ts_epoch_us),
+                        "snapshot_complete": "false",
+                        "callback_request_id": str(req_id),
+                        "is_last": str(is_last).lower(),
+                    },
+                )
             )
-        )
+        if is_last:
+            state["positions_complete"] = True
+            if state["last_position_ts"] is None:
+                state["last_position_ts"] = time.time()
 
     def _on_td_account_callback(
         self,

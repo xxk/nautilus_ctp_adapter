@@ -8,7 +8,7 @@
 **change-id**：20260401__ctp-live-connectivity__nautilus-live-smoke-baseline
 **关联 plan**：./plan.md
 **关联 ai_constraints**：./ai_constraints.md
-**长期归宿 / Long-Term Target**：/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/ctp-live-connectivity/README.md
+**长期归宿 / Long-Term Target**：/D:/Nautilus/nautilus_ctp_adapter/docs/topics/ctp-live-connectivity.md
 
 <!-- AI-STATUS-BEGIN -->
 ```yaml
@@ -61,7 +61,7 @@ scenarios:
 
 | # | 证据类型 | 路径/链接 | 说明 |
 | --- | --- | --- | --- |
-| 1 | Topic 1 上游结论 | `/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/ctp-live-connectivity/README.md` | baseline 必须建立在 Topic 1 已冻结结论上 |
+| 1 | Topic 1 上游结论 | `/D:/Nautilus/nautilus_ctp_adapter/docs/topics/ctp-live-connectivity.md` | baseline 必须建立在 Topic 1 已冻结结论上 |
 | 2 | 当前 change 输出证据 | `./evidence_20260402_nautilus_live_smoke_baseline.md` | 正式 smoke 入口、成功信号、证据格式 |
 | 3 | docs index 回写 | `/D:/Nautilus/nautilus_ctp_adapter/docs/README.md` | 用于声明后续 topic 的统一 smoke 入口 |
 

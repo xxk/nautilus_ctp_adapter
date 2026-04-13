@@ -15,7 +15,7 @@
 
 ## 必填字段规则
 
-脚本对每个 `docs/topics/roadmap/**/<topic-id>/README.md` 检验以下 6 个必填字段是否存在：
+脚本对每个 `docs/topics/<topic-id>.md` 检验以下 6 个必填字段是否存在：
 
 1. `**创建日期**`
 2. `**最后更新**`

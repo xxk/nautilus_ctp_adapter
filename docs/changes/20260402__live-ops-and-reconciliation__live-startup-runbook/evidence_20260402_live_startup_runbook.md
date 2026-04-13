@@ -23,7 +23,7 @@
 已回写：
 
 1. [scripts/README.md](/D:/Nautilus/nautilus_ctp_adapter/scripts/README.md)
-2. [live-ops-and-reconciliation README](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/live-ops-and-reconciliation/README.md)
+2. [live-ops-and-reconciliation README](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/live-ops-and-reconciliation.md)
 
 ## 三、验证结果
 

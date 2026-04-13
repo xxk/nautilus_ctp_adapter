@@ -7,25 +7,39 @@ This directory is the documentation and governance home for `nautilus_ctp_adapte
 1. [Repository map](/D:/Nautilus/nautilus_ctp_adapter/AGENTS.md)
 2. [Harness kit entry](/D:/Nautilus/nautilus_ctp_adapter/docs/doc_harness_kit/README.md)
 3. [Architecture index](/D:/Nautilus/nautilus_ctp_adapter/docs/architecture/README.md)
-4. [Topic index](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/README.md)
-5. [Changes index](/D:/Nautilus/nautilus_ctp_adapter/docs/changes/README.md)
-6. [Archive index](/D:/Nautilus/nautilus_ctp_adapter/docs/archive/README.md)
+4. [Topic state registry](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/主题状态注册表_Topic%20State%20Registry.yaml)
+5. [Topic index](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/README.md)
+6. [Changes index](/D:/Nautilus/nautilus_ctp_adapter/docs/changes/README.md)
+7. [Archive index](/D:/Nautilus/nautilus_ctp_adapter/docs/archive/README.md)
 
 ## Governance Layout
 
-This repository now aligns to the `DSLReserach` split:
+This repository aligns to the `DSLReserach` topic/change split:
 
 1. `docs/architecture/` for durable design conclusions
-2. `docs/topics/roadmap/` for long-running topic roadmaps
-3. `docs/changes/` for executable child changes and evidence
-4. `docs/archive/` for archived docs and historical snapshots
+2. `docs/topics/<topic-id>.md` for long-running topic roadmaps
+3. `docs/topics/主题状态注册表_Topic State Registry.yaml` for machine-readable topic state and execution order
+4. `docs/changes/` for executable child changes and evidence
+5. `docs/archive/` for archived docs and historical snapshots
 
-## Current Delivery
+## Current Active Delivery
 
-1. Master roadmap: [Nautilus CTP adapter mainline](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/nautilus-ctp-adapter-mainline/README.md)
-2. Current topic roadmap: [Rust-owned CTP runtime cutover](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/rust_ctp/rust-ctp-runtime-cutover/README.md)
-3. Active change: [20260410__rust-ctp-runtime-cutover__rust-owned-td-bootstrap-runtime](/D:/Nautilus/nautilus_ctp_adapter/docs/changes/20260410__rust-ctp-runtime-cutover__rust-owned-td-bootstrap-runtime/plan.md)
-4. Parallel blocked topic: [Live ops truth snapshot](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/live-ops-truth-snapshot/README.md)
+1. Master roadmap: [Nautilus CTP adapter mainline](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/nautilus-ctp-adapter-mainline.md)
+2. Topic state registry: [/D:/Nautilus/nautilus_ctp_adapter/docs/topics/主题状态注册表_Topic State Registry.yaml](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/主题状态注册表_Topic%20State%20Registry.yaml)
+3. Topic index: [/D:/Nautilus/nautilus_ctp_adapter/docs/topics/README.md](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/README.md)
+4. Current topic roadmap: [Live session order query hardening](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/live-session-order-query-hardening.md)（`in_progress` / `execution_order=1`，C3 脚本面已 blocked-closeout，当前聚焦 U1 vendor-bridge handoff）
+5. Active change: [20260410__live-session-order-query-hardening__vendor-bridge-readiness-and-sdk-handoff](/D:/Nautilus/nautilus_ctp_adapter/docs/changes/20260410__live-session-order-query-hardening__vendor-bridge-readiness-and-sdk-handoff/plan.md)（执行中，当前正式冻结 `sdk-not-found / scaffold-only` blocker 与 SDK/live DLL handoff 路径）
+6. Parked topic: [Live ops truth snapshot](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/live-ops-truth-snapshot.md)（`blocked`，当前因 disconnect storm 挂起）
+7. Recent completed topic: [Rust-owned CTP runtime cutover](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/rust-ctp-runtime-cutover.md)
+
+## Topic / Change Workflow Commands
+
+```powershell
+python scripts/show_current_frontier.py --root .
+python scripts/show_current_frontier.py --by-topic
+python scripts/check_harness.py
+python scripts/check_change_docs.py --root .
+```
 
 ## Official Bootstrap And Validation Commands
 

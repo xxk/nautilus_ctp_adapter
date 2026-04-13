@@ -8,7 +8,7 @@
 **change-id**：20260402__live-ops-and-reconciliation__reconnect-and-recovery-policy
 **关联 plan**：./plan.md
 **关联 ai_constraints**：./ai_constraints.md
-**长期归宿 / Long-Term Target**：/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/live-ops-and-reconciliation/README.md
+**长期归宿 / Long-Term Target**：/D:/Nautilus/nautilus_ctp_adapter/docs/topics/live-ops-and-reconciliation.md
 
 <!-- AI-STATUS-BEGIN -->
 ```yaml

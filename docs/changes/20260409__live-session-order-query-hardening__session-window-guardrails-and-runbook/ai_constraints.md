@@ -6,7 +6,7 @@
 ## Allowed
 
 1. 修改当前 change 三件套。
-2. 修改 `docs/topics/roadmap/nautilus_adapter/live-session-order-query-hardening/README.md`。
+2. 修改 `docs/topics/live-session-order-query-hardening.md`。
 3. 在必要时修改 `scripts/`、`src/nautilus_ctp_adapter/adapters/ctp/`、`tests/`，前提是改动直接服务于 A1-A6 的执行与判定。
 
 ## Not Allowed

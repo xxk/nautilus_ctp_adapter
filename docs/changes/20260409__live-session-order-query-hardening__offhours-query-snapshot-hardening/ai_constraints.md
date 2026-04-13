@@ -7,7 +7,7 @@
 
 1. 修改 `scripts/`、`src/nautilus_ctp_adapter/adapters/ctp/`、`tests/`。
 2. 修改当前 change 三件套。
-3. 修改 `docs/topics/roadmap/nautilus_adapter/live-session-order-query-hardening/README.md` 以同步 offhours-first 优先级。
+3. 修改 `docs/topics/live-session-order-query-hardening.md` 以同步 offhours-first 优先级。
 
 ## Not Allowed
 

@@ -112,7 +112,7 @@
 
 特点：
 
-1. 正式 topic 治理目录统一为 `docs/topics/` 与 `docs/topics/roadmap/`
+1. 正式 topic 治理目录统一为 `docs/topics/<topic-id>.md`
 2. harness kit 的复用模板目录统一为 `templates/topics/`
 3. topic index 模板与示例统一改名为 `Topic Index`，不再继续扩散旧兼容命名口径
 4. topic 文档门禁脚本与 transition checklist 默认按 `docs/topics/README.md` 对齐

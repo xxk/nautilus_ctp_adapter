@@ -29,6 +29,7 @@ from .execution_client import (
     CtpTdBootstrapState,
     CtpTdExecEventPayload,
     CtpTdObservedCallback,
+    CtpTdOrderTradeSnapshot,
     CtpTdOrderTruthEvidenceMatrix,
     CtpTdOrderTruthBaseline,
     CtpTdSessionIdentity,
@@ -72,11 +73,21 @@ from .truth_merge import (
     CtpTdTruthMergeSnapshot,
     CtpTruthMergeAdapter,
 )
+from .nautilus_config import CtpDataClientConfig, CtpExecClientConfig, CtpInstrumentProviderConfig
+from .nautilus_data import CtpLiveDataClient
+from .nautilus_execution import CtpLiveExecutionClient
+from .nautilus_factories import (
+    CtpLiveDataClientFactory,
+    CtpLiveExecClientFactory,
+    get_ctp_instrument_provider,
+)
 from .normalization import CtpProductKind, NormalizedCtpInstrument, normalize_exchange_id, normalize_instrument_record, normalize_product_kind, normalize_symbol
 
 __all__ = [
     "CtpAdapterConfig",
     "CtpAccountQuerySmokeResult",
+    "CtpDataClientConfig",
+    "CtpExecClientConfig",
     "CtpExecutionClient",
     "CtpExecutionBootstrapResult",
     "CtpExecutionError",
@@ -87,6 +98,7 @@ __all__ = [
     "CtpAccountQueryBaseline",
     "CtpLiveExecutionClientBootstrapResult",
     "CtpInstrumentProvider",
+    "CtpInstrumentProviderConfig",
     "CtpInstrumentQueryBootstrapState",
     "CtpLiveOpsEvidenceMatrix",
     "CtpLiveOpsPolicyFinding",
@@ -96,6 +108,10 @@ __all__ = [
     "CtpLiveOpsSnapshotSummary",
     "CtpMdBootstrapState",
     "CtpLiveDataBootstrapResult",
+    "CtpLiveDataClient",
+    "CtpLiveDataClientFactory",
+    "CtpLiveExecClientFactory",
+    "CtpLiveExecutionClient",
     "CtpMappedOrderCommand",
     "CtpMarketdataSmokeBaselineResult",
     "CtpMdEventBatch",
@@ -112,6 +128,7 @@ __all__ = [
     "CtpTdHistoricalCallbackBoundaryFinding",
     "CtpTdHistoricalCallbackBoundaryPolicyResult",
     "CtpTdObservedCallback",
+    "CtpTdOrderTradeSnapshot",
     "CtpTdOrderTruthEvidenceMatrix",
     "CtpTdOrderTruthBaseline",
     "CtpSubmitOrderIntent",
@@ -141,4 +158,5 @@ __all__ = [
     "normalize_instrument_record",
     "normalize_product_kind",
     "normalize_symbol",
+    "get_ctp_instrument_provider",
 ]

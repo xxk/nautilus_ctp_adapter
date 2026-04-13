@@ -14,7 +14,7 @@ dependencies:
 **状态**：completed
 **进度**：100%
 **日期**：2026-04-02
-**范围**：`docs/topics/roadmap/nautilus_adapter/nautilus-live-execution/`、`src/nautilus_ctp_adapter/adapters/ctp/`、`cfgs/`、`tests/`
+**范围**：`docs/topics/nautilus-live-execution/`、`src/nautilus_ctp_adapter/adapters/ctp/`、`cfgs/`、`tests/`
 **topic-id**：nautilus-live-execution
 **change-id**：20260402__nautilus-live-execution__real-account-debug-guardrails
 **关联 acceptance**：./acceptance.md
@@ -28,8 +28,8 @@ dependencies:
 ```text
 - capability_id: ctp-real-account-debug-guardrails
 - capability_name: 实盘账户调试 Guardrails / Real-account debug guardrails
-- long_term_target: /D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/nautilus-live-execution/README.md
-- secondary_targets: /D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/nautilus-ctp-adapter-mainline/README.md
+- long_term_target: /D:/Nautilus/nautilus_ctp_adapter/docs/topics/nautilus-live-execution.md
+- secondary_targets: /D:/Nautilus/nautilus_ctp_adapter/docs/topics/nautilus-ctp-adapter-mainline.md
 - decision_target: /D:/Nautilus/nautilus_ctp_adapter/src/nautilus_ctp_adapter/adapters/ctp/execution_client.py
 - affects_long_term_rules: 是
 - change_type: 新增规则
@@ -37,7 +37,7 @@ dependencies:
 
 ## 三、AI 执行约束
 
-1. 允许修改：`docs/topics/roadmap/nautilus_adapter/nautilus-live-execution/`、`docs/topics/roadmap/nautilus_adapter/nautilus-ctp-adapter-mainline/`、`src/nautilus_ctp_adapter/adapters/ctp/`、`cfgs/`、`tests/`、当前 change 三件套。
+1. 允许修改：`docs/topics/nautilus-live-execution/`、`docs/topics/nautilus-ctp-adapter-mainline/`、`src/nautilus_ctp_adapter/adapters/ctp/`、`cfgs/`、`tests/`、当前 change 三件套。
 2. 禁止修改：任何会触发真实 TD 发单的脚本、外部宿主、临时 smoke host。
 3. 本 change 的正式落点是“guardrails 规则 + 配置表达 + 执行预检入口”，不是完整 execution 实现。
 4. AI 开始前必须阅读：`nautilus-live-execution` topic README、mainline roadmap、`src/nautilus_ctp_adapter/adapters/ctp/config.py`、`src/nautilus_ctp_adapter/adapters/ctp/execution_client.py`。
@@ -53,7 +53,7 @@ dependencies:
 
 | 步骤 | 任务 | 来源 | 修改文件 | 产出 | 验证动作 | 回写目标 | 完成定义 | 状态 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| P1 | 冻结 topic 与 mainline 的实盘 guardrails 规则 | 用户约束 | `docs/topics/roadmap/nautilus_adapter/nautilus-live-execution/README.md`、`docs/topics/roadmap/nautilus_adapter/nautilus-ctp-adapter-mainline/README.md`、当前 change 三件套 | 长期规则清单 | 文档检查 | topic/mainline README | 后续 execution change 无法绕过 guardrails | 已完成 |
+| P1 | 冻结 topic 与 mainline 的实盘 guardrails 规则 | 用户约束 | `docs/topics/nautilus-live-execution.md`、`docs/topics/nautilus-ctp-adapter-mainline.md`、当前 change 三件套 | 长期规则清单 | 文档检查 | topic/mainline README | 后续 execution change 无法绕过 guardrails | 已完成 |
 | P2 | 扩展配置模型表达 execution guardrails | capability | `src/nautilus_ctp_adapter/adapters/ctp/config.py`、`cfgs/ctp.live.example.json` | 可装载的 guardrails config | `python -m pytest` | topic README | 真实账户配置可以显式携带 guardrails | 已完成 |
 | P3 | 在执行侧增加预检入口 | implementation | `src/nautilus_ctp_adapter/adapters/ctp/execution_client.py`、`src/nautilus_ctp_adapter/adapters/ctp/factory.py` | 不触达 TD 的 order precheck | `python -m pytest` | decision target | 执行链路正式接线前已有可复用 guardrails 入口 | 已完成 |
 | P4 | 用测试锁定 guardrails 行为 | contract | `tests/test_smoke_import.py` | guardrails contract 证据 | `python -m pytest` | 当前 change | 关键限制被测试覆盖 | 已完成 |

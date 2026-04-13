@@ -8,7 +8,7 @@
 
 1. Topic 1（`ctp-live-connectivity`）已完成，Topic 2（`nautilus-instrument-provider`）已完成，Topic 3（`nautilus-live-marketdata`）进行中。
 2. `AGENTS.md` 当前 read order step 5 指向 `ctp-live-connectivity/README.md`，这是陈旧指针。
-3. 正确目标路径：`/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/nautilus-live-marketdata/README.md`。
+3. 正确目标路径：`/D:/Nautilus/nautilus_ctp_adapter/docs/topics/nautilus-live-marketdata.md`。
 
 ## 验收场景
 

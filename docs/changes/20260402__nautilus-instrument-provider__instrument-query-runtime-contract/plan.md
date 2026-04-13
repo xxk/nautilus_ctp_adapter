@@ -31,7 +31,7 @@ dependencies:
 ```text
 - capability_id: instrument-query-runtime-contract
 - capability_name: 合约查询运行时契约 / Instrument query runtime contract
-- long_term_target: /D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/nautilus-instrument-provider/README.md
+- long_term_target: /D:/Nautilus/nautilus_ctp_adapter/docs/topics/nautilus-instrument-provider.md
 - secondary_targets: /D:/Nautilus/nautilus_ctp_adapter/docs/architecture/platform-neutral-ctp-runtime.md
 - decision_target: /D:/Nautilus/nautilus_ctp_adapter/README.md
 - affects_long_term_rules: 是

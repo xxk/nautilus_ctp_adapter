@@ -106,7 +106,7 @@ using TdOnLoginCallback = void (*)(const NativeLoginResponse* response);
 using TdOnFrontDisconnectedCallback = void (*)(std::int32_t reason);
 using TdOnExecCallback = void (*)(const NativeExec* exec_view);
 using TdOnInstrumentCallback = void (*)(const NativeInstrument* instrument, std::int32_t request_id, std::int32_t is_last);
-using TdOnPositionCallback = void (*)(const NativePosition* position);
+using TdOnPositionCallback = void (*)(const NativePosition* position, std::int32_t request_id, std::int32_t is_last);
 using TdOnAccountCallback = void (*)(const NativeTradingAccount* account);
 
 void* repo_ctp_md_create(const char* flow_path);
@@ -134,5 +134,34 @@ void repo_ctp_td_set_front_disconnected_callback(void* handle, TdOnFrontDisconne
 void repo_ctp_td_set_instrument_callback(void* handle, TdOnInstrumentCallback callback);
 void repo_ctp_td_set_position_callback(void* handle, TdOnPositionCallback callback);
 void repo_ctp_td_set_account_callback(void* handle, TdOnAccountCallback callback);
+
+std::int32_t repo_ctp_td_order_send(
+    void* handle,
+    const char* order_id,
+    const char* symbol,
+    double price,
+    std::int32_t qty,
+    std::int32_t side,
+    std::int32_t order_type,
+    const char* comb_offset,
+    const char* comb_hedge,
+    std::int32_t time_condition,
+    std::int32_t volume_condition,
+    std::int32_t contingent_condition,
+    double stop_price,
+    std::int32_t force_close_reason,
+    std::int32_t min_volume);
+
+std::int32_t repo_ctp_td_order_action(
+    void* handle,
+    const char* broker_id,
+    const char* investor_id,
+    const char* instrument_id,
+    const char* order_ref,
+    std::int32_t front_id,
+    std::int32_t session_id,
+    const char* exchange_id,
+    const char* order_sys_id,
+    std::int32_t action_flag);
 
 }

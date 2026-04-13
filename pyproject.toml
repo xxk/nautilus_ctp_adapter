@@ -14,6 +14,7 @@ authors = [
 dependencies = []
 
 [project.optional-dependencies]
+nautilus = ["nautilus_trader>=1.200"]
 dev = ["pytest>=8,<9"]
 
 [tool.maturin]

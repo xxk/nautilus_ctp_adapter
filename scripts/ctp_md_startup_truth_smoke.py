@@ -12,6 +12,34 @@ if str(SRC_ROOT) not in sys.path:
 
 from nautilus_ctp_adapter.adapters.ctp.config import CtpAdapterConfig
 from nautilus_ctp_adapter.adapters.ctp.factory import build_ctp_stack
+from nautilus_ctp_adapter.devtools.offhours_cli import (
+    build_export_metadata,
+    resolve_export_path,
+    resolve_flow_mode,
+    resolve_session_label,
+    write_json_payload,
+)
+
+
+BASELINE = "md-startup-truth-v1"
+
+
+def _emit_payload(payload: dict[str, object]) -> None:
+    print(json.dumps(payload, ensure_ascii=False))
+
+
+def _emit_exception(*, stage: str, exc: Exception) -> int:
+    _emit_payload(
+        {
+            "baseline": BASELINE,
+            "success": False,
+            "failure_reason": "exception",
+            "error_stage": stage,
+            "error_type": type(exc).__name__,
+            "error_message": str(exc),
+        }
+    )
+    return 1
 
 
 def main() -> int:
@@ -19,24 +47,59 @@ def main() -> int:
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--timeout-seconds", type=int, default=20)
     parser.add_argument("--flow-path", type=Path, default=None)
+    parser.add_argument("--session-label")
+    parser.add_argument("--evidence-root", type=Path)
+    parser.add_argument("--output-json", type=Path)
     args = parser.parse_args()
 
-    config = CtpAdapterConfig.from_json_file(args.config)
-    stack = build_ctp_stack(config)
-    data_client = stack["data_client"]
-    runtime_bridge = stack["runtime_bridge"]
+    try:
+        flow_mode = resolve_flow_mode(flow_path=args.flow_path)
+        session_label = resolve_session_label(session_label=args.session_label, flow_path=args.flow_path)
+        export_path = resolve_export_path(
+            output_json=args.output_json,
+            evidence_root=args.evidence_root,
+            session_label=session_label,
+            default_file_name="md_startup_truth.json",
+        )
+    except Exception as exc:
+        return _emit_exception(stage="argument_validation", exc=exc)
 
-    evidence = data_client.capture_md_startup_truth_mainline(
-        timeout_seconds=args.timeout_seconds,
-        flow_path=args.flow_path,
-    )
-    events = runtime_bridge.drain_events()
-    commands = runtime_bridge.drain_submitted_commands()
+    try:
+        config = CtpAdapterConfig.from_json_file(args.config)
+    except Exception as exc:
+        return _emit_exception(stage="config_load", exc=exc)
+
+    try:
+        stack = build_ctp_stack(config)
+        data_client = stack["data_client"]
+        runtime_bridge = stack["runtime_bridge"]
+
+        evidence = data_client.capture_md_startup_truth_mainline(
+            timeout_seconds=args.timeout_seconds,
+            flow_path=args.flow_path,
+        )
+        events = runtime_bridge.drain_events()
+        commands = runtime_bridge.drain_submitted_commands()
+    except Exception as exc:
+        return _emit_exception(stage="run_smoke", exc=exc)
+
+    failure_reason = None
+    if not evidence.ready:
+        failure_reason = "bootstrap_not_ready"
+    elif evidence.login_success is not True:
+        failure_reason = "login_failed"
+    elif evidence.subscribe_code != 0:
+        failure_reason = "subscribe_failed"
+    elif evidence.first_tick_symbol is None:
+        failure_reason = "first_tick_missing"
 
     payload = {
-        "baseline": "md-startup-truth-v1",
+        "baseline": BASELINE,
+        "success": failure_reason is None,
+        "failure_reason": failure_reason,
+        "flow_mode": flow_mode,
+        "session_label": session_label,
         "flow_path": evidence.flow_path,
-        "flow_mode": evidence.flow_mode,
         "selected_symbols": list(evidence.selected_symbols),
         "ready": evidence.ready,
         "login_success": evidence.login_success,
@@ -49,13 +112,25 @@ def main() -> int:
         "first_tick_ts_epoch_us": evidence.first_tick_ts_epoch_us,
         "disconnect_count": evidence.disconnect_count,
         "disconnect_reasons": list(evidence.disconnect_reasons),
+        "export": build_export_metadata(
+            export_path=export_path,
+            evidence_root=args.evidence_root,
+            session_label=session_label,
+            explicit_path=args.output_json is not None,
+        ),
         "bridge_command_kinds": [command.kind.value for command in commands],
         "bridge_event_kinds": [event.kind.value for event in events],
     }
-    print(json.dumps(payload, ensure_ascii=False))
 
-    success = evidence.ready and evidence.first_tick_symbol is not None
-    return 0 if success else 1
+    if export_path is not None:
+        try:
+            write_json_payload(path=export_path, payload=payload)
+        except Exception as exc:
+            return _emit_exception(stage="export_payload", exc=exc)
+
+    _emit_payload(payload)
+
+    return 0 if failure_reason is None else 1
 
 
 if __name__ == "__main__":

@@ -29,9 +29,9 @@ dependencies:
 ```text
 - capability_id: query.position_account_runtime_contract
 - capability_name: Position And Account Runtime Query Contract
-- long_term_target: D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/position-account-query-baseline/README.md
+- long_term_target: D:/Nautilus/nautilus_ctp_adapter/docs/topics/position-account-query-baseline.md
 - secondary_targets: D:/Nautilus/nautilus_ctp_adapter/docs/README.md; D:/Nautilus/nautilus_ctp_adapter/docs/topics/README.md
-- decision_target: D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/position-account-query-baseline/README.md
+- decision_target: D:/Nautilus/nautilus_ctp_adapter/docs/topics/position-account-query-baseline.md
 - affects_long_term_rules: 是
 - change_type: 新增规则
 ```

@@ -13,7 +13,7 @@
 
 ## 二、Layering Rule
 
-1. `docs/topics/roadmap/` 负责长期 topic 路线图。
+1. `docs/topics/<topic-id>.md` 负责长期 topic 路线图。
 2. `docs/changes/` 负责单次可执行 child change。
 3. topic 文档只维护 topic 级顺序、队列状态与出口条件。
 4. child change 文档负责执行、证据、正式验收与 AI 状态回填。
@@ -24,10 +24,9 @@
 docs/
 ├── changes/
 ├── topics/
-│   └── roadmap/
-│       └── project/
-│           └── project-entry/
-│               └── README.md
+│   ├── project-entry.md
+│   ├── project-bootstrap.md
+│   └── repo-governance.md
 └── architecture/
 ```
 
@@ -35,9 +34,9 @@ docs/
 
 | topic-id | 状态 | 说明 | README |
 | --- | --- | --- | --- |
-| `project-entry` | 进行中 | 当前活动 topic，负责统一运行入口 | `docs/topics/roadmap/project/project-entry/README.md` |
-| `project-bootstrap` | 已完成 | 已完成的项目初始化 topic | `docs/topics/roadmap/project/project-bootstrap/README.md` |
-| `repo-governance` | 进行中 | 治理辅线 topic，负责入口与文档保鲜 | `docs/topics/roadmap/governance/repo-governance/README.md` |
+| `project-entry` | 进行中 | 当前活动 topic，负责统一运行入口 | `docs/topics/project-entry.md` |
+| `project-bootstrap` | 已完成 | 已完成的项目初始化 topic | `docs/topics/project-bootstrap.md` |
+| `repo-governance` | 进行中 | 治理辅线 topic，负责入口与文档保鲜 | `docs/topics/repo-governance.md` |
 | `release-hardening` | 未开始 | 发布与回滚 topic | `README 待创建` |
 
 ## 五、维护要求

@@ -1,14 +1,32 @@
 from __future__ import annotations
 
-import json
 import os
+import json
 import shutil
 import subprocess
 import sys
+import tempfile
+from collections import deque
 from pathlib import Path
 
 
+RUST_GATE_ROOT_OVERRIDE_ENV = "NAUTILUS_CTP_ADAPTER_ROOT_OVERRIDE"
+SDK_ENV_KEYS = ("CTP_VENDOR_SDK_ROOT", "CTP_SDK_ROOT")
+SDK_SCAN_ROOTS_ENV = "CTP_SDK_SCAN_ROOTS"
+SDK_REQUIRED_FILES = (
+    "ThostFtdcMdApi.h",
+    "ThostFtdcTraderApi.h",
+    "ThostFtdcUserApiStruct.h",
+    "thostmduserapi_se.lib",
+    "thosttraderapi_se.lib",
+)
+SDK_SEARCH_MAX_DEPTH = 8
+
+
 def repository_root() -> Path:
+    override = os.environ.get(RUST_GATE_ROOT_OVERRIDE_ENV, "").strip()
+    if override:
+        return Path(override).expanduser().resolve()
     return Path(__file__).resolve().parent.parent
 
 
@@ -89,6 +107,178 @@ def build_command_env(root: Path) -> dict[str, str]:
         path_entries.insert(0, runtime_bin_str)
     env["PATH"] = os.pathsep.join(path_entries) if path_entries else runtime_bin_str
     return env
+
+
+def synced_manifest_path(root: Path) -> Path:
+    return root / "vendor" / "ctp" / "bin" / "_synced_from.txt"
+
+
+def read_synced_manifest(root: Path) -> dict[str, str]:
+    manifest_path = synced_manifest_path(root)
+    if not manifest_path.exists():
+        return {}
+    entries: dict[str, str] = {}
+    for line in manifest_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        if not key:
+            continue
+        entries[key] = value.strip()
+    return entries
+
+
+def unique_paths(candidates: list[Path]) -> list[Path]:
+    seen: set[str] = set()
+    paths: list[Path] = []
+    for candidate in candidates:
+        normalized = str(candidate.resolve(strict=False)).casefold()
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        paths.append(candidate)
+    return paths
+
+
+def sdk_scan_roots_from_env() -> list[Path]:
+    raw = os.environ.get(SDK_SCAN_ROOTS_ENV, "").strip()
+    if not raw:
+        return []
+    candidates: list[Path] = []
+    for item in raw.split(os.pathsep):
+        value = item.strip()
+        if not value:
+            continue
+        candidates.append(Path(value))
+    return unique_paths(candidates)
+
+
+def is_valid_sdk_dir(path: Path) -> bool:
+    return path.is_dir() and all((path / filename).exists() for filename in SDK_REQUIRED_FILES)
+
+
+def _is_relative_to(path: Path, parent: Path) -> bool:
+    try:
+        path.resolve(strict=False).relative_to(parent.resolve(strict=False))
+    except ValueError:
+        return False
+    return True
+
+
+def should_skip_sdk_scan_dir(path: Path, scan_root: Path) -> bool:
+    temp_root = Path(tempfile.gettempdir())
+    if _is_relative_to(scan_root, temp_root):
+        return False
+    if _is_relative_to(path, temp_root):
+        return True
+    return False
+
+
+def find_sdk_dir_under(root: Path) -> Path | None:
+    if not root.exists():
+        return None
+    queue: deque[tuple[Path, int]] = deque([(root, 0)])
+    while queue:
+        path, depth = queue.popleft()
+        if should_skip_sdk_scan_dir(path, root):
+            continue
+        if is_valid_sdk_dir(path):
+            return path
+        if depth >= SDK_SEARCH_MAX_DEPTH:
+            continue
+        try:
+            children = list(path.iterdir())
+        except OSError:
+            continue
+        for child in children:
+            if child.is_dir():
+                queue.append((child, depth + 1))
+    return None
+
+
+def resolve_sdk_dir(candidate: Path) -> Path | None:
+    if is_valid_sdk_dir(candidate):
+        return candidate
+    search_root = candidate / "3rdLib" / "CTP" if (candidate / "3rdLib" / "CTP").exists() else candidate
+    return find_sdk_dir_under(search_root)
+
+
+def external_root_from_synced_manifest(root: Path) -> Path | None:
+    manifest = read_synced_manifest(root)
+    for raw_path in manifest.values():
+        if not raw_path:
+            continue
+        candidate = Path(raw_path)
+        if not candidate.exists():
+            continue
+        for ancestor in [candidate, *candidate.parents]:
+            if (ancestor / "3rdLib" / "CTP").exists():
+                return ancestor
+    return None
+
+
+def locate_sdk_dir(root: Path) -> Path | None:
+    candidates: list[Path] = []
+    for env_key in SDK_ENV_KEYS:
+        raw_path = os.environ.get(env_key, "").strip()
+        if raw_path:
+            candidates.append(Path(raw_path))
+
+    candidates.extend(sdk_scan_roots_from_env())
+
+    candidates.append(root / "vendor" / "ctp" / "sdk")
+
+    external_root = external_root_from_synced_manifest(root)
+    if external_root is not None:
+        candidates.append(external_root)
+        candidates.append(external_root / "3rdLib" / "CTP")
+
+    for candidate in unique_paths(candidates):
+        resolved = resolve_sdk_dir(candidate)
+        if resolved is not None:
+            return resolved
+    return None
+
+
+def print_vendor_bridge_inputs(root: Path, sdk_dir: Path | None) -> None:
+    runtime_bin = root / "vendor" / "ctp" / "bin"
+    manifest_fields = read_synced_manifest(root)
+    pack_kind = manifest_fields.get("pack_kind", "").strip() or "unknown"
+    if runtime_bin.exists():
+        print(f"INFO rust-gate: runtime-pack={pack_kind} path={runtime_bin}")
+    else:
+        print(f"INFO rust-gate: runtime-pack=missing path={runtime_bin}")
+
+    for env_key in SDK_ENV_KEYS:
+        raw_value = os.environ.get(env_key, "").strip()
+        print(f"INFO rust-gate: sdk-probe {env_key}={raw_value or '<unset>'}")
+
+    scan_roots = sdk_scan_roots_from_env()
+    raw_scan_roots = os.environ.get(SDK_SCAN_ROOTS_ENV, "").strip()
+    print(f"INFO rust-gate: sdk-probe {SDK_SCAN_ROOTS_ENV}={raw_scan_roots or '<unset>'}")
+    for scan_root in scan_roots:
+        print(f"INFO rust-gate: sdk-scan-root={scan_root}")
+
+    vendor_sdk_root = root / "vendor" / "ctp" / "sdk"
+    print(
+        "INFO rust-gate: sdk-probe "
+        f"vendor/ctp/sdk={vendor_sdk_root} exists={vendor_sdk_root.exists()}"
+    )
+
+    external_root = external_root_from_synced_manifest(root)
+    if external_root is not None:
+        print(f"INFO rust-gate: sdk-probe external_3rdLib_root={external_root}")
+    else:
+        print("INFO rust-gate: sdk-probe external_3rdLib_root=<not-detected>")
+
+    print("INFO rust-gate: repo-only-probe=python scripts/ctp_repo_debug_smoke.py")
+    print(
+        "INFO rust-gate: formal-live-verdict="
+        "python scripts/ctp_nautilus_live_smoke.py --config <path>"
+    )
+    if sdk_dir is not None:
+        print(f"INFO rust-gate: sdk-selected={sdk_dir}")
 
 
 def run_command(
@@ -193,6 +383,27 @@ def main() -> int:
 
     print(f"PASS rust-gate: cargo-build artifact={artifact_path}")
     print_block("STDOUT rust-gate: ", build_result.stdout)
+
+    sdk_dir = locate_sdk_dir(root)
+    print_vendor_bridge_inputs(root, sdk_dir)
+    if sdk_dir is not None:
+        print(f"PASS rust-gate: ctp_vendor_bridge-ready sdk_dir={sdk_dir}")
+    else:
+        print("WARN rust-gate: ctp_vendor_bridge-scaffold-only sdk-not-found")
+        synced_manifest = synced_manifest_path(root)
+        manifest_fields = read_synced_manifest(root)
+        repo_native_mode = manifest_fields.get("repo_native_mode", "").strip()
+        if repo_native_mode:
+            print(
+                f"INFO rust-gate: repo_native_mode={repo_native_mode} "
+                f"manifest={synced_manifest}"
+            )
+        elif synced_manifest.exists():
+            print(f"INFO rust-gate: synced-manifest={synced_manifest}")
+        print(
+            "NEXT rust-gate: provide CTP SDK via CTP_VENDOR_SDK_ROOT / CTP_SDK_ROOT, "
+            "vendor/ctp/sdk, or external 3rdLib/CTP root"
+        )
 
     # ── ctp_py PyO3 extension build check ─────────────────────────────────
     ctp_py_manifest = root / "rust" / "ctp_py" / "Cargo.toml"

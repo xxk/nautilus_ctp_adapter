@@ -8,7 +8,7 @@
 **change-id**：20260403__td-position-account-truth-merge__merged-evidence-matrix
 **关联 plan**：./plan.md
 **关联 ai_constraints**：./ai_constraints.md
-**长期归宿 / Long-Term Target**：/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/td-position-account-truth-merge/README.md
+**长期归宿 / Long-Term Target**：/D:/Nautilus/nautilus_ctp_adapter/docs/topics/td-position-account-truth-merge.md
 
 <!-- AI-STATUS-BEGIN -->
 ```yaml

@@ -6,7 +6,7 @@
 ## 启动前提
 
 1. 读取 `docs/topics/README.md` 当前全文，确认当前 topic 列表存在哪几条，再动手。
-2. 确认以下 topic README 文件实际存在（各 `docs/topics/roadmap/nautilus_adapter/<topic-id>/README.md`）：
+2. 确认以下 topic README 文件实际存在（各 `docs/topics/<topic-id>.md`）：
    - `nautilus-ctp-adapter-mainline` ✓
    - `ctp-live-connectivity` ✓
    - `nautilus-instrument-provider` ✓

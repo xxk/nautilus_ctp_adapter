@@ -82,7 +82,7 @@ This repository adopts the `Doc Harness Kit` at:
 
 Governance layout is aligned toward `DSLReserach`:
 
-1. Long-running topic roadmaps live under `docs/topics/roadmap/`
+1. Long-running topic roadmaps live under `docs/topics/<topic-id>.md`
 2. Stable architecture docs live under `docs/architecture/`
 3. Executable child changes live under `docs/changes/<change-id>/`
 4. New child changes should start from the local `_template` bundle, including `design.md` when needed
@@ -92,6 +92,11 @@ Governance layout is aligned toward `DSLReserach`:
 > **DEPRECATED**: Topic registry and sync_topic_index are replaced by Route B.
 > topic-id is now a label in plan.md frontmatter. No independent registry required.
 > Use `python scripts/show_current_frontier.py --by-topic` for topic grouping.
+
+Topic state registry: `docs/topics/主题状态注册表_Topic State Registry.yaml`
+
+Current active topic: `live-session-order-query-hardening`
+Completed topic: `nautilus-host-integration`
 
 When the current frontier changes, update plan.md status and run `python scripts/autopilot.py --root . --backfill`.
 

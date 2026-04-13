@@ -31,9 +31,9 @@ dependencies:
 ```text
 - capability_id: ops.reconnect_and_recovery_policy
 - capability_name: Reconnect And Recovery Policy
-- long_term_target: D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/live-ops-and-reconciliation/README.md
+- long_term_target: D:/Nautilus/nautilus_ctp_adapter/docs/topics/live-ops-and-reconciliation.md
 - secondary_targets: D:/Nautilus/nautilus_ctp_adapter/docs/README.md
-- decision_target: D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/nautilus-ctp-adapter-mainline/README.md
+- decision_target: D:/Nautilus/nautilus_ctp_adapter/docs/topics/nautilus-ctp-adapter-mainline.md
 - affects_long_term_rules: 是
 - change_type: 新增规则
 ```

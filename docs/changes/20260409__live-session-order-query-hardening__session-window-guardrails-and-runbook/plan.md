@@ -20,10 +20,11 @@ dependencies:
 
 # Session Window Guardrails 与真实场景验收驱动 Runbook 开发计划
 
-**状态**：draft
-**进度**：0%
+**状态**：in_progress
+**进度**：runbook skeleton landed；offhours/trade-window/vendor-bridge routing frozen at document level；C3/U1 evidence 已接回当前 runbook，当前只剩 trade-window 场景等待 U1 ready 与真实交易窗口
 **日期**：2026-04-09
-**范围**：`docs/topics/roadmap/nautilus_adapter/live-session-order-query-hardening/`、`docs/changes/20260409__live-session-order-query-hardening__session-window-guardrails-and-runbook/`、`scripts/`、`src/nautilus_ctp_adapter/adapters/ctp/`、`tests/`
+**更新日期**：2026-04-11
+**范围**：`docs/topics/live-session-order-query-hardening/`、`docs/changes/20260409__live-session-order-query-hardening__session-window-guardrails-and-runbook/`、`scripts/`、`src/nautilus_ctp_adapter/adapters/ctp/`、`tests/`
 **topic-id**：live-session-order-query-hardening
 **change-id**：20260409__live-session-order-query-hardening__session-window-guardrails-and-runbook
 **关联 acceptance**：./acceptance.md
@@ -41,7 +42,7 @@ dependencies:
 ```text
 - capability_id: ctp-session-window-runbook
 - capability_name: 交易/非交易时段能力分流 / Session-window capability routing
-- long_term_target: /D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/live-session-order-query-hardening/README.md
+- long_term_target: /D:/Nautilus/nautilus_ctp_adapter/docs/topics/live-session-order-query-hardening.md
 - secondary_targets: 无
 - decision_target: /D:/Nautilus/nautilus_ctp_adapter/scripts/ctp_order_lifecycle_smoke.py ; /D:/Nautilus/nautilus_ctp_adapter/scripts/ctp_query_adapter_smoke.py
 - affects_long_term_rules: 是
@@ -50,7 +51,7 @@ dependencies:
 
 ## 三、AI 执行约束
 
-1. 允许修改：当前 change 三件套、`docs/topics/roadmap/nautilus_adapter/live-session-order-query-hardening/README.md`、`scripts/`、`src/nautilus_ctp_adapter/adapters/ctp/`、`tests/`。
+1. 允许修改：当前 change 三件套、`docs/topics/live-session-order-query-hardening.md`、`scripts/`、`src/nautilus_ctp_adapter/adapters/ctp/`、`tests/`。
 2. 禁止修改：`vendor/`、外部宿主、仓外配置文件、任何绕过现有 guardrails 的临时自动发单流程。
 3. 当前正式入口优先使用：`scripts/ctp_td_order_truth_smoke.py`、`scripts/ctp_order_lifecycle_smoke.py`、`scripts/ctp_account_query_smoke.py`、`scripts/ctp_position_query_smoke.py`、`scripts/ctp_query_adapter_smoke.py`。
 4. AI 开始前必须阅读：当前 topic README、`nautilus-live-execution` topic README、`position-account-query-baseline` topic README、`src/nautilus_ctp_adapter/adapters/ctp/execution_client.py`、`src/nautilus_ctp_adapter/adapters/ctp/query_adapter.py`。
@@ -83,10 +84,10 @@ dependencies:
 
 | 步骤 | 任务 | 来源 | 修改文件 | 产出 | 验证动作 | 回写目标 | 完成定义 | 状态 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| P1 | 冻结交易时段/非交易时段的真实验收场景矩阵 | 用户约束 + topic C1 | 当前 change 三件套 | A1-A6 场景、前置条件、证据路径 | `python scripts/check_topic_docs.py` | topic README | 后续功能开发必须围绕同一组真实场景推进 | 未开始 |
-| P3 | 把非交易时段路径绑定到 account/position/query snapshot 正式入口 | A3/A4/A6 | `scripts/ctp_account_query_smoke.py`、`scripts/ctp_position_query_smoke.py`、`scripts/ctp_query_adapter_smoke.py`、`src/nautilus_ctp_adapter/adapters/ctp/query_adapter.py`、当前 change | offhours runbook、只读查询成功/失败语义 | `python scripts/check_topic_docs.py`；必要时 `python -m pytest` | topic README | 能明确区分“只读可用/连接失败/空仓非失败/误用 live-send” | 未开始 |
-| P2 | 把交易时段路径绑定到现有 order truth 与 order lifecycle 正式入口 | A1/A2/A5 | `scripts/ctp_td_order_truth_smoke.py`、`scripts/ctp_order_lifecycle_smoke.py`、`src/nautilus_ctp_adapter/adapters/ctp/execution_client.py`、当前 change | trading-window runbook、成功/失败语义 | `python scripts/check_topic_docs.py`；必要时 `python -m pytest` | topic README | 能明确区分“可交易/不可交易/guardrail 拒绝/连接失败” | 未开始 |
-| P4 | 收口 evidence 路径与后续 child change 交接 | topic C1 -> C2/C3 | 当前 change、`docs/topics/roadmap/nautilus_adapter/live-session-order-query-hardening/README.md` | session-window playbook 与 handoff 说明 | `python scripts/check_topic_docs.py` | topic README | `C2/C3` 可直接复用当前 change 的场景矩阵和命令口径 | 未开始 |
+| P1 | 冻结交易时段/非交易时段的真实验收场景矩阵 | 用户约束 + topic C1 | 当前 change 三件套 | A1-A6 场景、前置条件、证据路径 | `python scripts/check_topic_docs.py` | topic README | 后续功能开发必须围绕同一组真实场景推进 | 已完成 |
+| P3 | 把非交易时段路径绑定到 account/position/query snapshot 正式入口 | A3/A4/A6 | `scripts/ctp_account_query_smoke.py`、`scripts/ctp_position_query_smoke.py`、`scripts/ctp_query_adapter_smoke.py`、`src/nautilus_ctp_adapter/adapters/ctp/query_adapter.py`、当前 change | offhours runbook、只读查询成功/失败语义 | `python scripts/check_topic_docs.py`；必要时 `python -m pytest` | topic README | 能明确区分“只读可用/连接失败/空仓非失败/误用 live-send” | 已完成（通过 C3 冻结） |
+| P2 | 把交易时段路径绑定到现有 order truth 与 order lifecycle 正式入口 | A1/A2/A5 | `scripts/ctp_td_order_truth_smoke.py`、`scripts/ctp_order_lifecycle_smoke.py`、`src/nautilus_ctp_adapter/adapters/ctp/execution_client.py`、当前 change | trading-window runbook、成功/失败语义 | `python scripts/check_topic_docs.py`；必要时 `python -m pytest` | topic README | 能明确区分“可交易/不可交易/guardrail 拒绝/连接失败” | 阻塞（等待 U1 / vendor bridge ready） |
+| P4 | 收口 evidence 路径与后续 child change 交接 | topic C1 -> C2/C3 | 当前 change、`docs/topics/live-session-order-query-hardening.md`、`./runbook.md` | session-window playbook 与 handoff 说明 | `python scripts/check_topic_docs.py` | topic README | `C2/C3` 可直接复用当前 change 的场景矩阵和命令口径 | 进行中 |
 
 ## 八、任务说明（可选）
 
@@ -134,3 +135,5 @@ python -m pytest
 ## 十四、进度记录（可选）
 
 1. 2026-04-09：创建 `C1` change bundle，冻结以真实场景验收驱动后续开发的执行框架。
+2. 2026-04-10：已基于当前 topic 与 C3/U1/C2 队列落下 `runbook.md`，把 session-window 路由明确拆成三条正式路径：`offhours read-only`、`vendor-bridge handoff`、`trade-window live order`；后续 Autopilot 不再依赖聊天决定“该跑哪个入口”。
+3. 2026-04-11：已把 U1 的真实 blocker/handoff evidence 接回当前 runbook；当前 active lane 改为 U1，`sdk-not-found / scaffold-only` 不再表示“下一批才切 U1”，而是当前就停留在 U1 blocked handoff，直到私有 SDK/live DLL 输入补齐。

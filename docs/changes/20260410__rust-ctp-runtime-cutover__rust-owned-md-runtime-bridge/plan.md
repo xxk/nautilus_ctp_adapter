@@ -29,7 +29,7 @@ dependencies:
 ```text
 - capability_id: rust_owned_md_runtime_bridge
 - capability_name: Rust-Owned MD Runtime Bridge / Rust 接管 MD Runtime 桥接
-- long_term_target: /D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/rust_ctp/rust-ctp-runtime-cutover/README.md
+- long_term_target: /D:/Nautilus/nautilus_ctp_adapter/docs/topics/rust-ctp-runtime-cutover.md
 - secondary_targets: /D:/Nautilus/nautilus_ctp_adapter/docs/architecture/pyo3-bridge-design.md
 - decision_target: /D:/Nautilus/nautilus_ctp_adapter/docs/README.md
 - affects_long_term_rules: 否

@@ -15,7 +15,7 @@
 
 ## 二、Layering Rule
 
-1. `docs/topics/roadmap/` 负责长期 topic 路线图。
+1. `docs/topics/<topic-id>.md` 负责长期 topic 路线图。
 2. `docs/changes/` 负责单次可执行 child change。
 3. topic 文档只维护 phase / topic 级顺序、队列状态与 topic-level acceptance。
 4. child change 文档负责执行、证据、正式验收与 AI 状态回填。
@@ -26,10 +26,8 @@
 docs/
 ├── changes/
 ├── topics/
-│   └── roadmap/
-│       └── <domain>/
-│           └── <topic-id>/
-│               └── README.md
+│   ├── <topic-id>.md
+│   └── 主题状态注册表_Topic State Registry.yaml
 └── architecture/
 ```
 
@@ -37,9 +35,9 @@ docs/
 
 | topic-id | 状态 | 说明 | README |
 | --- | --- | --- | --- |
-| `<topic-id-1>` | 进行中 | 当前活动 topic | `docs/topics/roadmap/<domain>/<topic-id-1>/README.md` |
-| `<topic-id-2>` | 已完成 | 上一个已完成 topic | `docs/topics/roadmap/<domain>/<topic-id-2>/README.md` |
-| `<topic-id-3>` | 未开始 | 后续待激活 topic | `docs/topics/roadmap/<domain>/<topic-id-3>/README.md` 或 `README 待创建` |
+| `<topic-id-1>` | 进行中 | 当前活动 topic | `docs/topics/<topic-id-1>.md` |
+| `<topic-id-2>` | 已完成 | 上一个已完成 topic | `docs/topics/<topic-id-2>.md` |
+| `<topic-id-3>` | 未开始 | 后续待激活 topic | `docs/topics/<topic-id-3>.md` 或 `待创建` |
 
 ## 五、维护要求
 

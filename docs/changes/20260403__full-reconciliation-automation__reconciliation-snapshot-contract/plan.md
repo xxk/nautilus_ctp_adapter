@@ -31,9 +31,9 @@ dependencies:
 ```text
 - capability_id: ctp_reconciliation_snapshot
 - capability_name: CTP Reconciliation Snapshot Baseline
-- long_term_target: /D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/full-reconciliation-automation/README.md
+- long_term_target: /D:/Nautilus/nautilus_ctp_adapter/docs/topics/full-reconciliation-automation.md
 - secondary_targets: /D:/Nautilus/nautilus_ctp_adapter/docs/README.md
-- decision_target: /D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/full-reconciliation-automation/README.md
+- decision_target: /D:/Nautilus/nautilus_ctp_adapter/docs/topics/full-reconciliation-automation.md
 - affects_long_term_rules: 是
 - change_type: 新增规则
 ```

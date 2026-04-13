@@ -8,7 +8,7 @@
 **change-id**：20260410__rust-ctp-runtime-cutover__bridge-and-cutover-design
 **关联 plan**：./plan.md
 **关联 ai_constraints**：./ai_constraints.md
-**长期归宿**：/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/rust_ctp/rust-ctp-runtime-cutover/README.md
+**长期归宿**：/D:/Nautilus/nautilus_ctp_adapter/docs/topics/rust-ctp-runtime-cutover.md
 
 ## 一、验收目标
 

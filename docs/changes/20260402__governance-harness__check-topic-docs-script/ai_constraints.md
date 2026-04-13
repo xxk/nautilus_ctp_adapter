@@ -5,12 +5,12 @@
 
 ## 启动前提
 
-1. 列出 `docs/topics/roadmap/nautilus_adapter/` 下所有子目录，确认实际存在的 topic 列表，再实现路径扫描逻辑。
+1. 列出 `docs/topics/` 下所有子目录，确认实际存在的 topic 列表，再实现路径扫描逻辑。
 2. 读取至少一个现有 topic README 的格式，确认必填字段的实际写法（如 `**状态**：进行中` vs `**状态**: 进行中`），再写 regex。
 
 ## 边界
 
-1. 脚本扫描路径：`<repo_root>/docs/topics/roadmap/**/<topic-id>/README.md`，其中 `<topic-id>` 为两层目录之下（domain 目录下的子目录）。
+1. 脚本扫描路径：`<repo_root>/docs/topics/<topic-id>.md`，其中 `<topic-id>` 为两层目录之下（domain 目录下的子目录）。
 2. 必填字段检验列表（共 6 项）：`**创建日期**`、`**最后更新**`、`**状态**`、`**topic-id**`、`AI-TASK-QUEUE`、change 表中包含 `状态` 列标题。
 3. 路径根目录必须通过 `Path(__file__).resolve().parent.parent` 推导，不允许硬编码 `D:/Nautilus/...`。
 4. 目录不存在或 README.md 不存在的 topic 直接跳过，不计入 FAIL。

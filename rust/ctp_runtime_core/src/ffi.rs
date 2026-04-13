@@ -118,7 +118,7 @@ type TdOnLoginCallback = Option<extern "C" fn(*const NativeLoginResponse)>;
 type TdOnFrontDisconnectedCallback = Option<extern "C" fn(i32)>;
 type TdOnExecCallback = Option<extern "C" fn(*const NativeExec)>;
 type TdOnInstrumentCallback = Option<extern "C" fn(*const NativeInstrument, i32, i32)>;
-type TdOnPositionCallback = Option<extern "C" fn(*const NativePosition)>;
+type TdOnPositionCallback = Option<extern "C" fn(*const NativePosition, i32, i32)>;
 type TdOnAccountCallback = Option<extern "C" fn(*const NativeTradingAccount)>;
 
 #[cfg(not(ctp_vendor_bridge))]
@@ -217,6 +217,35 @@ extern "C" {
     fn repo_ctp_td_set_instrument_callback(handle: *mut c_void, callback: TdOnInstrumentCallback);
     fn repo_ctp_td_set_position_callback(handle: *mut c_void, callback: TdOnPositionCallback);
     fn repo_ctp_td_set_account_callback(handle: *mut c_void, callback: TdOnAccountCallback);
+    fn repo_ctp_td_order_send(
+        handle: *mut c_void,
+        order_id: *const c_char,
+        symbol: *const c_char,
+        price: f64,
+        qty: i32,
+        side: i32,
+        order_type: i32,
+        comb_offset: *const c_char,
+        comb_hedge: *const c_char,
+        time_condition: i32,
+        volume_condition: i32,
+        contingent_condition: i32,
+        stop_price: f64,
+        force_close_reason: i32,
+        min_volume: i32,
+    ) -> i32;
+    fn repo_ctp_td_order_action(
+        handle: *mut c_void,
+        broker_id: *const c_char,
+        investor_id: *const c_char,
+        instrument_id: *const c_char,
+        order_ref: *const c_char,
+        front_id: i32,
+        session_id: i32,
+        exchange_id: *const c_char,
+        order_sys_id: *const c_char,
+        action_flag: i32,
+    ) -> i32;
 }
 
 #[cfg(ctp_vendor_bridge)]
@@ -501,6 +530,35 @@ pub extern "C" fn TdConfirmSettlement(handle: *mut c_void) -> i32 {
     NOT_IMPLEMENTED_CODE
 }
 
+#[cfg(ctp_vendor_bridge)]
+#[no_mangle]
+pub extern "C" fn TdOrderSend(
+    handle: *mut c_void,
+    order_id: *const c_char,
+    symbol: *const c_char,
+    price: f64,
+    qty: i32,
+    side: i32,
+    order_type: i32,
+    comb_offset: *const c_char,
+    comb_hedge: *const c_char,
+    time_condition: i32,
+    volume_condition: i32,
+    contingent_condition: i32,
+    stop_price: f64,
+    force_close_reason: i32,
+    min_volume: i32,
+) -> i32 {
+    unsafe {
+        repo_ctp_td_order_send(
+            handle, order_id, symbol, price, qty, side, order_type,
+            comb_offset, comb_hedge, time_condition, volume_condition,
+            contingent_condition, stop_price, force_close_reason, min_volume,
+        )
+    }
+}
+
+#[cfg(not(ctp_vendor_bridge))]
 #[no_mangle]
 pub extern "C" fn TdOrderSend(
     handle: *mut c_void,
@@ -525,6 +583,30 @@ pub extern "C" fn TdOrderSend(
     NOT_IMPLEMENTED_CODE
 }
 
+#[cfg(ctp_vendor_bridge)]
+#[no_mangle]
+pub extern "C" fn TdOrderAction(
+    handle: *mut c_void,
+    broker_id: *const c_char,
+    investor_id: *const c_char,
+    instrument_id: *const c_char,
+    order_ref: *const c_char,
+    front_id: i32,
+    session_id: i32,
+    exchange_id: *const c_char,
+    order_sys_id: *const c_char,
+    action_flag: i32,
+) -> i32 {
+    unsafe {
+        repo_ctp_td_order_action(
+            handle, broker_id, investor_id, instrument_id,
+            order_ref, front_id, session_id, exchange_id,
+            order_sys_id, action_flag,
+        )
+    }
+}
+
+#[cfg(not(ctp_vendor_bridge))]
 #[no_mangle]
 pub extern "C" fn TdOrderAction(
     handle: *mut c_void,

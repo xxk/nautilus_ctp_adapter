@@ -8,7 +8,7 @@
 **change-id**：20260403__live-ops-truth-snapshot__live-ops-policy-baseline
 **关联 plan**：./plan.md
 **关联 ai_constraints**：./ai_constraints.md
-**长期归宿 / Long-Term Target**：/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/nautilus_adapter/live-ops-truth-snapshot/README.md
+**长期归宿 / Long-Term Target**：/D:/Nautilus/nautilus_ctp_adapter/docs/topics/live-ops-truth-snapshot.md
 
 ## 一、验收目标 / Goals
 

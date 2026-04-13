@@ -7,7 +7,7 @@
 ## 继承事实
 
 1. 当前 `scripts/` 目录下没有文档门禁相关脚本。
-2. `docs/topics/roadmap/nautilus_adapter/` 下已有 5 个 topic README（mainline + ctp-live-connectivity + instrument-provider + live-marketdata + governance-harness）。
+2. `docs/topics/` 下已有 5 个 topic README（mainline + ctp-live-connectivity + instrument-provider + live-marketdata + governance-harness）。
 3. `nautilus-live-execution` 和 `live-ops-and-reconciliation` 尚无 README，脚本不应因此 FAIL（不存在的目录直接跳过）。
 
 ## 验收场景

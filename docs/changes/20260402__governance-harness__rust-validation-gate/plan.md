@@ -31,7 +31,7 @@ dependencies:
 - capability_name: Rust Validation Gate
 - long_term_target: D:/Nautilus/nautilus_ctp_adapter/AGENTS.md
 - secondary_targets: D:/Nautilus/nautilus_ctp_adapter/README.md; D:/Nautilus/nautilus_ctp_adapter/docs/README.md; D:/Nautilus/nautilus_ctp_adapter/scripts/README.md
-- decision_target: D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/repo_governance/repo-governance-hardening/README.md
+- decision_target: D:/Nautilus/nautilus_ctp_adapter/docs/topics/repo-governance-hardening.md
 - affects_long_term_rules: 是
 - change_type: 新增规则
 ```

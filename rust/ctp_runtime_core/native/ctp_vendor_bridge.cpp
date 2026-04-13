@@ -241,6 +241,8 @@ public:
     void OnRspQryInstrument(CThostFtdcInstrumentField* instrument, CThostFtdcRspInfoField* rsp_info, int request_id, bool is_last) override;
     void OnRspQryInvestorPosition(CThostFtdcInvestorPositionField* position, CThostFtdcRspInfoField* rsp_info, int request_id, bool is_last) override;
     void OnRspQryTradingAccount(CThostFtdcTradingAccountField* account, CThostFtdcRspInfoField* rsp_info, int request_id, bool is_last) override;
+    void OnRspOrderInsert(CThostFtdcInputOrderField* input_order, CThostFtdcRspInfoField* rsp_info, int request_id, bool is_last) override;
+    void OnErrRtnOrderInsert(CThostFtdcInputOrderField* input_order, CThostFtdcRspInfoField* rsp_info) override;
     void OnRtnOrder(CThostFtdcOrderField* order) override;
     void OnRtnTrade(CThostFtdcTradeField* trade) override;
 
@@ -626,11 +628,6 @@ void TdSpiImpl::OnRspQryInstrument(CThostFtdcInstrumentField* instrument, CThost
 
 void TdSpiImpl::OnRspQryInvestorPosition(CThostFtdcInvestorPositionField* position, CThostFtdcRspInfoField* rsp_info, int request_id, bool is_last) {
     static_cast<void>(rsp_info);
-    static_cast<void>(request_id);
-    static_cast<void>(is_last);
-    if (position == nullptr) {
-        return;
-    }
     if (TdSession* session_ptr = session()) {
         TdOnPositionCallback callback = nullptr;
         {
@@ -638,6 +635,10 @@ void TdSpiImpl::OnRspQryInvestorPosition(CThostFtdcInvestorPositionField* positi
             callback = session_ptr->position_callback;
         }
         if (callback == nullptr) {
+            return;
+        }
+        if (position == nullptr) {
+            callback(nullptr, request_id, is_last ? 1 : 0);
             return;
         }
         const std::string symbol = normalized_text(position->InstrumentID);
@@ -660,7 +661,7 @@ void TdSpiImpl::OnRspQryInvestorPosition(CThostFtdcInvestorPositionField* positi
             position->PositionProfit,
             now_epoch_us(),
         };
-        callback(&snapshot);
+        callback(&snapshot, request_id, is_last ? 1 : 0);
     }
 }
 
@@ -697,6 +698,102 @@ void TdSpiImpl::OnRspQryTradingAccount(CThostFtdcTradingAccountField* account, C
             account->CloseProfit,
             currency_id.c_str(),
             now_epoch_us(),
+        };
+        callback(&snapshot);
+    }
+}
+
+void TdSpiImpl::OnRspOrderInsert(CThostFtdcInputOrderField* input_order,
+                                  CThostFtdcRspInfoField* rsp_info,
+                                  int /*request_id*/, bool /*is_last*/) {
+    if (input_order == nullptr) {
+        return;
+    }
+    if (TdSession* session_ptr = session()) {
+        TdOnExecCallback callback = nullptr;
+        SessionIdentity fallback_identity{};
+        {
+            std::scoped_lock lock(session_ptr->mutex);
+            callback = session_ptr->exec_callback;
+            fallback_identity = current_td_identity_locked(*session_ptr);
+        }
+        if (callback == nullptr) {
+            return;
+        }
+        const std::string order_ref = normalized_text(input_order->OrderRef);
+        const std::string symbol = normalized_text(input_order->InstrumentID);
+        std::string error_msg;
+        if (rsp_info != nullptr && rsp_info->ErrorID != 0) {
+            error_msg = normalized_text(rsp_info->ErrorMsg);
+        }
+        // Use CTP status 'a' (THOST_FTDC_OST_Unknown mapped as canceled/rejected)
+        const int rejected_status = static_cast<int>('5'); // THOST_FTDC_OST_Canceled
+        const NativeExec snapshot{
+            order_ref.c_str(),
+            symbol.c_str(),
+            input_order->LimitPrice,
+            input_order->VolumeTotalOriginal,
+            normalize_enum_value(input_order->Direction),
+            rejected_status,
+            now_epoch_us(),
+            order_ref.c_str(),
+            fallback_identity.front_id,
+            fallback_identity.session_id,
+            normalize_enum_value(input_order->Direction),
+            normalize_enum_value(input_order->CombOffsetFlag[0]),
+            normalize_enum_value(input_order->CombHedgeFlag[0]),
+            0,
+            0.0,
+            0,
+            error_msg.empty() ? "OnRspOrderInsert: order rejected" : error_msg.c_str(),
+            0,
+        };
+        callback(&snapshot);
+    }
+}
+
+void TdSpiImpl::OnErrRtnOrderInsert(CThostFtdcInputOrderField* input_order,
+                                     CThostFtdcRspInfoField* rsp_info) {
+    if (input_order == nullptr) {
+        return;
+    }
+    if (TdSession* session_ptr = session()) {
+        TdOnExecCallback callback = nullptr;
+        SessionIdentity fallback_identity{};
+        {
+            std::scoped_lock lock(session_ptr->mutex);
+            callback = session_ptr->exec_callback;
+            fallback_identity = current_td_identity_locked(*session_ptr);
+        }
+        if (callback == nullptr) {
+            return;
+        }
+        const std::string order_ref = normalized_text(input_order->OrderRef);
+        const std::string symbol = normalized_text(input_order->InstrumentID);
+        std::string error_msg;
+        if (rsp_info != nullptr && rsp_info->ErrorID != 0) {
+            error_msg = normalized_text(rsp_info->ErrorMsg);
+        }
+        const int rejected_status = static_cast<int>('5'); // THOST_FTDC_OST_Canceled
+        const NativeExec snapshot{
+            order_ref.c_str(),
+            symbol.c_str(),
+            input_order->LimitPrice,
+            input_order->VolumeTotalOriginal,
+            normalize_enum_value(input_order->Direction),
+            rejected_status,
+            now_epoch_us(),
+            order_ref.c_str(),
+            fallback_identity.front_id,
+            fallback_identity.session_id,
+            normalize_enum_value(input_order->Direction),
+            normalize_enum_value(input_order->CombOffsetFlag[0]),
+            normalize_enum_value(input_order->CombHedgeFlag[0]),
+            0,
+            0.0,
+            0,
+            error_msg.empty() ? "OnErrRtnOrderInsert: exchange rejected" : error_msg.c_str(),
+            0,
         };
         callback(&snapshot);
     }
@@ -1123,4 +1220,122 @@ extern "C" void repo_ctp_td_set_account_callback(void* handle, TdOnAccountCallba
         std::scoped_lock lock(session->mutex);
         session->account_callback = callback;
     }
+}
+
+extern "C" std::int32_t repo_ctp_td_order_send(
+    void* handle,
+    const char* order_id,
+    const char* symbol,
+    double price,
+    std::int32_t qty,
+    std::int32_t side,
+    std::int32_t order_type,
+    const char* comb_offset,
+    const char* comb_hedge,
+    std::int32_t time_condition,
+    std::int32_t volume_condition,
+    std::int32_t contingent_condition,
+    double stop_price,
+    std::int32_t force_close_reason,
+    std::int32_t min_volume
+) {
+    auto* session = checked_handle<TdSession>(handle);
+    if (session == nullptr) {
+        return INVALID_HANDLE_CODE;
+    }
+    CThostFtdcTraderApi* api = nullptr;
+    std::string broker_id;
+    std::string investor_id;
+    SessionIdentity identity{};
+    {
+        std::scoped_lock lock(session->mutex);
+        if (session->api == nullptr || !session->logged_in) {
+            return -1;
+        }
+        api = session->api;
+        broker_id = session->broker_id;
+        investor_id = session->user_id;
+        identity = current_td_identity_locked(*session);
+    }
+
+    const std::string order_ref_text = normalized_text(order_id);
+    const std::string instrument_id = normalized_text(symbol);
+    const std::string offset_text = normalized_text(comb_offset);
+    const std::string hedge_text = normalized_text(comb_hedge);
+
+    CThostFtdcInputOrderField order{};
+    copy_ctp_text(order.BrokerID, broker_id);
+    copy_ctp_text(order.InvestorID, investor_id);
+    copy_ctp_text(order.InstrumentID, instrument_id);
+    copy_ctp_text(order.OrderRef, order_ref_text);
+    order.Direction = static_cast<TThostFtdcDirectionType>(side == 0 ? '0' : '1');
+    order.CombOffsetFlag[0] = offset_text.empty() ? THOST_FTDC_OF_Open : offset_text[0];
+    order.CombHedgeFlag[0] = hedge_text.empty() ? THOST_FTDC_HF_Speculation : hedge_text[0];
+    order.LimitPrice = price;
+    order.VolumeTotalOriginal = qty;
+    order.OrderPriceType = static_cast<TThostFtdcOrderPriceTypeType>(order_type == 0 ? THOST_FTDC_OPT_LimitPrice : order_type);
+    order.TimeCondition = static_cast<TThostFtdcTimeConditionType>(time_condition == 0 ? THOST_FTDC_TC_GFD : time_condition);
+    order.VolumeCondition = static_cast<TThostFtdcVolumeConditionType>(volume_condition == 0 ? THOST_FTDC_VC_AV : volume_condition);
+    order.ContingentCondition = static_cast<TThostFtdcContingentConditionType>(contingent_condition == 0 ? THOST_FTDC_CC_Immediately : contingent_condition);
+    order.StopPrice = stop_price;
+    order.ForceCloseReason = static_cast<TThostFtdcForceCloseReasonType>(force_close_reason == 0 ? THOST_FTDC_FCC_NotForceClose : force_close_reason);
+    order.MinVolume = min_volume > 0 ? min_volume : 1;
+    order.IsAutoSuspend = 0;
+    order.UserForceClose = 0;
+
+    {
+        std::scoped_lock lock(session->mutex);
+        remember_td_order_identity_locked(*session, order_ref_text, "", identity);
+    }
+
+    return api->ReqOrderInsert(&order, 0);
+}
+
+extern "C" std::int32_t repo_ctp_td_order_action(
+    void* handle,
+    const char* broker_id_param,
+    const char* investor_id_param,
+    const char* instrument_id,
+    const char* order_ref,
+    std::int32_t front_id,
+    std::int32_t session_id,
+    const char* exchange_id,
+    const char* order_sys_id,
+    std::int32_t action_flag
+) {
+    auto* session = checked_handle<TdSession>(handle);
+    if (session == nullptr) {
+        return INVALID_HANDLE_CODE;
+    }
+    CThostFtdcTraderApi* api = nullptr;
+    std::string broker_id;
+    std::string investor_id;
+    {
+        std::scoped_lock lock(session->mutex);
+        if (session->api == nullptr || !session->logged_in) {
+            return -1;
+        }
+        api = session->api;
+        broker_id = normalized_text(broker_id_param);
+        if (broker_id.empty()) {
+            broker_id = session->broker_id;
+        }
+        investor_id = normalized_text(investor_id_param);
+        if (investor_id.empty()) {
+            investor_id = session->user_id;
+        }
+    }
+
+    CThostFtdcInputOrderActionField action{};
+    copy_ctp_text(action.BrokerID, broker_id);
+    copy_ctp_text(action.InvestorID, investor_id);
+    copy_ctp_text(action.InstrumentID, normalized_text(instrument_id));
+    copy_ctp_text(action.OrderRef, normalized_text(order_ref));
+    action.FrontID = front_id;
+    action.SessionID = session_id;
+    copy_ctp_text(action.ExchangeID, normalized_text(exchange_id));
+    copy_ctp_text(action.OrderSysID, normalized_text(order_sys_id));
+    action.ActionFlag = static_cast<TThostFtdcActionFlagType>(action_flag == 0 ? THOST_FTDC_AF_Delete : action_flag);
+
+    return api->ReqOrderAction(&action, 0);
 }
