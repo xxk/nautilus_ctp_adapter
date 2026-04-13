@@ -1,6 +1,6 @@
 # AGENTS.md
 
-**Updated**: 2026-04-10
+**Updated**: 2026-04-13
 **Status**: Active
 
 ## Read First
@@ -11,8 +11,39 @@ Read these in order:
 2. [docs/README.md](/D:/Nautilus/nautilus_ctp_adapter/docs/README.md)
 3. [docs/doc_harness_kit/README.md](/D:/Nautilus/nautilus_ctp_adapter/docs/doc_harness_kit/README.md)
 4. [docs/architecture/runtime-performance-guidelines.md](/D:/Nautilus/nautilus_ctp_adapter/docs/architecture/runtime-performance-guidelines.md)
-5. [docs/topics/roadmap/rust_ctp/rust-ctp-runtime-cutover/README.md](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/roadmap/rust_ctp/rust-ctp-runtime-cutover/README.md)
-6. The current change bundle under `docs/changes/<change-id>/`
+5. The current change bundle under `docs/changes/<change-id>/`
+
+## Autonomous Execution Policy
+
+Default objective: keep advancing the current formal change frontier until the queue is empty or a real blocker is hit.
+
+Execution rules:
+
+1. Run `python scripts/autopilot.py --root .` to get current frontier at TASK-LIST granularity.
+2. Run `python scripts/show_current_frontier.py --root .` to see all active/completed changes.
+3. If an active change exists, continue it; if none, pick the first `not_started` change.
+4. After completing a change, mark plan.md status as completed and backfill acceptance.md.
+5. Do not stop unless a real blocker is hit.
+
+### Real Blockers
+
+Only these count as true blockers:
+
+1. Missing permissions or missing environment capability for the formal entry point.
+2. Missing external dependency or live resource with no local fallback verification path.
+3. A conflict between roadmap state, change docs, and registry that cannot be resolved from repository facts.
+4. Acceptance criteria that cannot be judged as pass/fail.
+
+## Current Frontier Shortcut
+
+When the goal is to enter the formal frontier quickly, use this order:
+
+1. `python scripts/autopilot.py --root .`
+2. `python scripts/show_current_frontier.py --root .`
+3. `python scripts/show_current_frontier.py --by-topic`
+4. `python scripts/check_harness.py`
+5. `python scripts/check_change_docs.py --root .`
+6. Open only the active change bundle.
 
 ## Repository Role
 
@@ -58,13 +89,11 @@ Governance layout is aligned toward `DSLReserach`:
 
 ## Topic Transition Rule
 
-When a topic README `**状态**` changes from `进行中` to `已完成` and the next topic enters `in_progress`, the following updates are **mandatory** and must be done in the same commit:
+> **DEPRECATED**: Topic registry and sync_topic_index are replaced by Route B.
+> topic-id is now a label in plan.md frontmatter. No independent registry required.
+> Use `python scripts/show_current_frontier.py --by-topic` for topic grouping.
 
-1. Update **this file** (`AGENTS.md`) read order step 5 to point to the new active topic README.
-2. Update `docs/topics/README.md` Current State section to reflect the new active topic and active change.
-3. Update `docs/README.md` Current Active Delivery section to reflect the new active topic and active change.
-
-Verification: `python scripts/check_topic_docs.py`
+When the current frontier changes, update plan.md status and run `python scripts/autopilot.py --root . --backfill`.
 
 ## Official Entry Points
 
@@ -78,9 +107,26 @@ Verification: `python scripts/check_topic_docs.py`
 
 Current real verification commands:
 
-1. `python -m pip install -e ".[dev]"`
-2. `python scripts/check_rust_gate.py`
-3. `python scripts/ctp_repo_debug_smoke.py`
-4. `python -m pytest`
+```bash
+# Harness structure check
+python scripts/check_harness.py
+
+# Change docs completeness
+python scripts/check_change_docs.py --root .
+
+# Frontier status
+python scripts/show_current_frontier.py --root .
+python scripts/show_current_frontier.py --by-topic
+
+# Autopilot with TASK-LIST granularity
+python scripts/autopilot.py --root .
+python scripts/autopilot.py --root . --update-checkpoint "T1 done: description"
+python scripts/autopilot.py --root . --backfill
+
+# Build and test
+python scripts/check_rust_gate.py
+python scripts/ctp_repo_debug_smoke.py
+python -m pytest
+```
 
 Temporary outputs should stay out of the repository root.

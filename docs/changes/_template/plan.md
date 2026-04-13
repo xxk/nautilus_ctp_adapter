@@ -13,6 +13,7 @@ dependencies:
 **日期**：YYYY-MM-DD
 **范围**：[影响目录/模块]
 **topic-id**：{{topic-id}}
+**execution_order**：（可选，正整数，1=最高优先；多个 in_progress change 并存时按升序消歧）
 **change-id**：{{change-id}}
 **关联 acceptance**：./acceptance.md
 
