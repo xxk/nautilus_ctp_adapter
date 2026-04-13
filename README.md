@@ -6,7 +6,7 @@ Standalone CTP adapter workspace for Nautilus-based trading projects.
 
 - Keep Nautilus upstream code untouched or minimally touched.
 - Isolate CTP connectivity, symbol mapping, execution, and native loading.
-- Allow downstream projects such as `D:\Nautilus\nautilus_demo` to integrate via editable install.
+- Allow downstream projects such as `D:\Nautilus\nautilus_strategies` to integrate via editable install.
 - Keep performance-sensitive CTP logic in Rust, while keeping Nautilus node integration in Python.
 - Keep the current delivery scope tightly focused on Nautilus adapter integration.
 
@@ -84,7 +84,7 @@ Recommended downstream usage:
 pip install -e D:\Nautilus\nautilus_ctp_adapter
 ```
 
-Then in `D:\Nautilus\nautilus_demo`, only keep:
+Then in `D:\Nautilus\nautilus_strategies`, only keep:
 
 - runtime configs
 - strategy scripts
