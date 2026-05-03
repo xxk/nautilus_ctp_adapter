@@ -16,3 +16,7 @@ rust/target/
 src/*.egg-info/
 src/**/*.egg-info/
 .autopilot_checkpoint.json
+
+# Local downloaded inputs / cloned references
+output/sdk_download/
+output/vnpy_ctp_clone/
