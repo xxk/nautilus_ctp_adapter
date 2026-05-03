@@ -1,0 +1,41 @@
+schema_version: 1
+last_updated: '2026-04-14'
+topics:
+  nautilus-host-integration:
+    canonical_status: completed
+  live-session-order-query-hardening:
+    canonical_status: in_progress
+    execution_order: 1
+  live-ops-truth-snapshot:
+    canonical_status: blocked
+  ctp-live-connectivity:
+    canonical_status: completed
+  full-reconciliation-automation:
+    canonical_status: completed
+  live-ops-and-reconciliation:
+    canonical_status: completed
+  md-startup-truth-and-restore:
+    canonical_status: completed
+  nautilus-ctp-adapter-mainline:
+    canonical_status: completed
+  nautilus-instrument-provider:
+    canonical_status: completed
+  nautilus-live-execution:
+    canonical_status: completed
+  nautilus-live-marketdata:
+    canonical_status: completed
+  position-account-query-baseline:
+    canonical_status: completed
+  repo-governance-hardening:
+    canonical_status: completed
+  rust-ctp-runtime-cutover:
+    canonical_status: completed
+  startup-truth-and-session-rebuild:
+    canonical_status: completed
+  td-order-truth-and-reconciliation:
+    canonical_status: completed
+  td-position-account-truth-merge:
+    canonical_status: completed
+  autopilot-session-management:
+    canonical_status: planned
+    execution_order: 2

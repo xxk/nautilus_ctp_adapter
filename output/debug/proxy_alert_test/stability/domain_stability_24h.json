@@ -1,0 +1,36 @@
+{
+  "generated_at": "2026-04-11 15:26:49",
+  "window_hours": 24,
+  "sample_count": 1,
+  "overall_ok_samples": 0,
+  "anomaly_sample_count": 1,
+  "latest_sample_time": "2026-04-11 15:20:00",
+  "latest_overall_ok": false,
+  "latest_egress_ip": "69.63.198.154",
+  "affected_domains": [
+    {
+      "domain": "www.google.com",
+      "anomaly_samples": 1,
+      "last_seen": "2026-04-11 15:20:00",
+      "last_bad_ips": "157.240.7.20"
+    },
+    {
+      "domain": "www.youtube.com",
+      "anomaly_samples": 0,
+      "last_seen": null,
+      "last_bad_ips": []
+    },
+    {
+      "domain": "github.com",
+      "anomaly_samples": 0,
+      "last_seen": null,
+      "last_bad_ips": []
+    },
+    {
+      "domain": "api.ipify.org",
+      "anomaly_samples": 0,
+      "last_seen": null,
+      "last_bad_ips": []
+    }
+  ]
+}
