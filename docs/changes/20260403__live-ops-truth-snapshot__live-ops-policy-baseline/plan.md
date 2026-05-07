@@ -11,7 +11,7 @@ dependencies:
 
 # Live Ops Policy Baseline 开发计划
 
-**状态**：in_progress
+**状态**：blocked
 **进度**：65%
 **日期**：2026-04-02
 **范围**：`scripts/`、`docs/`、`src/nautilus_ctp_adapter/adapters/ctp/`

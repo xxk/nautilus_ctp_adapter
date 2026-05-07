@@ -10,8 +10,9 @@ Read these in order:
 1. [README.md](/D:/Nautilus/nautilus_ctp_adapter/README.md)
 2. [docs/README.md](/D:/Nautilus/nautilus_ctp_adapter/docs/README.md)
 3. [docs/doc_harness_kit/README.md](/D:/Nautilus/nautilus_ctp_adapter/docs/doc_harness_kit/README.md)
-4. [docs/architecture/runtime-performance-guidelines.md](/D:/Nautilus/nautilus_ctp_adapter/docs/architecture/runtime-performance-guidelines.md)
-5. The current change bundle under `docs/changes/<change-id>/`
+4. [../docs/harness/任务分层与命名统一口径_Cross-Repo Work Item Layering And Naming.md](/D:/Nautilus/docs/harness/%E4%BB%BB%E5%8A%A1%E5%88%86%E5%B1%82%E4%B8%8E%E5%91%BD%E5%90%8D%E7%BB%9F%E4%B8%80%E5%8F%A3%E5%BE%84_Cross-Repo%20Work%20Item%20Layering%20And%20Naming.md)
+5. [docs/architecture/runtime-performance-guidelines.md](/D:/Nautilus/nautilus_ctp_adapter/docs/architecture/runtime-performance-guidelines.md)
+6. The current change bundle under `docs/changes/<change-id>/`
 
 ## Autonomous Execution Policy
 

@@ -1,4 +1,4 @@
-"""show_current_frontier: 输出统一治理下的当前执行面。"""
+"""check_topic_governance: 统一检查 topic registry、索引与当前执行面。"""
 from __future__ import annotations
 
 import sys
@@ -9,8 +9,8 @@ SRC_ROOT = REPO_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from nautilus_ctp_adapter.devtools.topic_governance import main_show_current_frontier
+from nautilus_ctp_adapter.devtools.topic_governance import main_check_topic_governance
 
 
 if __name__ == "__main__":
-    raise SystemExit(main_show_current_frontier())
+    raise SystemExit(main_check_topic_governance())

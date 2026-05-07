@@ -11,7 +11,7 @@ dependencies:
   soft_dependency:
     - id: "20260409__live-session-order-query-hardening__session-window-guardrails-and-runbook"
       reason: "需要把 vendor-bridge readiness 写回 session-window runbook，而不是继续散落在聊天里"
-      expected_status: in_progress
+      expected_status: blocked
   blocked_by: []
 ---
 

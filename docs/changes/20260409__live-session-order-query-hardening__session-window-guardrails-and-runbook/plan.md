@@ -20,7 +20,7 @@ dependencies:
 
 # Session Window Guardrails 与真实场景验收驱动 Runbook 开发计划
 
-**状态**：in_progress
+**状态**：blocked
 **进度**：runbook skeleton landed；offhours/trade-window/vendor-bridge routing frozen at document level；C3/U1 evidence 已接回当前 runbook，当前只剩 trade-window 场景等待 U1 ready 与真实交易窗口
 **日期**：2026-04-09
 **更新日期**：2026-04-11

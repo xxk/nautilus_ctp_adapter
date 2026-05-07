@@ -3,16 +3,16 @@
 > 本文件由 `python scripts/sync_topic_index.py --root .` 基于 roadmap 元数据与 topic 状态注册表生成。
 > 机器状态以 `docs/topics/主题状态注册表_Topic State Registry.yaml` 为准，`README.md` 只做人类可读投影视图。
 
-**最后同步**：2026-04-14
+**最后同步**：2026-05-04
 
 ## Current State / 当前状态
 
 - **当前 active topic**：[live-session-order-query-hardening (#1)](live-session-order-query-hardening.md)
 - **当前 active change**：[20260410__live-session-order-query-hardening__vendor-bridge-readiness-and-sdk-handoff](../changes/20260410__live-session-order-query-hardening__vendor-bridge-readiness-and-sdk-handoff/plan.md)
-- **排队 topics**：`无`
-- **排队 changes**：`无`
+- **排队 topics**：[autopilot-session-management (#2)](autopilot-session-management.md)
+- **排队 changes**：[20260413__autopilot-session-management__trajectory-and-drift](../changes/20260413__autopilot-session-management__trajectory-and-drift/plan.md)
 - **冻结/阻塞 topics**：[live-ops-truth-snapshot](live-ops-truth-snapshot.md)（blocked）
-- **已完成 topics 数量**：`15/17`
+- **已完成 topics 数量**：`15/18`
 - **最近完成 topics**：[nautilus-host-integration](nautilus-host-integration.md)（last_updated=2026-04-13）、[rust-ctp-runtime-cutover](rust-ctp-runtime-cutover.md)（last_updated=2026-04-10）、[repo-governance-hardening](repo-governance-hardening.md)（last_updated=2026-04-10）、[nautilus-ctp-adapter-mainline](nautilus-ctp-adapter-mainline.md)（last_updated=2026-04-10）、[td-position-account-truth-merge](td-position-account-truth-merge.md)（last_updated=2026-04-02）
 - **状态注册表**：`docs/topics/主题状态注册表_Topic State Registry.yaml`
 
@@ -25,6 +25,12 @@
 5. child change 三件套负责执行、证据、正式验收与 AI 状态回填。
 
 ## Current Topics / 当前 Topics
+
+### `governance`
+
+| topic-id | canonical-status | execution-order | 显示状态 | 标题 | README |
+| --- | --- | --- | --- | --- | --- |
+| `autopilot-session-management` | `planned` | `2` | planned | Autopilot Session Management 长期路线 / Autopilot Session Management Topic Roadmap | [README](autopilot-session-management.md) |
 
 ### `nautilus_adapter`
 

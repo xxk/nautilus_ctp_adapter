@@ -1,4 +1,4 @@
-"""show_current_frontier: 输出统一治理下的当前执行面。"""
+"""sync_topic_index: 生成或校验 docs/topics/README.md。"""
 from __future__ import annotations
 
 import sys
@@ -9,8 +9,8 @@ SRC_ROOT = REPO_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from nautilus_ctp_adapter.devtools.topic_governance import main_show_current_frontier
+from nautilus_ctp_adapter.devtools.topic_governance import main_sync_topic_index
 
 
 if __name__ == "__main__":
-    raise SystemExit(main_show_current_frontier())
+    raise SystemExit(main_sync_topic_index())
