@@ -1,0 +1,33 @@
+fragments:
+  change_map:
+    path: fragments/change-map.md
+    applies_when: proposal maps multiple child changes
+    profile_selectable: true
+  decision_log:
+    path: fragments/decision-log.md
+    applies_when: proposal needs durable review decisions
+    profile_selectable: true
+  design:
+    path: fragments/design.md
+    applies_when: proposal needs a separate design freeze
+    profile_selectable: true
+  review_lane:
+    path: fragments/review-lane.md
+    applies_when: proposal needs formal review lane tracking
+    profile_selectable: truefragments:
+  change_map:
+    path: fragments/change-map.md
+    applies_when: proposal maps multiple child changes
+    profile_selectable: true
+  decision_log:
+    path: fragments/decision-log.md
+    applies_when: proposal needs durable review decision history
+    profile_selectable: true
+  design:
+    path: fragments/design.md
+    applies_when: proposal needs a separate design freeze
+    profile_selectable: true
+  review_lane:
+    path: fragments/review-lane.md
+    applies_when: proposal needs formal review lane tracking
+    profile_selectable: true

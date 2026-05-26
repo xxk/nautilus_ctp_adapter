@@ -1,0 +1,9 @@
+profile_id: multi_phase
+description: General multi-phase proposal with child change tracking.
+fragments:
+  - change_map
+  - decision_logprofile_id: multi_phase
+description: General multi-phase proposal with child change tracking.
+fragments:
+  - change_map
+  - decision_log

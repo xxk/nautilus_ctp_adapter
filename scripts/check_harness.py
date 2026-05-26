@@ -21,6 +21,7 @@ REQUIRED_SECTIONS = (
 REQUIRED_VERIFY_COMMANDS = (
     "python scripts/check_harness.py",
     "python scripts/check_change_docs.py",
+    "python scripts/check_proposal_docs.py --root .",
     "python scripts/show_current_frontier.py",
 )
 
@@ -63,10 +64,59 @@ def _check_changes_dir(root: Path) -> list[str]:
     return findings
 
 
+def _check_adr_dir(root: Path) -> list[str]:
+    findings: list[str] = []
+    adr_dir = root / "docs" / "adr"
+    if not adr_dir.exists():
+        findings.append("docs/adr/ directory does not exist")
+        return findings
+
+    for required_file in ("README.md", "ADR模板_ADR Template.md"):
+        if not (adr_dir / required_file).exists():
+            findings.append(f"docs/adr/{required_file} does not exist")
+
+    return findings
+
+
+def _check_proposals_dir(root: Path) -> list[str]:
+    findings: list[str] = []
+    proposals_dir = root / "docs" / "proposals"
+    if not proposals_dir.exists():
+        findings.append("docs/proposals/ directory does not exist")
+        return findings
+
+    if not (proposals_dir / "README.md").exists():
+        findings.append("docs/proposals/README.md does not exist")
+
+    template_dir = proposals_dir / "_template"
+    if not template_dir.exists():
+        findings.append("docs/proposals/_template/ directory does not exist")
+        return findings
+
+    for required_file in (
+        "base/README.md",
+        "base/phase-plan.md",
+        "base/acceptance.md",
+        "fragments/change-map.md",
+        "fragments/decision-log.md",
+        "fragments/design.md",
+        "fragments/review-lane.md",
+        "meta/USAGE.md",
+        "meta/fragment_registry.yaml",
+        "profiles/multi_phase.yaml",
+    ):
+        if not (template_dir / required_file).exists():
+            findings.append(f"docs/proposals/_template/{required_file} does not exist")
+
+    return findings
+
+
 def check_harness(root: Path) -> list[str]:
     findings: list[str] = []
     findings.extend(_check_agents_md(root))
     findings.extend(_check_changes_dir(root))
+    findings.extend(_check_adr_dir(root))
+    findings.extend(_check_proposals_dir(root))
     return findings
 
 

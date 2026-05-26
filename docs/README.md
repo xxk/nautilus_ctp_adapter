@@ -6,21 +6,25 @@ This directory is the documentation and governance home for `nautilus_ctp_adapte
 
 1. [Repository map](/D:/Nautilus/nautilus_ctp_adapter/AGENTS.md)
 2. [Harness kit entry](/D:/Nautilus/nautilus_ctp_adapter/docs/doc_harness_kit/README.md)
-3. [Architecture index](/D:/Nautilus/nautilus_ctp_adapter/docs/architecture/README.md)
-4. [Topic state registry](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/主题状态注册表_Topic%20State%20Registry.yaml)
-5. [Topic index](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/README.md)
-6. [Changes index](/D:/Nautilus/nautilus_ctp_adapter/docs/changes/README.md)
-7. [Archive index](/D:/Nautilus/nautilus_ctp_adapter/docs/archive/README.md)
+3. [ADR index](/D:/Nautilus/nautilus_ctp_adapter/docs/adr/README.md)
+4. [Proposal index](/D:/Nautilus/nautilus_ctp_adapter/docs/proposals/README.md)
+5. [Architecture index](/D:/Nautilus/nautilus_ctp_adapter/docs/architecture/README.md)
+6. [Topic state registry](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/主题状态注册表_Topic%20State%20Registry.yaml)
+7. [Topic index](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/README.md)
+8. [Changes index](/D:/Nautilus/nautilus_ctp_adapter/docs/changes/README.md)
+9. [Archive index](/D:/Nautilus/nautilus_ctp_adapter/docs/archive/README.md)
 
 ## Governance Layout
 
 This repository aligns to the `DSLReserach` topic/change split:
 
 1. `docs/architecture/` for durable design conclusions
-2. `docs/topics/<topic-id>.md` for long-running topic roadmaps
-3. `docs/topics/主题状态注册表_Topic State Registry.yaml` for machine-readable topic state and execution order
-4. `docs/changes/` for executable child changes and evidence
-5. `docs/archive/` for archived docs and historical snapshots
+2. `docs/adr/` for architecture decision records and decision rationale
+3. `docs/proposals/` for multi-phase proposal containers and proposal-local acceptance
+4. `docs/topics/<topic-id>.md` for long-running topic roadmaps
+5. `docs/topics/主题状态注册表_Topic State Registry.yaml` for machine-readable topic state and execution order
+6. `docs/changes/` for executable child changes and evidence
+7. `docs/archive/` for archived docs and historical snapshots
 
 ## Current Active Delivery
 
@@ -39,6 +43,8 @@ python scripts/show_current_frontier.py --root .
 python scripts/show_current_frontier.py --by-topic
 python scripts/check_harness.py
 python scripts/check_change_docs.py --root .
+python scripts/check_proposal_docs.py --root .
+python scripts/new_proposal.py --root . --id <proposal-id> --profile multi_phase --check-only
 ```
 
 ## Official Bootstrap And Validation Commands

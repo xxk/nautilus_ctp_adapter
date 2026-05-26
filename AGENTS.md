@@ -10,9 +10,11 @@ Read these in order:
 1. [README.md](/D:/Nautilus/nautilus_ctp_adapter/README.md)
 2. [docs/README.md](/D:/Nautilus/nautilus_ctp_adapter/docs/README.md)
 3. [docs/doc_harness_kit/README.md](/D:/Nautilus/nautilus_ctp_adapter/docs/doc_harness_kit/README.md)
-4. [../docs/harness/任务分层与命名统一口径_Cross-Repo Work Item Layering And Naming.md](/D:/Nautilus/docs/harness/%E4%BB%BB%E5%8A%A1%E5%88%86%E5%B1%82%E4%B8%8E%E5%91%BD%E5%90%8D%E7%BB%9F%E4%B8%80%E5%8F%A3%E5%BE%84_Cross-Repo%20Work%20Item%20Layering%20And%20Naming.md)
-5. [docs/architecture/runtime-performance-guidelines.md](/D:/Nautilus/nautilus_ctp_adapter/docs/architecture/runtime-performance-guidelines.md)
-6. The current change bundle under `docs/changes/<change-id>/`
+4. [docs/adr/README.md](/D:/Nautilus/nautilus_ctp_adapter/docs/adr/README.md)
+5. [docs/proposals/README.md](/D:/Nautilus/nautilus_ctp_adapter/docs/proposals/README.md)
+6. [../docs/harness/任务分层与命名统一口径_Cross-Repo Work Item Layering And Naming.md](/D:/Nautilus/docs/harness/%E4%BB%BB%E5%8A%A1%E5%88%86%E5%B1%82%E4%B8%8E%E5%91%BD%E5%90%8D%E7%BB%9F%E4%B8%80%E5%8F%A3%E5%BE%84_Cross-Repo%20Work%20Item%20Layering%20And%20Naming.md)
+7. [docs/architecture/runtime-performance-guidelines.md](/D:/Nautilus/nautilus_ctp_adapter/docs/architecture/runtime-performance-guidelines.md)
+8. The current change bundle under `docs/changes/<change-id>/`
 
 ## Autonomous Execution Policy
 
@@ -70,6 +72,8 @@ Primary responsibilities:
 | `src/nautilus_ctp_adapter/native/` | Native loading and FFI-facing helpers |
 | `tests/` | Package tests and smoke validation |
 | `scripts/` | Local diagnostics and runnable helpers |
+| `docs/adr/` | ADR index and architecture decision records |
+| `docs/proposals/` | Multi-phase proposal containers and proposal-local acceptance |
 | `docs/architecture/` | Stable design and architecture conclusions |
 | `docs/topics/` | Long-running topic roadmap governance |
 | `docs/changes/` | Executable child changes, acceptance, and evidence |
@@ -83,10 +87,12 @@ This repository adopts the `Doc Harness Kit` at:
 
 Governance layout is aligned toward `DSLReserach`:
 
-1. Long-running topic roadmaps live under `docs/topics/<topic-id>.md`
-2. Stable architecture docs live under `docs/architecture/`
-3. Executable child changes live under `docs/changes/<change-id>/`
-4. New child changes should start from the local `_template` bundle, including `design.md` when needed
+1. ADR records live under `docs/adr/`
+2. Proposal containers live under `docs/proposals/<proposal-id>/`
+3. Long-running topic roadmaps live under `docs/topics/<topic-id>.md`
+4. Stable architecture docs live under `docs/architecture/`
+5. Executable child changes live under `docs/changes/<change-id>/`
+6. New child changes should start from the local `_template` bundle, including `design.md` when needed
 
 ## Topic Transition Rule
 
@@ -119,6 +125,9 @@ python scripts/check_harness.py
 
 # Change docs completeness
 python scripts/check_change_docs.py --root .
+
+# Proposal docs completeness
+python scripts/check_proposal_docs.py --root .
 
 # Frontier status
 python scripts/show_current_frontier.py --root .
