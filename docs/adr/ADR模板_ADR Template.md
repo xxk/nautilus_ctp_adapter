@@ -27,6 +27,7 @@ landing_status: not_started
 2. `决策状态` 与 `落地状态` 必须分离，不能把实现进度写成架构结论。
 3. 若需要逐 phase 状态、验收证据、artifact boundary 或 AI 执行约束，必须转到 `docs/proposals/` 或 `docs/changes/`。
 4. 未经用户明确确认，不得在 ADR 中默认引入 fallback / compat / retry / silent downgrade 方案作为推荐决策。
+5. 若需要 ADR closeout 的作者清单，可参考跨仓手册 [ADR关闭后沉淀手册 / ADR Closeout Distillation Runbook](../../../DSLReserach/docs/runbooks/ADR关闭后沉淀手册_ADR%20Closeout%20Distillation%20Runbook.md)；该链接只用于帮助作者判断稳定结论应沉淀到哪里，不替代本仓 ADR 索引或本仓 proposal/change authority。
 
 ### ADR 类型分流 / ADR Type Routing
 
