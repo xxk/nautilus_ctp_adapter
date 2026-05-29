@@ -70,7 +70,7 @@
 | Proposal docs gate | `python scripts/check_proposal_docs.py --root . --proposal-id p001-ADR001-native-first-runtime-rollout` | 2026-05-29 已验证通过；A1 作为 proposal convergence evidence completed |
 | Proposal boundary review | `README.md` + `phase-plan.md` + `change-map.md` + `design.md` + `ADR001` | A2-A4 已用 source evidence 收口；未把外部 artifact、active vendor-bridge change 或 daemon 默认化写成完成证据 |
 | Acceptance scenarios aligned | `docs/proposals/p001-ADR001-native-first-runtime-rollout/acceptance.md` | A5-A6 已随 Phase 1 child change 进入 in_progress；A7-A11 仍保持 planned |
-| Phase 1 child change created | `docs/changes/20260529__runtime-performance__p1/` | P001 Phase 1 已进入 in_progress；A5-A6 等待该 child change 的 source evidence / focused guard closeout |
+| Phase 1 child change created | `docs/changes/20260529__runtime-performance__p1/` | P001 Phase 1 已进入 in_progress；source / Rust gate evidence 已回填；Python focused guard 因当前环境缺 `ctp_runtime._ctp_runtime` 暂未 closeout |
 
 ---
 

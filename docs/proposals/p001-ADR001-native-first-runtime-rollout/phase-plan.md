@@ -61,8 +61,8 @@ phases:
     evidence: "proposal scaffold created; phase split, acceptance boundary, ADR landing map, and docs gate evidence converged"
   - id: phase_1_batch_boundary_freeze
     status: in_progress
-    ai_progress: 25
-    evidence: "Phase 1 child change created at docs/changes/20260529__runtime-performance__p1; boundary evidence and guards not yet closed"
+    ai_progress: 75
+    evidence: "Phase 1 child change created at docs/changes/20260529__runtime-performance__p1; P001 mapping and Rust gate evidence done; Python focused pytest blocked by missing ctp_runtime._ctp_runtime import"
   - id: phase_2_hot_path_owner_cutover
     status: planned
     ai_progress: 0
@@ -84,7 +84,7 @@ AI-PHASE-STATUS-END -->
 | Phase / 阶段 | Revised Goal / 修订后目标 | Current Status / 当前状态 | AI Progress / AI 完成度 | Evidence / Current Facts / 证据 / 当前事实 | Next Action / 下一步 |
 | --- | --- | --- | ---: | --- | --- |
 | Phase 0 Proposal convergence / 阶段 0 提案收敛 | 冻结 proposal docs、phase split、artifact boundary 与 current-change scope freeze | `completed` | 100% | proposal bundle created；phase split、acceptance boundary、ADR landing map 与 docs gate evidence 已收敛 | 新建 Phase 1 batch-boundary child change |
-| Phase 1 Batch boundary freeze / 阶段 1 批量边界冻结 | 冻结 adapter-facing batch runtime contract 与 child change 骨架 | `in_progress` | 25% | Phase 1 child change 已创建：`docs/changes/20260529__runtime-performance__p1/`；boundary source evidence 与 focused guard 尚未收口 | 执行 `20260529__runtime-performance__p1` |
+| Phase 1 Batch boundary freeze / 阶段 1 批量边界冻结 | 冻结 adapter-facing batch runtime contract 与 child change 骨架 | `in_progress` | 75% | Phase 1 child change 已创建并回写；Rust gate 通过；Python focused pytest 因缺 `ctp_runtime._ctp_runtime` 暂不能作为 pass evidence | 解锁 Python focused guard 或改用不依赖 extension import 的 guard |
 | Phase 2 Hot-path owner inventory / cutover boundary / 阶段 2 热路径 owner 清单与迁移边界 | 冻结 query / market / trading hot path 的 owner inventory、暂留 Python 项与迁移边界 | `planned` | 0% | Python adapter 仍有 runtime bootstrap/placeholder ownership，且迁移边界未 formalize | 新建 owner-inventory child change |
 | Phase 3 Thin Python host glue contract / 阶段 3 Python 宿主薄壳契约 | 用 contract lock 约束合法 host shell，并阻止 runtime logic 回流到 Python adapter | `planned` | 0% | thin-shell allowlist / forbidden-list / guard path 尚未 formalize | 新建 thin-shell contract change |
 | Phase 4 Benchmark gate and daemon trigger policy / 阶段 4 Benchmark 门槛与 daemon 触发策略 | 冻结 benchmark gate child change 的命令、阈值、formal artifact boundary 与 daemon trigger policy | `planned` | 0% | benchmark gate、threshold、artifact boundary、daemon trigger policy 均未冻结 | 新建 benchmark-gate change 或 future proposal |
