@@ -10,10 +10,10 @@
 | Phase | Child Change | 依赖 | 状态 | 证据 |
 | --- | --- | --- | --- | --- |
 | Phase 0 Proposal convergence | `proposal-only planning` | ADR001 已创建 | completed | proposal scaffold + proposal docs write-back |
-| Phase 1 Batch boundary freeze | `20260529__runtime-performance__p1` | Phase 0 | in_progress | child change 已创建；batch contract source evidence / focused guard 尚未 closeout |
-| Phase 2 Hot-path owner inventory / cutover boundary | `待创建：runtime-performance__native-hot-path-ownership-cutover` | Phase 1；current vendor-bridge change 保持原 scope | planned | owner inventory / migration boundary 尚未 formalize |
-| Phase 3 Thin Python host glue contract | `待创建：runtime-performance__thin-python-host-glue-contract-lock` | Phase 2 | planned | contract-lock allowlist / forbidden-list / tests 尚未创建 |
-| Phase 4 Benchmark gate and daemon trigger policy | `待创建：runtime-performance__benchmark-gate-and-daemon-decision` | Phase 1-3 | planned | benchmark command、threshold、artifact boundary 与 daemon trigger policy 尚未 formalize |
+| Phase 1 Batch boundary freeze | `20260529__runtime-performance__p1` | Phase 0 | completed | batch contract source evidence、rust gate 与 focused pytest 已 closeout |
+| Phase 2 Hot-path owner inventory / cutover boundary | `20260529__runtime-performance__p2-native-hot-path-ownership-cutover` | Phase 1；current vendor-bridge change 保持原 scope | completed | owner inventory / migration boundary 已 formalize |
+| Phase 3 Thin Python host glue contract | `20260529__runtime-performance__p3-thin-python-host-glue-contract-lock` | Phase 2 | completed | contract-lock allowlist / forbidden-list / guard path 已创建 |
+| Phase 4 Benchmark gate and daemon trigger policy | `20260529__runtime-performance__p4-benchmark-gate-and-daemon-decision` | Phase 1-3 | completed | benchmark command、threshold、artifact boundary 与 daemon trigger policy 已 formalize |
 
 ## 顺序规则
 

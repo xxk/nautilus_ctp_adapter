@@ -14,8 +14,8 @@ dependencies:
 
 # Batch Runtime Boundary Freeze 开发计划
 
-**状态**：进行中
-**进度**：75%
+**状态**：completed
+**进度**：100%
 **日期**：2026-05-29
 **范围**：`docs/proposals/p001-ADR001-native-first-runtime-rollout/`、`docs/adr/ADR001 高性能优先原生主线适配边界_High-Performance Native-First Adapter Boundary.md`、`docs/architecture/runtime-performance-guidelines.md`、`src/nautilus_ctp_adapter/runtime/`、`rust/ctp_runtime_core/src/`
 **topic-id**：adr001-native-first-runtime-rollout
@@ -91,7 +91,7 @@ P001 已完成 proposal convergence，并把 Phase 1 定义为 batch boundary fr
 | P1 | 建立 Phase 1 child change bundle | P001 Phase 1 | 当前 change bundle | plan / acceptance / ai_constraints / design | 文档审阅 | P001 | change scope 清楚，不混入 Phase 2-4 | 已完成 |
 | P2 | 回写 P001 Phase 1 状态与 change map | P001 Phase 1 | P001 phase-plan / change-map / acceptance | Phase 1 指向本 change | `check_proposal_docs` | P001 | P001 进入 in_progress，Phase 1 有真实 child change | 已完成 |
 | P3 | 冻结 batch boundary source evidence | ADR001 D3 | `design.md`、必要 architecture docs | source evidence table | source review / rust gate | ADR001 / architecture | `submit_command` / `drain_events(limit)` 为唯一主线 | 已完成 |
-| P4 | 补 focused guard 或记录现有 guard | A5/A6 | tests 或 evidence section | guard evidence | targeted pytest if touched | acceptance | 第二套 API / per-event mainline 被阻断 | 阻塞 |
+| P4 | 补 focused guard 或记录现有 guard | A5/A6 | tests 或 evidence section | guard evidence | targeted pytest if touched | acceptance | 第二套 API / per-event mainline 被阻断 | 已完成 |
 
 ## 八、验证动作
 
@@ -132,11 +132,11 @@ python -m pytest tests/test_smoke_import.py -q
 
 ## 十二、阻塞项
 
-1. 当前 Python focused pytest collection 因 `ModuleNotFoundError: No module named 'ctp_runtime._ctp_runtime'` 阻塞，不能作为 pass evidence。
-2. 若后续要证明 live performance，则属于 Phase 4 benchmark gate，不属于本 change。
+1. 若后续要证明 live performance，则属于 Phase 4 benchmark gate，不属于本 change。
 
 ## 十三、进度记录
 
 1. 2026-05-29：基于 P001 Phase 0 closeout，创建 Phase 1 batch-boundary child change，先冻结执行边界与验收面。
 2. 2026-05-29：已回写 P001 phase-plan / change-map / acceptance，使 Phase 1 指向本 change；`check_proposal_docs` 与 `check_harness` 通过。
-3. 2026-05-29：`check_rust_gate.py` 通过，Rust side source/guard 可用；Python focused pytest 因当前环境缺 `_ctp_runtime` collection 失败，P4 保持阻塞。
+3. 2026-05-29：`check_rust_gate.py` 通过，Rust side source/guard 可用。
+4. 2026-05-29：执行 `python -m pip install -e .` 后，`python -m pytest tests\test_smoke_import.py::test_runtime_bridge_submit_and_drain_contract -q` 通过；P4 阻塞解除。

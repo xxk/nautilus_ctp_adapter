@@ -14,10 +14,7 @@ If the goal is to continue the current formal delivery, use this order:
 
 1. Read [/D:/Nautilus/nautilus_ctp_adapter/docs/topics/主题状态注册表_Topic State Registry.yaml](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/主题状态注册表_Topic%20State%20Registry.yaml)
 2. Read [/D:/Nautilus/nautilus_ctp_adapter/docs/topics/README.md](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/README.md)
-3. Open the active change bundle only:
-	- [plan.md](/D:/Nautilus/nautilus_ctp_adapter/docs/changes/20260410__live-session-order-query-hardening__vendor-bridge-readiness-and-sdk-handoff/plan.md)
-	- [acceptance.md](/D:/Nautilus/nautilus_ctp_adapter/docs/changes/20260410__live-session-order-query-hardening__vendor-bridge-readiness-and-sdk-handoff/acceptance.md)
-	- [ai_constraints.md](/D:/Nautilus/nautilus_ctp_adapter/docs/changes/20260410__live-session-order-query-hardening__vendor-bridge-readiness-and-sdk-handoff/ai_constraints.md)
+3. Open the active change bundle only when `python scripts/show_current_frontier.py --root .` reports one.
 4. Only then expand to sibling changes or archived docs.
 
 ## Template Entry
@@ -31,10 +28,10 @@ Use the local project templates:
 
 ## Current Frontier
 
-1. Active topic: [live-session-order-query-hardening](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/live-session-order-query-hardening.md)
-2. Active change: [20260410__live-session-order-query-hardening__vendor-bridge-readiness-and-sdk-handoff](/D:/Nautilus/nautilus_ctp_adapter/docs/changes/20260410__live-session-order-query-hardening__vendor-bridge-readiness-and-sdk-handoff/plan.md)
-3. Parked topic: [live-ops-truth-snapshot](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/live-ops-truth-snapshot.md)
-4. Recent closeout change: [20260410__rust-ctp-runtime-cutover__python-native-path-retirement](/D:/Nautilus/nautilus_ctp_adapter/docs/changes/20260410__rust-ctp-runtime-cutover__python-native-path-retirement/plan.md)
+1. Active topic: `none`
+2. Active change: `none`
+3. Parked topic: [live-session-order-query-hardening](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/live-session-order-query-hardening.md); [live-ops-truth-snapshot](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/live-ops-truth-snapshot.md)
+4. Recent closeout change: [20260413__autopilot-openhands-absorption__session-management-upgrade](/D:/Nautilus/nautilus_ctp_adapter/docs/changes/20260413__autopilot-openhands-absorption__session-management-upgrade/plan.md)
 
 ## Governance Commands
 

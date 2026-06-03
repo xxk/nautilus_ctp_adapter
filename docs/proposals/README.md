@@ -43,7 +43,7 @@
 
 | Proposal | 目录 | 状态 | 说明 |
 | --- | --- | --- | --- |
-| p001 | [p001-ADR001-native-first-runtime-rollout](./p001-ADR001-native-first-runtime-rollout/) | in_progress | ADR001 rollout carrier；Phase 1 batch-boundary child change 已创建，不扩张当前 vendor-bridge active change |
+| p001 | [p001-ADR001-native-first-runtime-rollout](./p001-ADR001-native-first-runtime-rollout/) | completed | ADR001 rollout carrier；Phase 1-4 boundary child changes 已完成，不扩张当前 vendor-bridge active change |
 
 ---
 
@@ -101,4 +101,4 @@ This directory carries formal proposals that need multiple phases or multiple ch
 
 ## Current Proposals
 
-1. [p001-ADR001-native-first-runtime-rollout](./p001-ADR001-native-first-runtime-rollout/) - `in_progress` - rollout carrier for ADR001; Phase 1 batch-boundary child change is now open without expanding the current vendor-bridge active change.
+1. [p001-ADR001-native-first-runtime-rollout](./p001-ADR001-native-first-runtime-rollout/) - `completed` - rollout carrier for ADR001; Phase 1-4 boundary child changes are complete without expanding the current vendor-bridge active change.

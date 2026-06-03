@@ -1,7 +1,7 @@
 # P001 ADR001 Native-First Runtime Rollout / ADR001 原生优先运行时落地提案
 
 **proposal-id**：`p001-ADR001-native-first-runtime-rollout`
-**状态**：in_progress
+**状态**：completed
 **范围**：承接 ADR001，把 `native-first runtime + thin Python host glue` 拆成多 phase proposal 与后续 child change，不扩张当前 vendor-bridge active change 的职责。
 
 | 顶部状态块 / Top Status Block | 值 |
@@ -16,7 +16,7 @@
 
 ## 一句话结论
 
-本 proposal 是 ADR001 的正式落地容器，用来把性能路线从“讨论结论”收敛成 `proposal + change` 的执行面。当前只完成 proposal 收敛，不把运行时重构硬塞进正在执行的 vendor-bridge readiness change。
+本 proposal 是 ADR001 的正式落地容器，已把性能路线从“讨论结论”收敛成 `proposal + change` 的执行面，并完成 Phase 1-4 边界冻结。真实 runtime 迁移与 daemon 实现仍需按后续 changes / proposal 承接，不能反向扩张当前 vendor-bridge readiness change。
 
 ## 目标 / Goals
 
@@ -37,7 +37,7 @@
 | 项 | 结论 |
 | --- | --- |
 | 是否进入正式 proposal | 是；作为 ADR001 的 canonical rollout carrier |
-| 是否需要 child change | 是；Phase 1 已创建 `20260529__runtime-performance__p1`，后续仍需至少 3 个 successor child change 承接 hot-path owner inventory / migration boundary、thin-shell contract、benchmark gate |
+| 是否需要 child change | 是；Phase 1-4 已分别由 `20260529__runtime-performance__p1`、`20260529__runtime-performance__p2-native-hot-path-ownership-cutover`、`20260529__runtime-performance__p3-thin-python-host-glue-contract-lock`、`20260529__runtime-performance__p4-benchmark-gate-and-daemon-decision` 完成 |
 | 是否有 artifact trust boundary | 有；见 `phase-plan.md` |
 
 ## 当前状态快照 / Reality Snapshot
@@ -46,9 +46,9 @@
 
 | 维度 | 当前事实 | 证据 |
 | --- | --- | --- |
-| 代码状态 | Rust runtime / Python adapter split 已存在，但 batch boundary、hot path owner 收口、thin-shell contract 仍未完整落地 | `docs/architecture/platform-neutral-ctp-runtime.md`；`docs/architecture/rust-python-adapter-split.md`；`src/nautilus_ctp_adapter/adapters/ctp/instrument_provider.py` |
+| 代码状态 | Rust runtime / Python adapter split 已存在；P001 已冻结 batch boundary、hot path owner inventory、thin-shell contract 与 benchmark/daemon gate，真实迁移继续由后续 implementation changes 承接 | `docs/architecture/platform-neutral-ctp-runtime.md`；`docs/architecture/rust-python-adapter-split.md`；`docs/changes/20260529__runtime-performance__p2-native-hot-path-ownership-cutover/design.md` |
 | 文档状态 | ADR001 已定义正式性能主线；本 proposal 现为其 canonical rollout path | `docs/adr/ADR001 高性能优先原生主线适配边界_High-Performance Native-First Adapter Boundary.md`；当前 proposal 目录 |
-| 验收状态 | proposal 收敛层已完成；Phase 1 batch-boundary child change 已创建并进入执行 | `acceptance.md`；`docs/changes/20260529__runtime-performance__p1/` |
+| 验收状态 | proposal 收敛层与 Phase 1-4 child changes 均已完成；P001 closeout 不等于 live performance 或 daemon implementation 已完成 | `acceptance.md`；`docs/changes/20260529__runtime-performance__p1/`；`docs/changes/20260529__runtime-performance__p2-native-hot-path-ownership-cutover/`；`docs/changes/20260529__runtime-performance__p3-thin-python-host-glue-contract-lock/`；`docs/changes/20260529__runtime-performance__p4-benchmark-gate-and-daemon-decision/` |
 
 ## Graduation / Closeout Matrix
 
@@ -58,10 +58,10 @@ No stable rule graduation: proposal-local evidence only.
 
 | Graduation item | Policy | Target | Status |
 | --- | --- | --- | --- |
-| ADR backfill | required | `docs/adr/ADR001 高性能优先原生主线适配边界_High-Performance Native-First Adapter Boundary.md` | active |
-| Architecture backfill | required | `docs/architecture/runtime-performance-guidelines.md` and related runtime docs | planned |
-| Operator/runbook backfill | required | `docs/README.md` / `scripts/README.md` as needed | planned |
-| Proposal-local evidence | archive_only | `acceptance.md` | planned |
+| ADR backfill | required | `docs/adr/ADR001 高性能优先原生主线适配边界_High-Performance Native-First Adapter Boundary.md` | completed |
+| Architecture backfill | required | `docs/architecture/runtime-performance-guidelines.md` and related runtime docs | completed |
+| Operator/runbook backfill | required | `scripts/README.md` | completed |
+| Proposal-local evidence | archive_only | `acceptance.md` | completed |
 
 ## 文档地图 / Document Map
 

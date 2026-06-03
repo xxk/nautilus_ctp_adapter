@@ -3,6 +3,7 @@
 **change-id**: `20260402__governance-harness__changes-topic-index-upgrade`
 **创建日期**: 2026-04-02
 **状态**: not_started
+**进度**：0%
 
 ## 目标
 

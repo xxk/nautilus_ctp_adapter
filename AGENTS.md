@@ -1,6 +1,6 @@
 # AGENTS.md
 
-**Updated**: 2026-04-13
+**Updated**: 2026-05-30
 **Status**: Active
 
 ## Read First
@@ -14,7 +14,7 @@ Read these in order:
 5. [docs/proposals/README.md](/D:/Nautilus/nautilus_ctp_adapter/docs/proposals/README.md)
 6. [../docs/harness/任务分层与命名统一口径_Cross-Repo Work Item Layering And Naming.md](/D:/Nautilus/docs/harness/%E4%BB%BB%E5%8A%A1%E5%88%86%E5%B1%82%E4%B8%8E%E5%91%BD%E5%90%8D%E7%BB%9F%E4%B8%80%E5%8F%A3%E5%BE%84_Cross-Repo%20Work%20Item%20Layering%20And%20Naming.md)
 7. [docs/architecture/runtime-performance-guidelines.md](/D:/Nautilus/nautilus_ctp_adapter/docs/architecture/runtime-performance-guidelines.md)
-8. The current change bundle under `docs/changes/<change-id>/`
+8. The current change bundle under `docs/changes/<change-id>/` when the frontier reports one
 
 ## Autonomous Execution Policy
 
@@ -102,8 +102,9 @@ Governance layout is aligned toward `DSLReserach`:
 
 Topic state registry: `docs/topics/主题状态注册表_Topic State Registry.yaml`
 
-Current active topic: `live-session-order-query-hardening`
-Completed topic: `nautilus-host-integration`
+Current active topic: `none`
+Parked topics: `live-session-order-query-hardening`, `live-ops-truth-snapshot`
+Recent completed topic: `autopilot-session-management`
 
 When the current frontier changes, update plan.md status and run `python scripts/autopilot.py --root . --backfill`.
 
@@ -136,6 +137,10 @@ python scripts/show_current_frontier.py --by-topic
 # Autopilot with TASK-LIST granularity
 python scripts/autopilot.py --root .
 python scripts/autopilot.py --root . --update-checkpoint "T1 done: description"
+python scripts/autopilot.py --root . --log-action "edit" --log-target "path" --log-detail "what changed"
+python scripts/autopilot.py --root . --show-trajectory 5
+python scripts/autopilot.py --root . --detect-drift
+python scripts/autopilot.py --root . --report-blocker "dependency_missing: description"
 python scripts/autopilot.py --root . --backfill
 
 # Build and test

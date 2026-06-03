@@ -1,9 +1,9 @@
 # Live Session Order Query Hardening Topic Roadmap
 
 **创建日期**：2026-04-09
-**最后更新**：2026-04-11
-**状态**：进行中
-**进度**：C1/C3/U1 bundles created；C3 已把 offhours 只读脚本面收口到统一 `flow-path / session-label / evidence-root / output-json` contract，并把剩余 `td_login`/MD leaf 也纳入同一 evidence namespace；runtime/compat pack sync path 与 `check_rust_gate.py` vendor-bridge readiness 口径已稳定；当前 active frontier 已从 C3 切到 U1，且已完成 gate / repo-only probe / formal-live / blocked-handoff 首批证据冻结，当前结果保持 blocked handoff，等待私有 SDK/live DLL 输入
+**最后更新**：2026-05-30
+**状态**：阻塞
+**进度**：C1/C3/U1 bundles created；C3 已把 offhours 只读脚本面收口到统一 `flow-path / session-label / evidence-root / output-json` contract，并把剩余 `td_login`/MD leaf 也纳入同一 evidence namespace；runtime/compat pack sync path 与 `check_rust_gate.py` vendor-bridge readiness 口径已稳定；U1 已完成 gate / repo-only probe / formal-live / blocked-handoff 证据冻结，当前 topic 正式 parked/blocked，等待私有 SDK/live DLL 输入后再解锁 C2
 **topic-id**：live-session-order-query-hardening
 **domain**：nautilus_adapter
 **用途**：利用可直连 CTP 的真实时间窗口，把 `nautilus_ctp_adapter` 现有 execution/query baseline 推进成更可操作的 session-window 开发主线：交易时段聚焦 `c2609` 一手真实下单开发，非交易时段聚焦资金、持仓与相关只读查询能力。
@@ -68,7 +68,7 @@
 | --- | --- | --- | --- |
 | C1 | `20260409__live-session-order-query-hardening__session-window-guardrails-and-runbook` | 冻结交易时段/非交易时段边界、脚本入口与 evidence 口径 | 📝 已建包（runbook 已落地，待切 active） |
 | C3 | `20260409__live-session-order-query-hardening__offhours-query-snapshot-hardening` | 在非交易时段补齐 `instrument / account / position / order / trade` 只读查询与失败语义 | 🟨 阻塞（脚本面已收口，剩余 blocker 已移交 U1） |
-| U1 | `20260410__live-session-order-query-hardening__vendor-bridge-readiness-and-sdk-handoff` | 冻结 vendor-bridge readiness、SDK/live DLL handoff 与 unblock 条件 | 🔄 进行中（当前 active change） |
+| U1 | `20260410__live-session-order-query-hardening__vendor-bridge-readiness-and-sdk-handoff` | 冻结 vendor-bridge readiness、SDK/live DLL handoff 与 unblock 条件 | 🟨 blocked-completed（等待私有 SDK/live DLL 输入） |
 | C2 | `20260410__live-session-order-query-hardening__c2609-live-order-dev-loop` | 用 `c2609` 单笔 `1` 手的真实报单推进 submit/cancel/fill 开发闭环 | 📝 已建包（交易时段后置） |
 | C4 | `20260410__live-session-order-query-hardening__session-evidence-and-operator-playbook` | 把 order/query 两条时间窗口能力收成操作者可执行 playbook 与 evidence matrix | 📝 已建包 |
 | C5 | `20260410__live-session-order-query-hardening__aggregated-query-evidence-export` | 把 instrument/position/account/order-truth/reconciliation 聚合成单次 offhours 查询入口，并支持 evidence 导出 | 📝 已建包（持续开发 backlog） |
@@ -77,9 +77,9 @@
 
 ## 七、AI-TASK-QUEUE
 
-**当前状态**：已激活；当前聚焦 `U1`。
+**当前状态**：blocked/parked；`U1` 已完成 blocked handoff，当前等待私有 SDK/live DLL 输入。
 
-**当前优先策略**：C3 的脚本面 contract 已基本收口；当前保持 `U1` 为 active lane，沿唯一 gate / formal-live / repo-only 路径维护 `sdk-not-found / scaffold-only` blocked handoff，直到拿到私有 SDK/live DLL 输入。
+**当前优先策略**：C3 的脚本面 contract 已基本收口；`U1` blocked handoff 已冻结完成。未拿到私有 SDK/live DLL 输入前，本 topic 不再占用 active frontier。
 
 - [x] 创建 topic roadmap
 - [x] 创建 `C1` child change bundle
@@ -100,7 +100,7 @@
 - [ ] 完成 `C7`
 - [ ] 回写 topic index、docs/README 与相关长期文档
 
-**当前 first action**：`U1` 的 blocked handoff 已冻结完成（P1/P2/P3 全收口）。当前等待私有 SDK/live DLL 输入解锁 C2。
+**当前 first action**：等待私有 SDK/live DLL 输入解锁 C2；在输入缺失期间保持 blocked，不重复调 auth/front/credential。
 
 ### C2 解锁条件 / C2 Unlock Trigger
 

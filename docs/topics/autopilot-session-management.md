@@ -2,10 +2,10 @@
 
 **topic-id**：autopilot-session-management
 **domain**：governance
-**状态**：planned
-**canonical_status**：planned
+**状态**：completed
+**canonical_status**：completed
 **创建日期**：2026-04-13
-**最后更新**：2026-04-13（按优先级裁剪：L1+L2 优先，L3 延后，L4 最小版）
+**最后更新**：2026-05-30（C1 完成；C2 最小版折叠进 C1 验收；L3 延后）
 
 ## 一、Topic 目标
 
@@ -54,8 +54,8 @@ Phase 1 (current)     Phase 1.5 (deferred)      Phase 2 (future)          Phase 
 
 | 顺序 | change-id | 标题 | 状态 | 依赖 |
 |------|-----------|------|------|------|
-| C1 | `20260413__autopilot-session-management__trajectory-and-drift` | Trajectory Log + Drift Detection（L1+L2） | `not_started` | — |
-| C2 | `20260413__autopilot-session-management__blocker-escalation-minimal` | Blocker Escalation 最小版（L4-minimal） | `not_started` | C1 |
+| C1 | `20260413__autopilot-openhands-absorption__session-management-upgrade` | Trajectory Log + Drift Detection（L1+L2）+ Blocker Escalation 最小版（L4-minimal） | `completed` | — |
+| C2 | `20260413__autopilot-session-management__blocker-escalation-minimal` | Blocker Escalation 最小版（L4-minimal；已折叠进 C1 验收） | `completed` | C1 |
 
 > L3 History Compression 不在当前队列中，延后到 Phase 1.5 再评估。
 
@@ -96,6 +96,8 @@ Phase 1 (current)     Phase 1.5 (deferred)      Phase 2 (future)          Phase 
 ├── render_text()            ← 扩展 BLOCKER/DRIFT 输出
 └── main() CLI               ← 新增 4 组参数
 ```
+
+**当前 active child change**：无；C1 已完成，L3 History Compression 仍按 Phase 1.5 延后。
 
 **新增运行时产物**：
 - `.autopilot_trajectory.jsonl` — 追加写入的执行轨迹（C1 交付）

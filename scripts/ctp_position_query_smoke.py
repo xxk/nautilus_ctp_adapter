@@ -75,11 +75,13 @@ def main() -> int:
         execution_client = stack["execution_client"]
         runtime_bridge = stack["runtime_bridge"]
 
-        result = execution_client.run_live_position_query_smoke(
-            timeout_seconds=args.timeout_seconds,
-            flow_path=args.flow_path,
-            completion_grace_seconds=args.completion_grace_seconds,
-        )
+        query_kwargs = {
+            "timeout_seconds": args.timeout_seconds,
+            "completion_grace_seconds": args.completion_grace_seconds,
+        }
+        if args.flow_path is not None:
+            query_kwargs["flow_path"] = args.flow_path
+        result = execution_client.run_live_position_query_smoke(**query_kwargs)
         events = runtime_bridge.drain_events()
         commands = runtime_bridge.drain_submitted_commands()
     except Exception as exc:

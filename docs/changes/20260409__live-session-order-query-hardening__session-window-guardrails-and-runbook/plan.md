@@ -21,7 +21,8 @@ dependencies:
 # Session Window Guardrails 与真实场景验收驱动 Runbook 开发计划
 
 **状态**：blocked
-**进度**：runbook skeleton landed；offhours/trade-window/vendor-bridge routing frozen at document level；C3/U1 evidence 已接回当前 runbook，当前只剩 trade-window 场景等待 U1 ready 与真实交易窗口
+**进度**：80%
+**进度说明**：runbook skeleton landed；offhours/trade-window/vendor-bridge routing frozen at document level；C3/U1 evidence 已接回当前 runbook，当前只剩 trade-window 场景等待 U1 ready 与真实交易窗口
 **日期**：2026-04-09
 **更新日期**：2026-04-11
 **范围**：`docs/topics/live-session-order-query-hardening/`、`docs/changes/20260409__live-session-order-query-hardening__session-window-guardrails-and-runbook/`、`scripts/`、`src/nautilus_ctp_adapter/adapters/ctp/`、`tests/`

@@ -2,7 +2,7 @@
 
 **创建日期**：2026-05-29
 **最后更新**：2026-05-29
-**状态**：in_progress
+**状态**：completed
 **proposal-id**：`p001-ADR001-native-first-runtime-rollout`
 **关联提案**：[README.md](README.md)
 **关联验收**：[acceptance.md](acceptance.md)
@@ -16,7 +16,7 @@
 ```yaml
 artifact_boundary:
   trusted_artifact_roots:
-    - 未冻结
+    - output/reports/p001-ADR001-native-first-runtime-rollout/
   allowed_evidence_roots:
     - output/debug/change_evidence/p001-ADR001-native-first-runtime-rollout/
     - output/reports/p001-ADR001-native-first-runtime-rollout/
@@ -30,7 +30,7 @@ artifact_boundary:
 规则：
 
 1. proposal 全部文档若引用 formal artifact，只能引用本节声明的 `trusted_artifact_roots`。
-2. 若尚未冻结唯一 artifact root，不得把 proposal 外部 artifact 写成当前 proposal 的完成证据。
+2. Phase 4 的 generated benchmark JSON 只能作为 repo-local lower-bound gate artifact，不得替代 live/formal benchmark evidence。
 3. `allowed_evidence_roots` 只允许做 repo-local 诊断留痕，不得替代 formal artifact root。
 4. 作为模板来源的历史 proposal、cfg 或 contract 不等于当前 proposal 的 pass evidence。
 5. 若某个 child change 继承本 proposal 的 artifact boundary，应在 change `plan.md` 再次显式落成自己的 `artifact_boundary`。
@@ -53,28 +53,28 @@ artifact_boundary:
 <!-- AI-PHASE-STATUS-BEGIN
 reviewed_at: 2026-05-29
 reviewer: GitHub Copilot
-overall_status: in_progress
+overall_status: completed
 phases:
   - id: phase_0_proposal_convergence
     status: completed
     ai_progress: 100
     evidence: "proposal scaffold created; phase split, acceptance boundary, ADR landing map, and docs gate evidence converged"
   - id: phase_1_batch_boundary_freeze
-    status: in_progress
-    ai_progress: 75
-    evidence: "Phase 1 child change created at docs/changes/20260529__runtime-performance__p1; P001 mapping and Rust gate evidence done; Python focused pytest blocked by missing ctp_runtime._ctp_runtime import"
+    status: completed
+    ai_progress: 100
+    evidence: "Phase 1 child change completed at docs/changes/20260529__runtime-performance__p1; proposal gate, harness gate, rust gate, and focused pytest passed"
   - id: phase_2_hot_path_owner_cutover
-    status: planned
-    ai_progress: 0
-    evidence: "owner inventory / migration-boundary child change not yet created"
+    status: completed
+    ai_progress: 100
+    evidence: "Phase 2 child change completed at docs/changes/20260529__runtime-performance__p2-native-hot-path-ownership-cutover; owner inventory and migration boundary frozen"
   - id: phase_3_thin_python_shell_contract
-    status: planned
-    ai_progress: 0
-    evidence: "thin host-glue contract child change not yet created"
+    status: completed
+    ai_progress: 100
+    evidence: "Phase 3 child change completed at docs/changes/20260529__runtime-performance__p3-thin-python-host-glue-contract-lock; thin-shell allowlist, forbidden-list and guard path frozen"
   - id: phase_4_benchmark_gate_and_daemon_decision
-    status: planned
-    ai_progress: 0
-    evidence: "benchmark command, threshold, artifact boundary, and daemon trigger policy are not yet frozen"
+    status: completed
+    ai_progress: 100
+    evidence: "Phase 4 child change completed at docs/changes/20260529__runtime-performance__p4-benchmark-gate-and-daemon-decision; repo-local benchmark gate and daemon trigger policy frozen"
 AI-PHASE-STATUS-END -->
 
 ---
@@ -83,11 +83,11 @@ AI-PHASE-STATUS-END -->
 
 | Phase / 阶段 | Revised Goal / 修订后目标 | Current Status / 当前状态 | AI Progress / AI 完成度 | Evidence / Current Facts / 证据 / 当前事实 | Next Action / 下一步 |
 | --- | --- | --- | ---: | --- | --- |
-| Phase 0 Proposal convergence / 阶段 0 提案收敛 | 冻结 proposal docs、phase split、artifact boundary 与 current-change scope freeze | `completed` | 100% | proposal bundle created；phase split、acceptance boundary、ADR landing map 与 docs gate evidence 已收敛 | 新建 Phase 1 batch-boundary child change |
-| Phase 1 Batch boundary freeze / 阶段 1 批量边界冻结 | 冻结 adapter-facing batch runtime contract 与 child change 骨架 | `in_progress` | 75% | Phase 1 child change 已创建并回写；Rust gate 通过；Python focused pytest 因缺 `ctp_runtime._ctp_runtime` 暂不能作为 pass evidence | 解锁 Python focused guard 或改用不依赖 extension import 的 guard |
-| Phase 2 Hot-path owner inventory / cutover boundary / 阶段 2 热路径 owner 清单与迁移边界 | 冻结 query / market / trading hot path 的 owner inventory、暂留 Python 项与迁移边界 | `planned` | 0% | Python adapter 仍有 runtime bootstrap/placeholder ownership，且迁移边界未 formalize | 新建 owner-inventory child change |
-| Phase 3 Thin Python host glue contract / 阶段 3 Python 宿主薄壳契约 | 用 contract lock 约束合法 host shell，并阻止 runtime logic 回流到 Python adapter | `planned` | 0% | thin-shell allowlist / forbidden-list / guard path 尚未 formalize | 新建 thin-shell contract change |
-| Phase 4 Benchmark gate and daemon trigger policy / 阶段 4 Benchmark 门槛与 daemon 触发策略 | 冻结 benchmark gate child change 的命令、阈值、formal artifact boundary 与 daemon trigger policy | `planned` | 0% | benchmark gate、threshold、artifact boundary、daemon trigger policy 均未冻结 | 新建 benchmark-gate change 或 future proposal |
+| Phase 0 Proposal convergence / 阶段 0 提案收敛 | 冻结 proposal docs、phase split、artifact boundary 与 current-change scope freeze | `completed` | 100% | proposal bundle created；phase split、acceptance boundary、ADR landing map 与 docs gate evidence 已收敛 | Phase 1 completed |
+| Phase 1 Batch boundary freeze / 阶段 1 批量边界冻结 | 冻结 adapter-facing batch runtime contract 与 child change 骨架 | `completed` | 100% | `20260529__runtime-performance__p1` 已通过；proposal gate、harness gate、rust gate、focused pytest 均通过 | Phase 2 completed |
+| Phase 2 Hot-path owner inventory / cutover boundary / 阶段 2 热路径 owner 清单与迁移边界 | 冻结 query / market / trading hot path 的 owner inventory、暂留 Python 项与迁移边界 | `completed` | 100% | `20260529__runtime-performance__p2-native-hot-path-ownership-cutover` 已冻结 owner inventory、暂留项与 migration boundary | Phase 3 thin-shell contract 已承接 |
+| Phase 3 Thin Python host glue contract / 阶段 3 Python 宿主薄壳契约 | 用 contract lock 约束合法 host shell，并阻止 runtime logic 回流到 Python adapter | `completed` | 100% | `20260529__runtime-performance__p3-thin-python-host-glue-contract-lock` 已冻结 allowlist / forbidden-list / guard path | Phase 4 benchmark gate 已承接 |
+| Phase 4 Benchmark gate and daemon trigger policy / 阶段 4 Benchmark 门槛与 daemon 触发策略 | 冻结 benchmark gate child change 的命令、阈值、formal artifact boundary 与 daemon trigger policy | `completed` | 100% | `20260529__runtime-performance__p4-benchmark-gate-and-daemon-decision` 已冻结 repo-local gate、threshold、artifact boundary 与 daemon trigger policy | P001 closeout |
 
 ---
 
@@ -197,7 +197,7 @@ python scripts/check_proposal_docs.py --root . --proposal-id p001-ADR001-native-
 
 ### Child Change
 
-`待创建：runtime-performance__native-hot-path-ownership-cutover`
+`20260529__runtime-performance__p2-native-hot-path-ownership-cutover`
 
 ### 交付物
 
@@ -242,7 +242,7 @@ python scripts/check_proposal_docs.py --root . --proposal-id p001-ADR001-native-
 
 ### Child Change
 
-`待创建：runtime-performance__thin-python-host-glue-contract-lock`
+`20260529__runtime-performance__p3-thin-python-host-glue-contract-lock`
 
 ### 交付物
 
@@ -287,7 +287,7 @@ python scripts/check_proposal_docs.py --root . --proposal-id p001-ADR001-native-
 
 ### Child Change
 
-`待创建：runtime-performance__benchmark-gate-and-daemon-decision`
+`20260529__runtime-performance__p4-benchmark-gate-and-daemon-decision`
 
 ### 交付物
 

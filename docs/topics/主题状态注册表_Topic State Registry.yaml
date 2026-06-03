@@ -1,11 +1,10 @@
 schema_version: 1
-last_updated: '2026-05-04'
+last_updated: '2026-05-30'
 topics:
   nautilus-host-integration:
     canonical_status: completed
   live-session-order-query-hardening:
-    canonical_status: in_progress
-    execution_order: 1
+    canonical_status: blocked
   live-ops-truth-snapshot:
     canonical_status: blocked
   ctp-live-connectivity:
@@ -37,5 +36,4 @@ topics:
   td-position-account-truth-merge:
     canonical_status: completed
   autopilot-session-management:
-    canonical_status: planned
-    execution_order: 2
+    canonical_status: completed

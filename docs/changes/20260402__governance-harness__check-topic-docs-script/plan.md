@@ -3,6 +3,7 @@
 **change-id**: `20260402__governance-harness__check-topic-docs-script`
 **创建日期**: 2026-04-02
 **状态**: completed
+**进度**：100%
 
 ## 目标
 

@@ -1745,6 +1745,8 @@ class CtpExecutionClient:
             return aliased_client_order_id, "native_alias"
         if expected_client_order_id and exec_order_id == expected_client_order_id:
             return expected_client_order_id, "client_order_id_echo"
+        if expected_order_ref and exec_order_id == expected_order_ref and exec_order_ref == expected_order_ref:
+            return expected_client_order_id or expected_order_ref, "client_order_id_echo"
         if expected_order_ref and exec_order_ref == expected_order_ref:
             return expected_client_order_id or expected_order_ref, "order_ref_echo"
         if (

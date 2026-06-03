@@ -18,7 +18,8 @@ dependencies:
 # Vendor Bridge Readiness 与 SDK Handoff 开发计划
 
 **状态**：blocked-completed
-**进度**：P1/P2/P3 全部完成；A1-A6 全 pass；C2 解锁条件已冻结写入 topic README；当前保持 blocked handoff 等待私有 SDK/live DLL 输入
+**进度**：100%
+**进度说明**：P1/P2/P3 全部完成；A1-A6 全 pass；C2 解锁条件已冻结写入 topic README；当前保持 blocked handoff 等待私有 SDK/live DLL 输入
 **日期**：2026-04-10
 **更新日期**：2026-04-11
 **范围**：`docs/changes/20260410__live-session-order-query-hardening__vendor-bridge-readiness-and-sdk-handoff/`、`scripts/check_rust_gate.py`、`scripts/README.md`、`docs/topics/live-session-order-query-hardening.md`

@@ -103,3 +103,21 @@ Do not treat the following as default first-version requirements:
 ## Performance Decision Rule
 
 When a design choice improves raw speed but increases host coupling, default to preserving the platform-neutral runtime unless measurement proves the coupling is necessary.
+
+## P001 Native-First Rollout Locks
+
+P001/ADR001 freezes the following runtime-performance boundaries:
+
+1. Adapter-facing runtime boundary defaults to `submit_command(command)` plus `drain_events(limit)`.
+2. Query, market, trading, session and order lifecycle hot paths target Rust/native ownership.
+3. Python adapter remains thin host glue for Nautilus config, factory, provider/client shell, host translation, guardrails and smoke orchestration.
+4. Python transitional runtime placeholders must not grow new runtime truth ownership.
+5. External daemon is forbidden by default and requires a successor proposal with formal benchmark evidence.
+
+Current lower-bound repo-local performance gate:
+
+```bash
+python scripts/check_runtime_performance_gate.py --events 5000 --limit 1000 --min-events-per-sec 1000
+```
+
+This gate is a regression guard for batch draining only. It is not live performance evidence and cannot approve daemon mode by itself.

@@ -24,7 +24,8 @@ dependencies:
 # Offhours Query Snapshot Hardening 开发计划
 
 **状态**：blocked
-**进度**：local live config prepared；runtime/compat pack synced into vendor/ctp/bin；A1/A2/A3/A4/A5 executed；`check_rust_gate.py` now surfaces vendor-bridge readiness；`ctp_query_adapter_smoke.py` 现支持在同一次 offhours 查询里可选聚合 `order_truth / reconciliation` 并导出 JSON evidence；同一套 `session-label / evidence-root / output-json` contract 已继续扩到相邻 snapshot/live-ops 入口，并已补齐到 `td_login`/MD leaf；当前剩余 blocker 已正式切入 U1 handoff
+**进度**：80%
+**进度说明**：local live config prepared；runtime/compat pack synced into vendor/ctp/bin；A1/A2/A3/A4/A5 executed；`check_rust_gate.py` now surfaces vendor-bridge readiness；`ctp_query_adapter_smoke.py` 现支持在同一次 offhours 查询里可选聚合 `order_truth / reconciliation` 并导出 JSON evidence；同一套 `session-label / evidence-root / output-json` contract 已继续扩到相邻 snapshot/live-ops 入口，并已补齐到 `td_login`/MD leaf；当前剩余 blocker 已正式切入 U1 handoff
 **日期**：2026-04-09
 **更新日期**：2026-04-11
 **范围**：`scripts/`、`src/nautilus_ctp_adapter/adapters/ctp/`、`tests/`、当前 change 三件套、`docs/topics/live-session-order-query-hardening.md`

@@ -2,7 +2,7 @@
 
 **模板标识 / Template Marker**：standard
 **变更目录 / Change Root**：./
-**状态**：🟨 进行中
+**状态**：✅ 已通过
 **日期**：2026-05-29
 **范围**：P001 Phase 1、adapter-facing runtime batch boundary、focused guard evidence
 **change-id**：20260529__runtime-performance__p1
@@ -12,18 +12,18 @@
 
 <!-- AI-STATUS-BEGIN -->
 ```yaml
-conclusion: pending
-allow_declare_pass: false
+conclusion: passed
+allow_declare_pass: true
 last_updated: "2026-05-29 00:00"
-concluded_by: ""
+concluded_by: "Codex"
 
 exit_conditions:
-  E1_success_scenarios: pending
-  E2_failure_scenarios: pending
-  E3_verification_cmds: pending
-  E4_evidence_collected: pending
-  E5_real_acceptance_only: pending
-  E6_minimum_scenarios: pending
+  E1_success_scenarios: passed
+  E2_failure_scenarios: passed
+  E3_verification_cmds: passed
+  E4_evidence_collected: passed
+  E5_real_acceptance_only: passed
+  E6_minimum_scenarios: passed
 
 scenarios:
   A1: { exec: true, result: pass, blocking: true }
@@ -41,8 +41,8 @@ scenarios:
 
 | 项目 | 值 | 说明 |
 | --- | :---: | --- |
-| 验收结论 | 🟨 进行中 | Phase 1 child change 已创建，正式 evidence 尚未收口 |
-| AI 建议宣告通过 | 否 | A1-A6 尚未全部执行 |
+| 验收结论 | ✅ 已通过 | Phase 1 batch boundary freeze 已收口 |
+| AI 建议宣告通过 | 是 | A1-A6 已全部执行 |
 | 最后更新 | 2026-05-29 00:00 | |
 | AI 执行人 | — | |
 
@@ -50,12 +50,12 @@ scenarios:
 
 | # | 出口条件 | 状态 | 判定规则 | 证据 |
 | --- | --- | :---: | --- | --- |
-| E1 | 关键成功场景全部通过 | ⬜ | A1-A3 阻塞成功场景全部通过 | |
-| E2 | 关键失败场景符合预期 | ⬜ | A4-A5 阻塞失败场景全部通过 | |
-| E3 | 必跑验证命令已完成 | ⬜ | proposal docs gate 与 harness gate 已执行 | |
-| E4 | 关键证据已留存 | ⬜ | 当前 bundle 和 P001 均有 evidence | |
-| E5 | 正式验收不依赖 mock 或 test | ⬜ | source evidence + docs gate + focused guard 共同支持 | |
-| E6 | 正式场景数不少于 6 个 | ⬜ | A1-A6 已定义 | |
+| E1 | 关键成功场景全部通过 | ✅ | A1-A3 阻塞成功场景全部通过 | A1-A3 |
+| E2 | 关键失败场景符合预期 | ✅ | A4-A5 阻塞失败场景全部通过 | A4-A5 |
+| E3 | 必跑验证命令已完成 | ✅ | proposal docs gate、harness gate、rust gate、focused pytest 已执行 | Evidence |
+| E4 | 关键证据已留存 | ✅ | 当前 bundle 和 P001 均有 evidence | Evidence |
+| E5 | 正式验收不依赖 mock 或 test | ✅ | source evidence + docs gate + rust gate + focused guard 共同支持 | Evidence |
+| E6 | 正式场景数不少于 6 个 | ✅ | A1-A6 已定义并执行 | Scenarios |
 
 ## 一、验收目标 / Goals
 
@@ -113,7 +113,7 @@ scenarios:
 | 3 | Source evidence | `src/nautilus_ctp_adapter/runtime/bridge.py`; `rust/ctp_runtime_core/src/native.rs` | Python / Rust batch-shaped bridge |
 | 4 | Verification | `python scripts/check_proposal_docs.py --root . --proposal-id p001-ADR001-native-first-runtime-rollout`; `python scripts/check_harness.py` | 必跑 gate |
 | 5 | Rust/source guard | `python scripts/check_rust_gate.py` | Rust workspace、vendor bridge readiness、cargo test 通过；可作为 Rust side batch boundary source guard |
-| 6 | Python focused pytest attempt | `python -m pytest tests/test_smoke_import.py::test_runtime_bridge_submit_and_drain_contract -q` | 当前环境缺 `ctp_runtime._ctp_runtime`，collection 失败；不能作为 pass evidence |
+| 6 | Python focused pytest | `python -m pytest tests/test_smoke_import.py::test_runtime_bridge_submit_and_drain_contract -q` | `1 passed`；首次因缺 `ctp_runtime._ctp_runtime` collection 失败，执行 `python -m pip install -e .` 后通过 |
 
 ## 七、未通过处理 / On Failure
 
@@ -126,7 +126,7 @@ scenarios:
 | # | 对应场景 | 当前阶段结果 | 还缺的真实验证 | 真实入口/命令 | 通过信号 | 阻塞项 | 证据路径 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | R1 | A1-A2 | 已完成 | 无 | `python scripts/check_proposal_docs.py --root . --proposal-id p001-ADR001-native-first-runtime-rollout` | OK | 无 | P001 docs |
-| R2 | A3-A5 | 部分完成 | Python focused pytest 仍需可导入 `_ctp_runtime` 的环境 | source review / targeted pytest | boundary 明确 | 当前 Python env 缺 `ctp_runtime._ctp_runtime` | `design.md` |
+| R2 | A3-A5 | 已完成 | 无 | source review / targeted pytest | boundary 明确 | 无 | `design.md` |
 | R3 | A6 | 已完成 | 无 | docs review | 后续 phase 未误宣告完成 | 无 | P001 acceptance |
 
 ## 九、Contract/Function 锁定证据（可选）
@@ -139,8 +139,8 @@ scenarios:
 
 ## 十、最终结论 / Final Verdict
 
-- **结论**：🟨 进行中
+- **结论**：✅ passed
 - **日期**：2026-05-29
-- **执行人**：
-- **建议**：暂不建议宣告通过
-- **说明**：A1-A6 的文档与 source-review 场景已完成，P001 docs gate / harness gate / rust gate 已通过；Python focused pytest 因当前环境缺 `ctp_runtime._ctp_runtime` 无法作为 pass evidence，因此本 change 暂保持进行中。
+- **执行人**：Codex
+- **建议**：可宣告通过
+- **说明**：A1-A6 已全部有 source/docs/guard evidence。P001 docs gate、harness gate、rust gate 与 focused pytest 均已通过；本 change 只关闭 Phase 1 batch boundary freeze，不关闭 Phase 2-4。

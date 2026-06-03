@@ -1,23 +1,23 @@
 ---
-status: 待评审
+status: accepted
 owner: architecture
 adr_id: "ADR001"
-decision_status: proposed
-landing_status: planned
+decision_status: accepted
+landing_status: completed
 ---
 
 # ADR001 高性能优先原生主线适配边界 / High-Performance Native-First Adapter Boundary
 
 - 日期：`2026-05-29`
 - ADR 类型：standard
-- 决策状态：proposed
-- 落地状态：planned
-- 落地摘要：in progress via `p001-ADR001-native-first-runtime-rollout`; Phase 1 batch-boundary child change is `20260529__runtime-performance__p1`; current active vendor-bridge change remains a prerequisite slice only
-- 覆盖摘要：decision 0/1, implementation 0/4, retirement 0/2
+- 决策状态：accepted
+- 落地状态：completed
+- 落地摘要：completed via `p001-ADR001-native-first-runtime-rollout`; Phase 1-4 boundary child changes are completed; current active vendor-bridge change remains a separate prerequisite slice only
+- 覆盖摘要：decision 1/1, boundary implementation 4/4, retirement policy 2/2
 - 适用范围：`D:\Nautilus\nautilus_ctp_adapter`
 - 决策问题：在继续作为 Nautilus provider / live client 接入层的前提下，仓库应采用哪条正式高性能主线，以及 Python、Rust、C/C++ 各自应保留到什么边界。
 - 当前倾向：采用 native-first runtime + thin Python host glue；只有在测量证明 batch bridge 已成为瓶颈时，才评估 external native daemon。
-- 最终决策：待决策
+- 最终决策：accepted；正式主线采用 native-first runtime + thin Python host glue，external native daemon 只保留为受 benchmark gate 约束的 future proposal。
 
 ---
 
@@ -149,11 +149,11 @@ landing_status: planned
 
 | 决策项 | 必须覆盖的落点 | 覆盖状态 | 承接 proposal / change | executable evidence | docs evidence | 剩余缺口 |
 | --- | --- | --- | --- | --- | --- | --- |
-| D1. Native owns hot path | runtime / native / tests | planned | `p001-ADR001-native-first-runtime-rollout` + successor runtime child changes | 待补 | 本 ADR + performance docs + proposal p001 | 尚未对所有 hot path 完成落地锁定 |
-| D2. Python stays thin host glue | adapter / tests / README | planned | `p001-ADR001-native-first-runtime-rollout` + successor runtime child changes | 待补 | 本 ADR + rust/python split + proposal p001 | 需要补 contract lock，防止逻辑回流 |
-| D3. Batch boundary is canonical | runtime bridge / tests | in_progress | `p001-ADR001-native-first-runtime-rollout` + `20260529__runtime-performance__p1` | 待补 | 本 ADR + runtime docs + proposal p001 + Phase 1 child change | 需要 closeout batch source evidence 与 focused guard |
-| D4. Daemon path requires measurement gate | proposal / docs | planned | `p001-ADR001-native-first-runtime-rollout`；future proposal if needed | 待补 | 本 ADR + proposal p001 | 尚未建立统一性能量测门槛 |
-| D5. Managed bridge remains non-mainline | docs / scripts / runbook | partial | `20260410__live-session-order-query-hardening__vendor-bridge-readiness-and-sdk-handoff` | 当前 change 证据 | 本 ADR + existing architecture docs | 仍需后续 closeout 完整退役临时路径 |
+| D1. Native owns hot path | runtime / native / tests | boundary_locked | `p001-ADR001-native-first-runtime-rollout` + `20260529__runtime-performance__p2-native-hot-path-ownership-cutover` | source inventory + docs gates | 本 ADR + performance docs + proposal p001 + Phase 2 child change | 真实代码迁移仍由后续 implementation changes 承接 |
+| D2. Python stays thin host glue | adapter / tests / README | boundary_locked | `p001-ADR001-native-first-runtime-rollout` + `20260529__runtime-performance__p3-thin-python-host-glue-contract-lock` | focused guard path + docs gates | 本 ADR + rust/python split + proposal p001 + Phase 3 child change | 物理删除旧 helper 仍由后续 changes 承接 |
+| D3. Batch boundary is canonical | runtime bridge / tests | completed | `p001-ADR001-native-first-runtime-rollout` + `20260529__runtime-performance__p1` | `check_rust_gate.py` + focused pytest | 本 ADR + runtime docs + proposal p001 + Phase 1 child change | 后续 Phase 2 仍需 owner inventory，不影响 D3 closeout |
+| D4. Daemon path requires measurement gate | proposal / docs | boundary_locked | `p001-ADR001-native-first-runtime-rollout` + `20260529__runtime-performance__p4-benchmark-gate-and-daemon-decision`; future proposal if needed | `check_runtime_performance_gate.py` lower-bound gate + policy | 本 ADR + proposal p001 + Phase 4 child change | live/formal benchmark 仍需 successor proposal 承接 |
+| D5. Managed bridge remains non-mainline | docs / scripts / runbook | policy_locked | `20260410__live-session-order-query-hardening__vendor-bridge-readiness-and-sdk-handoff` | 当前 change 证据 | 本 ADR + existing architecture docs | vendor-bridge readiness change 仍独立推进，不由 P001 改 scope |
 
 ---
 
@@ -174,10 +174,10 @@ landing_status: planned
 | Phase | 目标 | 承接 proposal / change | 退出条件 | retirement 影响 | 承接状态 / Landing Status |
 | --- | --- | --- | --- | --- | --- |
 | Phase 0 | 冻结 vendor bridge readiness 与当前 runtime mainline 边界 | [20260410__live-session-order-query-hardening__vendor-bridge-readiness-and-sdk-handoff](../changes/20260410__live-session-order-query-hardening__vendor-bridge-readiness-and-sdk-handoff/plan.md) | 当前临时桥接路径、formal live verdict 与 blocker 口径已冻结 | 为后续 managed bridge / scaffold path retirement 建 inventory | active via change 20260410__live-session-order-query-hardening__vendor-bridge-readiness-and-sdk-handoff |
-| Phase 1 | 只冻结 adapter-facing batch boundary | [p001-ADR001-native-first-runtime-rollout](../proposals/p001-ADR001-native-first-runtime-rollout/README.md) + [20260529__runtime-performance__p1](../changes/20260529__runtime-performance__p1/plan.md) | 唯一 batch runtime boundary 已冻结，且 per-event Python callback 不再是默认长期接口；hot-path owner inventory 仍保留给 Phase 2 | 为后续 owner inventory / migration boundary 提供唯一接口面 | in_progress via change 20260529__runtime-performance__p1 |
-| Phase 2 | 只冻结 hot-path owner inventory 与 migration boundary | [p001-ADR001-native-first-runtime-rollout](../proposals/p001-ADR001-native-first-runtime-rollout/README.md) + successor runtime change | query / market / trading hot path 的 owner、暂留 Python 项与迁出边界已冻结；thin-shell contract 仍保留给 Phase 3 | 开始压缩 Python runtime ownership，但不把 thin-shell closeout 提前混入 | planned via proposal p001 |
-| Phase 3 | 只冻结 thin Python host glue contract | [p001-ADR001-native-first-runtime-rollout](../proposals/p001-ADR001-native-first-runtime-rollout/README.md) + successor runtime change | Python adapter 的合法 host shell、禁止回流的 runtime logic 类别与 focused guard evidence 路径已冻结 | 进入旧 helper / legacy seam retirement | planned via proposal p001 |
-| Phase 4 | 只冻结 benchmark gate 与 daemon trigger policy | [p001-ADR001-native-first-runtime-rollout](../proposals/p001-ADR001-native-first-runtime-rollout/README.md)；future proposal if needed | benchmark 命令、阈值、formal artifact boundary 与 daemon trigger policy 已在后续 child change 中冻结 | 若进入 daemon 路线，旧 in-process assumptions 需文档收口 | planned via proposal p001 |
+| Phase 1 | 只冻结 adapter-facing batch boundary | [p001-ADR001-native-first-runtime-rollout](../proposals/p001-ADR001-native-first-runtime-rollout/README.md) + [20260529__runtime-performance__p1](../changes/20260529__runtime-performance__p1/plan.md) | 唯一 batch runtime boundary 已冻结，且 per-event Python callback 不再是默认长期接口；hot-path owner inventory 仍保留给 Phase 2 | 为后续 owner inventory / migration boundary 提供唯一接口面 | completed via change 20260529__runtime-performance__p1 |
+| Phase 2 | 只冻结 hot-path owner inventory 与 migration boundary | [p001-ADR001-native-first-runtime-rollout](../proposals/p001-ADR001-native-first-runtime-rollout/README.md) + [20260529__runtime-performance__p2-native-hot-path-ownership-cutover](../changes/20260529__runtime-performance__p2-native-hot-path-ownership-cutover/plan.md) | query / market / trading hot path 的 owner、暂留 Python 项与迁出边界已冻结；thin-shell contract 仍保留给 Phase 3 | 开始压缩 Python runtime ownership，但不把 thin-shell closeout 提前混入 | completed via change 20260529__runtime-performance__p2-native-hot-path-ownership-cutover |
+| Phase 3 | 只冻结 thin Python host glue contract | [p001-ADR001-native-first-runtime-rollout](../proposals/p001-ADR001-native-first-runtime-rollout/README.md) + [20260529__runtime-performance__p3-thin-python-host-glue-contract-lock](../changes/20260529__runtime-performance__p3-thin-python-host-glue-contract-lock/plan.md) | Python adapter 的合法 host shell、禁止回流的 runtime logic 类别与 focused guard evidence 路径已冻结 | 进入旧 helper / legacy boundary retirement | completed via change 20260529__runtime-performance__p3-thin-python-host-glue-contract-lock |
+| Phase 4 | 只冻结 benchmark gate 与 daemon trigger policy | [p001-ADR001-native-first-runtime-rollout](../proposals/p001-ADR001-native-first-runtime-rollout/README.md) + [20260529__runtime-performance__p4-benchmark-gate-and-daemon-decision](../changes/20260529__runtime-performance__p4-benchmark-gate-and-daemon-decision/plan.md)；future proposal if needed | benchmark 命令、阈值、formal artifact boundary 与 daemon trigger policy 已冻结 | 若进入 daemon 路线，旧 in-process assumptions 需文档收口 | completed via change 20260529__runtime-performance__p4-benchmark-gate-and-daemon-decision |
 
 ### 5.1 旧代码退役与文档收口 / Legacy Retirement And Documentation Closure
 
@@ -210,7 +210,12 @@ landing_status: planned
 
 ### 6.3 ADR Closeout Distillation / ADR closeout 沉淀
 
-（closeout 后回填）
+P001 closeout 后的稳定沉淀：
+
+1. 正式高性能主线已接受为 `native-first runtime + thin Python host glue`。
+2. Adapter-facing boundary 已锁定为 `submit_command(command)` / `drain_events(limit)`。
+3. Hot-path owner inventory、thin-shell contract、benchmark gate 与 daemon trigger policy 已分别由 P001 Phase 2-4 child changes 收口。
+4. 一次性 gate 输出和 generated benchmark JSON 留在 child change acceptance / output report，不复制进 ADR。
 
 ---
 

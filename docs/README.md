@@ -26,15 +26,15 @@ This repository aligns to the `DSLReserach` topic/change split:
 6. `docs/changes/` for executable child changes and evidence
 7. `docs/archive/` for archived docs and historical snapshots
 
-## Current Active Delivery
+## Current Frontier
 
 1. Master roadmap: [Nautilus CTP adapter mainline](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/nautilus-ctp-adapter-mainline.md)
 2. Topic state registry: [/D:/Nautilus/nautilus_ctp_adapter/docs/topics/主题状态注册表_Topic State Registry.yaml](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/主题状态注册表_Topic%20State%20Registry.yaml)
 3. Topic index: [/D:/Nautilus/nautilus_ctp_adapter/docs/topics/README.md](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/README.md)
-4. Current topic roadmap: [Live session order query hardening](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/live-session-order-query-hardening.md)（`in_progress` / `execution_order=1`，C3 脚本面已 blocked-closeout，当前聚焦 U1 vendor-bridge handoff）
-5. Active change: [20260410__live-session-order-query-hardening__vendor-bridge-readiness-and-sdk-handoff](/D:/Nautilus/nautilus_ctp_adapter/docs/changes/20260410__live-session-order-query-hardening__vendor-bridge-readiness-and-sdk-handoff/plan.md)（执行中，当前正式冻结 `sdk-not-found / scaffold-only` blocker 与 SDK/live DLL handoff 路径）
-6. Parked topic: [Live ops truth snapshot](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/live-ops-truth-snapshot.md)（`blocked`，当前因 disconnect storm 挂起）
-7. Recent completed topic: [Rust-owned CTP runtime cutover](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/rust-ctp-runtime-cutover.md)
+4. Current active topic: `none`
+5. Current active change: `none`
+6. Parked topics: [Live session order query hardening](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/live-session-order-query-hardening.md)（`blocked`，等待私有 SDK/live DLL 输入）；[Live ops truth snapshot](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/live-ops-truth-snapshot.md)（`blocked`，当前因 disconnect storm 挂起）
+7. Recent completed topic: [Autopilot session management](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/autopilot-session-management.md)
 
 ## Topic / Change Workflow Commands
 

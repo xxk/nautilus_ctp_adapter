@@ -103,6 +103,28 @@ Current live-execution bootstrap direction:
 2. bootstrap-ready execution paths may submit mapped commands into the shared runtime bridge before true native order send is enabled
 3. real order lifecycle verification remains a later, explicitly separate change
 
+## Thin Python Host Glue Contract
+
+P001 Phase 3 freezes the Python adapter as host glue, not runtime owner.
+
+Allowed Python responsibilities:
+
+1. config and environment loading
+2. factory / stack construction
+3. Nautilus provider and client shell
+4. host object translation
+5. guardrail precheck and smoke orchestration
+6. adapter-local packaging of already-drained runtime events
+
+Forbidden Python responsibilities:
+
+1. raw CTP callback parsing owner
+2. query lifecycle truth
+3. order lifecycle state machine truth
+4. market tick hot loop
+5. second runtime API outside `submit_command(command)` / `drain_events(limit)`
+6. managed bridge / ctypes helper expansion as production path
+
 ## Mainline Restriction
 
 This repository must not use a C# managed bridge as the continuing implementation path.

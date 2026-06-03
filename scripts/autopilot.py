@@ -11,10 +11,12 @@ Route B 实现：无独立 registry，从 plan.md frontmatter 聚合 topic/execu
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import sys
-from dataclasses import asdict, dataclass
+import uuid
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
 
@@ -22,12 +24,84 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts.show_current_frontier import (
-    _extract_plan_metadata,
-    _classify_status,
-    discover_change_dirs,
-    show_frontier,
-)
+from scripts.check_change_docs import discover_change_dirs
+from nautilus_ctp_adapter.devtools.topic_governance import collect_current_frontier
+
+
+def _extract_plan_metadata(plan_path: Path) -> dict[str, object]:
+    text = plan_path.read_text(encoding="utf-8")
+
+    def field(name: str, default: str = "") -> str:
+        match = re.search(rf"^\*\*{re.escape(name)}\*\*[:：]\s*(.+)$", text, flags=re.MULTILINE)
+        return default if match is None else match.group(1).strip()
+
+    title = plan_path.parent.name
+    for line in text.splitlines():
+        if line.startswith("# "):
+            title = line[2:].strip()
+            break
+
+    execution_order_raw = field("execution_order")
+    execution_order: int | None = None
+    if execution_order_raw.isdigit():
+        execution_order = int(execution_order_raw)
+
+    return {
+        "title": title,
+        "status": field("状态", field("Status", "")),
+        "progress": field("进度", field("Progress", "N/A")),
+        "topic_id": field("topic-id").strip("`") or None,
+        "execution_order": execution_order,
+    }
+
+
+def _classify_status(status: object) -> str:
+    value = str(status).strip().lower()
+    if any(marker in value for marker in ("completed", "已完成", "✅", "passed", "pass")):
+        return "completed"
+    if any(marker in value for marker in ("in_progress", "进行中", "🔄")):
+        return "in_progress"
+    if any(marker in value for marker in ("blocked", "阻塞")):
+        return "blocked"
+    return "not_started"
+
+
+def show_frontier(root: Path) -> dict[str, object]:
+    frontier = collect_current_frontier(root)
+    changes_dir = root / "docs" / "changes"
+    change_dirs = discover_change_dirs(changes_dir)
+
+    active_changes: list[dict[str, object]] = []
+    active_change = frontier.get("active_change")
+    active_topic = frontier.get("active_topic")
+    if isinstance(active_change, dict) and active_change.get("change_id"):
+        change_id = str(active_change["change_id"])
+        plan_path = changes_dir / change_id / "plan.md"
+        meta = _extract_plan_metadata(plan_path) if plan_path.exists() else {}
+        active_changes.append(
+            {
+                "change_id": change_id,
+                "title": meta.get("title", change_id),
+                "progress": meta.get("progress", "N/A"),
+                "topic_id": None if not isinstance(active_topic, dict) else active_topic.get("topic_id"),
+                "execution_order": None
+                if not isinstance(active_topic, dict)
+                else active_topic.get("execution_order"),
+            }
+        )
+
+    completed_count = 0
+    for change_dir in change_dirs:
+        plan_path = change_dir / "plan.md"
+        if plan_path.exists() and _classify_status(_extract_plan_metadata(plan_path)["status"]) == "completed":
+            completed_count += 1
+
+    return {
+        "active_changes": active_changes,
+        "total_changes": len(change_dirs),
+        "active_count": len(active_changes),
+        "completed_count": completed_count,
+    }
 
 # ── TASK-LIST 解析 ──────────────────────────────────────────
 TASK_LIST_BLOCK_PATTERN = re.compile(
@@ -39,6 +113,7 @@ TASK_ITEM_PATTERN = re.compile(
 )
 
 CHECKPOINT_FILENAME = ".autopilot_checkpoint.json"
+TRAJECTORY_FILENAME = ".autopilot_trajectory.jsonl"
 
 # ── acceptance AI-STATUS 解析 ───────────────────────────────
 AI_STATUS_BLOCK_PATTERN = re.compile(
@@ -65,6 +140,10 @@ class AutopilotCheckpoint:
     last_action: str
     context_summary: str
     updated_at: str
+    version: int = 2
+    repo_state_hash: dict[str, str] = field(default_factory=dict)
+    completed_task_summaries: dict[str, str] = field(default_factory=dict)
+    blocker: dict[str, object] | None = None
 
 
 @dataclass(frozen=True)
@@ -86,6 +165,7 @@ class AutopilotSnapshot:
     next_task: str | None
     checkpoint: AutopilotCheckpoint | None
     acceptance: AcceptanceSnapshot | None
+    recent_actions: tuple[dict[str, object], ...]
     total_changes: int
     active_count: int
     completed_count: int
@@ -147,6 +227,12 @@ def read_checkpoint(root: Path) -> AutopilotCheckpoint | None:
             last_action=str(payload.get("last_action") or ""),
             context_summary=str(payload.get("context_summary") or ""),
             updated_at=str(payload.get("updated_at") or ""),
+            version=int(payload.get("version") or 1),
+            repo_state_hash={str(k): str(v) for k, v in (payload.get("repo_state_hash") or {}).items()},
+            completed_task_summaries={
+                str(k): str(v) for k, v in (payload.get("completed_task_summaries") or {}).items()
+            },
+            blocker=payload.get("blocker") if isinstance(payload.get("blocker"), dict) else None,
         )
     except (json.JSONDecodeError, OSError, KeyError):
         return None
@@ -155,15 +241,126 @@ def read_checkpoint(root: Path) -> AutopilotCheckpoint | None:
 def write_checkpoint(root: Path, checkpoint: AutopilotCheckpoint) -> None:
     path = root / CHECKPOINT_FILENAME
     payload = {
-        "version": 1,
+        "version": checkpoint.version,
         "change_id": checkpoint.change_id,
         "current_task": checkpoint.current_task,
         "completed_tasks": list(checkpoint.completed_tasks),
         "last_action": checkpoint.last_action,
         "context_summary": checkpoint.context_summary,
         "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "repo_state_hash": checkpoint.repo_state_hash,
+        "completed_task_summaries": checkpoint.completed_task_summaries,
+        "blocker": checkpoint.blocker,
     }
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def _hash_file(path: Path) -> str | None:
+    if not path.exists() or not path.is_file():
+        return None
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    return digest[:12]
+
+
+def compute_repo_state_hash(root: Path, change_id: str | None) -> dict[str, str]:
+    paths = [
+        root / "scripts" / "autopilot.py",
+        root / "scripts" / "show_current_frontier.py",
+        root / "AGENTS.md",
+    ]
+    if change_id:
+        change_root = root / "docs" / "changes" / change_id
+        paths.extend(
+            [
+                change_root / "plan.md",
+                change_root / "acceptance.md",
+                change_root / "ai_constraints.md",
+            ]
+        )
+
+    state: dict[str, str] = {}
+    for path in paths:
+        digest = _hash_file(path)
+        if digest is None:
+            continue
+        state[path.relative_to(root).as_posix()] = digest
+    return state
+
+
+def detect_drift(root: Path, checkpoint: AutopilotCheckpoint | None) -> tuple[str, ...]:
+    if checkpoint is None or not checkpoint.repo_state_hash:
+        return ("DRIFT_CLEAN: no checkpoint hash available",)
+    current = compute_repo_state_hash(root, checkpoint.change_id)
+    findings = []
+    for rel_path, old_hash in checkpoint.repo_state_hash.items():
+        new_hash = current.get(rel_path)
+        if new_hash != old_hash:
+            findings.append(f"DRIFT_DETECTED: {rel_path} changed since last checkpoint")
+    if findings:
+        return tuple(findings)
+    return ("DRIFT_CLEAN: no file changes detected",)
+
+
+def read_trajectory(root: Path, limit: int) -> tuple[dict[str, object], ...]:
+    path = root / TRAJECTORY_FILENAME
+    if not path.exists():
+        return ()
+    records: list[dict[str, object]] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            payload = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, dict):
+            records.append(payload)
+    return tuple(records[-limit:])
+
+
+def append_trajectory(
+    root: Path,
+    *,
+    change_id: str | None,
+    task: str | None,
+    action: str,
+    target: str,
+    detail: str,
+    result: str,
+) -> Path:
+    path = root / TRAJECTORY_FILENAME
+    entry = {
+        "ts": datetime.now().isoformat(timespec="seconds"),
+        "session_id": uuid.uuid4().hex[:8],
+        "change_id": change_id,
+        "task": task,
+        "action": action,
+        "target": target,
+        "result": result,
+        "detail": detail,
+    }
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(entry, ensure_ascii=False, sort_keys=True) + "\n")
+    return path
+
+
+def parse_blocker(raw: str) -> dict[str, object]:
+    blocker_type, sep, description = raw.partition(":")
+    parsed_type = blocker_type.strip() if sep else "dependency_missing"
+    parsed_description = description.strip() if sep else raw.strip()
+    escalation = {
+        "scope_expansion": "split_derived",
+        "dependency_missing": "wait_human",
+        "contract_conflict": "wait_human",
+        "test_failure": "auto_retry",
+    }.get(parsed_type, "wait_human")
+    return {
+        "type": parsed_type,
+        "description": parsed_description,
+        "escalation": escalation,
+        "retry_count": 0,
+        "max_retries": 2,
+    }
 
 
 # ── Acceptance 解析 ─────────────────────────────────────────
@@ -207,6 +404,7 @@ def build_snapshot(root: Path, change_id: str | None = None) -> AutopilotSnapsho
             topic_id=None, execution_order=None,
             task_list=(), current_task=None, next_task=None,
             checkpoint=checkpoint, acceptance=None,
+            recent_actions=read_trajectory(root, 5),
             total_changes=frontier["total_changes"],
             active_count=frontier["active_count"],
             completed_count=frontier["completed_count"],
@@ -231,6 +429,7 @@ def build_snapshot(root: Path, change_id: str | None = None) -> AutopilotSnapsho
         next_task=next_task,
         checkpoint=checkpoint,
         acceptance=acceptance,
+        recent_actions=read_trajectory(root, 5),
         total_changes=frontier["total_changes"],
         active_count=frontier["active_count"],
         completed_count=frontier["completed_count"],
@@ -289,9 +488,12 @@ def render_text(snapshot: AutopilotSnapshot) -> str:
 
     if snapshot.task_list:
         lines.append(f"TASK_LIST: {len(snapshot.task_list)} items")
+        summaries = snapshot.checkpoint.completed_task_summaries if snapshot.checkpoint else {}
         for task in snapshot.task_list:
-            mark = "✅" if task.completed else "⬜"
-            lines.append(f"  {mark} {task.key}: {task.label}")
+            mark = "[x]" if task.completed else "[ ]"
+            summary = summaries.get(task.key)
+            suffix = f" — {summary}" if summary else ""
+            lines.append(f"  {mark} {task.key}: {task.label}{suffix}")
         lines.append(f"CURRENT_TASK: {snapshot.current_task or 'all done'}")
         lines.append(f"NEXT_TASK: {snapshot.next_task or 'N/A'}")
     else:
@@ -305,6 +507,17 @@ def render_text(snapshot: AutopilotSnapshot) -> str:
         cp = snapshot.checkpoint
         lines.append(f"CHECKPOINT: change={cp.change_id} task={cp.current_task} updated={cp.updated_at}")
         lines.append(f"LAST_ACTION: {cp.last_action}")
+        if cp.blocker:
+            lines.append(f"BLOCKER: {cp.blocker.get('type')}: {cp.blocker.get('description')}")
+
+    if snapshot.recent_actions:
+        lines.append(f"RECENT_TRAJECTORY: {len(snapshot.recent_actions)} entries")
+        for entry in snapshot.recent_actions[-3:]:
+            lines.append(
+                "  "
+                f"{entry.get('ts')} {entry.get('action')} {entry.get('target')} "
+                f"result={entry.get('result')}"
+            )
 
     lines.append(
         f"FRONTIER: active={snapshot.active_count}"
@@ -324,6 +537,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--json", action="store_true", help="Output JSON")
     parser.add_argument("--update-checkpoint", metavar="ACTION", help="Update checkpoint with action")
     parser.add_argument("--checkpoint-context", default="", help="Additional checkpoint context")
+    parser.add_argument("--task-summary", default="", help="Completed task summary for checkpoint history")
+    parser.add_argument("--log-action", help="Append a trajectory action")
+    parser.add_argument("--log-target", default="", help="Trajectory target path or object")
+    parser.add_argument("--log-detail", default="", help="Trajectory detail")
+    parser.add_argument("--log-result", default="ok", help="Trajectory result")
+    parser.add_argument("--show-trajectory", type=int, metavar="N", help="Show recent trajectory entries")
+    parser.add_argument("--detect-drift", action="store_true", help="Detect drift against checkpoint file hashes")
+    parser.add_argument("--report-blocker", metavar="TYPE: DESCRIPTION", help="Persist a structured blocker")
+    parser.add_argument("--clear-blocker", action="store_true", help="Clear the persisted blocker")
     parser.add_argument("--backfill", action="store_true", help="Backfill plan.md status from acceptance")
     return parser
 
@@ -341,6 +563,57 @@ def main(argv: list[str] | None = None) -> int:
             print("BACKFILL: no changes needed")
         return 0
 
+    if args.show_trajectory is not None:
+        records = read_trajectory(root, args.show_trajectory)
+        for record in records:
+            print(json.dumps(record, ensure_ascii=False, sort_keys=True))
+        if not records:
+            print("TRAJECTORY_EMPTY")
+        return 0
+
+    if args.detect_drift:
+        checkpoint = read_checkpoint(root)
+        for line in detect_drift(root, checkpoint):
+            print(line)
+        return 0
+
+    if args.log_action:
+        snapshot = build_snapshot(root, change_id=args.change_id)
+        path = append_trajectory(
+            root,
+            change_id=snapshot.active_change_id,
+            task=snapshot.current_task,
+            action=args.log_action,
+            target=args.log_target,
+            detail=args.log_detail,
+            result=args.log_result,
+        )
+        print(f"TRAJECTORY_LOGGED: {path}")
+        return 0
+
+    if args.report_blocker or args.clear_blocker:
+        snapshot = build_snapshot(root, change_id=args.change_id)
+        existing = read_checkpoint(root)
+        change_id = args.change_id or (existing.change_id if existing else None) or snapshot.active_change_id
+        if not change_id:
+            print("ERROR: no active change for blocker", file=sys.stderr)
+            return 1
+        blocker = None if args.clear_blocker else parse_blocker(args.report_blocker)
+        checkpoint = AutopilotCheckpoint(
+            change_id=change_id,
+            current_task=snapshot.current_task,
+            completed_tasks=existing.completed_tasks if existing else (),
+            last_action="clear-blocker" if args.clear_blocker else "report-blocker",
+            context_summary=existing.context_summary if existing else "",
+            updated_at=datetime.now().strftime("%Y-%m-%d %H:%M"),
+            repo_state_hash=compute_repo_state_hash(root, change_id),
+            completed_task_summaries=existing.completed_task_summaries if existing else {},
+            blocker=blocker,
+        )
+        write_checkpoint(root, checkpoint)
+        print("BLOCKER_CLEARED" if args.clear_blocker else f"BLOCKER_REPORTED: {blocker['type']}")
+        return 0
+
     if args.update_checkpoint:
         snapshot = build_snapshot(root, change_id=args.change_id)
         existing = read_checkpoint(root)
@@ -348,13 +621,25 @@ def main(argv: list[str] | None = None) -> int:
         if not change_id:
             print("ERROR: no active change to checkpoint", file=sys.stderr)
             return 1
+        completed_tasks = list(existing.completed_tasks if existing else ())
+        task_match = re.search(r"\b(T\d+)\b", args.update_checkpoint)
+        task_key = task_match.group(1) if task_match else snapshot.current_task
+        if args.task_summary and task_key and task_key not in completed_tasks:
+            completed_tasks.append(task_key)
+        summaries = dict(existing.completed_task_summaries if existing else {})
+        if args.task_summary and task_key:
+            summaries[task_key] = args.task_summary
+
         new_checkpoint = AutopilotCheckpoint(
             change_id=change_id,
             current_task=snapshot.current_task,
-            completed_tasks=existing.completed_tasks if existing else (),
+            completed_tasks=tuple(completed_tasks),
             last_action=args.update_checkpoint,
             context_summary=args.checkpoint_context,
             updated_at=datetime.now().strftime("%Y-%m-%d %H:%M"),
+            repo_state_hash=compute_repo_state_hash(root, change_id),
+            completed_task_summaries=summaries,
+            blocker=existing.blocker if existing else None,
         )
         write_checkpoint(root, new_checkpoint)
         print(f"CHECKPOINT_UPDATED: {root / CHECKPOINT_FILENAME}")

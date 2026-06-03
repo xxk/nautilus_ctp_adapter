@@ -16,6 +16,7 @@ rust/target/
 src/*.egg-info/
 src/**/*.egg-info/
 .autopilot_checkpoint.json
+.autopilot_trajectory.jsonl
 
 # Local downloaded inputs / cloned references
 output/sdk_download/

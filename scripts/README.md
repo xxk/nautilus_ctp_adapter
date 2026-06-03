@@ -14,6 +14,7 @@ Current planned entrypoints:
 8. `python scripts/ctp_order_lifecycle_smoke.py --config <path> --instrument c2609 --quantity 1 --limit-price <price>`
 9. `python scripts/check_topic_docs.py`
 10. `python scripts/check_rust_gate.py`
+10a. `python scripts/check_runtime_performance_gate.py --events 5000 --limit 1000 --min-events-per-sec 1000`
 11. `python scripts/ctp_reconciliation_snapshot_smoke.py --config <path>`
 12. `python scripts/ctp_reconciliation_policy_smoke.py --config <path>`
 13. `python scripts/ctp_reconciliation_evidence_smoke.py --config <path>`
@@ -79,6 +80,13 @@ Offhours evidence naming note:
 5. `python scripts/check_rust_gate.py` automatically prepends `vendor/ctp/bin/` to `PATH` when that local pack exists, so cargo-side tests can resolve `thost*_se.dll` without manual PATH edits.
 6. A live-ready vendor bridge build additionally requires a full SDK under `vendor/ctp/sdk/` or a matching `CTP_VENDOR_SDK_ROOT` / `CTP_SDK_ROOT` override.
 7. The runtime pack and SDK payload remain local/private inputs; the Git repository only carries the code and runbooks that describe the layout.
+
+## Runtime Performance Gate
+
+1. `python scripts/check_runtime_performance_gate.py --events 5000 --limit 1000 --min-events-per-sec 1000` is the P001 repo-local lower-bound performance gate for runtime bridge batch draining.
+2. The default report path is `output/reports/p001-ADR001-native-first-runtime-rollout/runtime_performance_gate.json`.
+3. This gate is not live performance evidence and cannot approve external daemon mode.
+4. External daemon remains future-proposal-only unless a formal benchmark proves the in-process batch bridge is the bottleneck.
 
 ## Vendor Bridge Readiness / SDK Handoff
 

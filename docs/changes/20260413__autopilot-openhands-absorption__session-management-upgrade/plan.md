@@ -8,8 +8,8 @@ dependencies:
 
 # Autopilot Session Management 升级：吸收 OpenHands 优点 / Autopilot Session Management Upgrade
 
-**状态**：draft
-**进度**：0%
+**状态**：completed
+**进度**：100%
 **日期**：2026-04-13
 **范围**：scripts/autopilot.py, scripts/show_current_frontier.py
 **topic-id**：autopilot-session-management
@@ -183,19 +183,19 @@ autopilot.py 新增：
 ## 七、任务清单
 
 <!-- TASK-LIST-BEGIN
-- [ ] T1: 实现 Trajectory Log 追加写入与读取
-- [ ] T2: 实现 Drift Detection hash 计算与对比
-- [ ] T3: 实现 History Compression summary 字段
-- [ ] T4: 实现 Blocker Escalation Protocol
-- [ ] T5: 更新 AGENTS.md 的 Autopilot 推动流程
-- [ ] T6: 验证全部新功能与向后兼容性
+- [x] T1: 实现 Trajectory Log 追加写入与读取
+- [x] T2: 实现 Drift Detection hash 计算与对比
+- [x] T3: 实现 History Compression summary 字段
+- [x] T4: 实现 Blocker Escalation Protocol
+- [x] T5: 更新 AGENTS.md 的 Autopilot 推动流程
+- [x] T6: 验证全部新功能与向后兼容性
 TASK-LIST-END -->
 
 | 步骤 | 任务 | 修改文件 | 产出 | 验证动作 | 状态 |
 | --- | --- | --- | --- | --- | --- |
-| T1 | Trajectory Log | scripts/autopilot.py | --log-action, --show-trajectory | 执行写入后读取验证 | ⬜ |
-| T2 | Drift Detection | scripts/autopilot.py | --detect-drift, checkpoint v2 hash | 修改文件后检测到 drift | ⬜ |
-| T3 | History Compression | scripts/autopilot.py | --task-summary, completed_task_summaries | checkpoint 含 summary | ⬜ |
-| T4 | Blocker Protocol | scripts/autopilot.py | --report-blocker, --clear-blocker | 写入后 render 输出 BLOCKER | ⬜ |
-| T5 | AGENTS.md 更新 | AGENTS.md | Autopilot 段落补充新命令 | check_harness 通过 | ⬜ |
-| T6 | 全量验证 | - | 全部 --json 输出正确 | autopilot --json + check_change_docs | ⬜ |
+| T1 | Trajectory Log | scripts/autopilot.py | --log-action, --show-trajectory | 执行写入后读取验证 | ✅ |
+| T2 | Drift Detection | scripts/autopilot.py | --detect-drift, checkpoint v2 hash | 修改文件后检测到 drift | ✅ |
+| T3 | History Compression | scripts/autopilot.py | --task-summary, completed_task_summaries | checkpoint 含 summary | ✅ |
+| T4 | Blocker Protocol | scripts/autopilot.py | --report-blocker, --clear-blocker | 写入后 render 输出 BLOCKER | ✅ |
+| T5 | AGENTS.md 更新 | AGENTS.md | Autopilot 段落补充新命令 | check_harness 通过 | ✅ |
+| T6 | 全量验证 | - | 全部 --json 输出正确 | autopilot --json + check_change_docs | ✅ |
