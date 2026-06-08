@@ -2,24 +2,24 @@
 
 **change-id**: `20260402__governance-harness__changes-topic-index-upgrade`
 **创建日期**: 2026-04-02
-**状态**: not_started
-**进度**：0%
+**状态**: completed
+**进度**：100%
 
 ## 目标
 
-将 `docs/topics/README.md` 从"仅列出 2 个 topic 的静态目录"升级为"列出所有 topic、显示 current state 的实时索引页"。
+将 `docs/topics/README.md` 从"仅列出 2 个 topic 的静态目录"升级为可校验的 topic projection index。
+
+2026-06-08 复核结论：本 change 的原始静态编辑目标已被 Route B successor 实现取代。`docs/topics/README.md` 当前由 `python scripts/sync_topic_index.py --root .` 生成/校验，列出 18 个 topic，并声明 topic 仅为 grouping projection；默认执行 frontier 来自 `docs/changes/*/plan.md`。
 
 ## 范围
 
-- 修改文件：`docs/topics/README.md`
+- 修改文件：无；当前 `docs/topics/README.md` 由 successor generator 管理。
 
 ## 步骤
 
-1. 在文件顶部（`# Changes Topic Index` 标题后、Layering Rule 前）插入 `## Current State` 节：
-   - Active topic：`nautilus-live-marketdata`（进行中）
-   - Active change：`20260402__nautilus-live-marketdata__live-data-client-bootstrap`
-2. 将 `## Current Topics` 节升级为完整 6 条目列表（5 个 implementation topic + 1 个 governance topic），每条包含：状态标签 + 链接 + 一行说明。
-3. 保留 Layering Rule、Recommended Layout、Migration Note 节内容不变。
+1. 校验 `docs/topics/README.md` 是否由 Route B generator 覆盖当前 topic projection。
+2. 校验 topic docs 与 governance checks 是否通过。
+3. 若 successor checks 已通过，不回退为 2026-04-02 的静态 topic list。
 
 ## topic 列表状态（按主线顺序）
 
@@ -35,5 +35,13 @@
 
 ## 不在范围内
 
-- 不修改各 topic README 文件的内容
-- 不修改 `docs/README.md`
+- 不手写改动 generator 管理的 `docs/topics/README.md`。
+- 不修改各 topic README 文件的内容。
+- 不修改 `docs/README.md`。
+
+## 完成记录
+
+1. `python scripts/sync_topic_index.py --root . --check` 返回 `TOPIC_INDEX_CHECK_OK`。
+2. `python scripts/check_topic_docs.py --root .` 返回 `SUMMARY topics=18 failures=0`。
+3. `python scripts/check_topic_governance.py --root .` 返回 `TOPIC_GOVERNANCE_CHECK_OK`。
+4. 因 successor Route B projection 已覆盖原目标，本 change 完成收口。

@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 import time
 
+from nautilus_ctp_adapter.native.pyo3_runtime import create_md_live_session
 from nautilus_ctp_adapter.runtime import (
     CtpRuntimeBridge,
     CtpRuntimeCommand,
@@ -21,13 +22,7 @@ from .instrument_provider import CtpInstrumentProviderLoadResult
 
 
 def _create_md_live_session(flow_path: Path):
-    try:
-        from ctp_runtime._ctp_runtime import CtpMdLiveSession
-    except ImportError as exc:
-        raise RuntimeError(
-            "PyO3 MD bridge unavailable; run maturin develop or pip install -e . before MD smoke"
-        ) from exc
-    return CtpMdLiveSession(str(flow_path))
+    return create_md_live_session(flow_path)
 
 
 @dataclass(slots=True)

@@ -1,0 +1,8 @@
+profile_id: factor_board
+description: Factor Board proposal with UI acceptance and stricter evidence tracking.
+fragments:
+  - issue_list
+  - factor_board
+  - capability_contract
+  - strict_acceptance
+  - change_map

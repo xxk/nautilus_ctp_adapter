@@ -1,7 +1,7 @@
 # Session-Window Runbook / 交易与非交易时段运行手册
 
 **日期**：2026-04-10
-**更新日期**：2026-04-11
+**更新日期**：2026-06-03
 **状态**：in_progress
 **change-id**：20260409__live-session-order-query-hardening__session-window-guardrails-and-runbook
 **关联 plan**：./plan.md
@@ -21,6 +21,17 @@ python scripts/check_rust_gate.py
 ```
 
 根据输出进入下面三条路径之一。
+
+### 本机默认 live 输入 / Local Default Live Inputs
+
+当本机存在 `C:\Users\Administrator\Desktop\TradingServer_260603.csv`、`C:\Users\Administrator\Desktop\MarketDataServer_260603.csv` 和 `cfgs/local/ctp.live.025292.local.json` 时，默认直接使用这些输入，不再向操作者询问配置。
+
+1. CSV 只提供 front：TD 默认 `tcp://180.168.159.225:51205`，MD 默认 `tcp://180.168.159.225:51213`。
+2. 凭据只从 `cfgs/local/ctp.live.025292.local.json` 读取，不写入受版本控制文件，也不在聊天中展开。
+3. 运行 live smoke 前，在仓库外生成临时 config，仅覆盖 `Host` 与 `Pricer`，例如 `D:\Nautilus\_tmp\ctp_login_260603\<name>.json`。
+4. 标准顺序是 `check_rust_gate.py`、MD login smoke、formal `ctp_nautilus_live_smoke.py`，TD 定位时再跑 `ctp_td_login_smoke.py`。
+5. TD login-only 在 Windows 下设置 `PYTHONIOENCODING=utf-8`。
+6. 只有上述本机文件缺失时，才报告 `missing_local_config_or_csv_front` blocker；不要在聊天中索要或复述敏感凭据。
 
 ## 三、路径 A：Vendor Bridge 未就绪 / Vendor Bridge Not Ready
 

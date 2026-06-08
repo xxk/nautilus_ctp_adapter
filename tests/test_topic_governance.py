@@ -20,19 +20,18 @@ def test_sync_topic_index_check_passes() -> None:
 
 def test_collect_current_frontier_returns_consistent_active_state() -> None:
     frontier = collect_current_frontier(repository_root())
-    active_topic = frontier["active_topic"]
     active_change = frontier["active_change"]
 
-    if active_topic is None:
-        assert active_change is None
-        assert frontier["counts"]["open_topic_count"] == 0
-        assert frontier["counts"]["parked_topic_count"] >= 0
+    assert frontier["frontier_source"] == "docs/changes/*/plan.md"
+    assert frontier["active_topic"] is None
+
+    if active_change is None:
+        assert frontier["counts"]["active_change_count"] == 0
+        assert frontier["counts"]["queued_change_count"] >= 0
     else:
-        assert isinstance(active_topic, dict)
-        assert active_topic["canonical_status"] == "in_progress"
-        assert active_topic["execution_order"] == 1
         assert isinstance(active_change, dict)
-        assert active_change["change_id"] == active_topic["next_change_id"]
+        assert active_change["status"] == "in_progress"
+        assert active_change["plan_path"].endswith("/plan.md")
 
 
 def test_audit_topic_docs_passes() -> None:

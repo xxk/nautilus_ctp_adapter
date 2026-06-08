@@ -1,0 +1,74 @@
+{
+  "baseline": "ctp-paper-readonly-snapshot-v1",
+  "success": false,
+  "status": "blocked",
+  "failure_reason": "connect_process_timeout",
+  "blocker_type": "paper-resource",
+  "action_mode": "paper_connect",
+  "connect_requested": true,
+  "schema": {
+    "run_id": "paper-readonly-1780912472773",
+    "flow_path": "output\\ctp-flow\\p004-cancel-pre",
+    "session_label": "p004-cancel-pre-20260608",
+    "account_profile": "openctp-tts-7x24-simulation",
+    "evidence_class": "openctp-tts-7x24-simulation",
+    "reconciliation_role": "pre_or_post_order_snapshot",
+    "schema_version": "ctp-paper-readonly-snapshot-v1"
+  },
+  "config_path": "D:\\Nautilus\\nautilus_ctp_adapter\\cfgs\\local\\ctp.openctp.tts.7x24.local.json",
+  "issues": [
+    "connect_process_timeout"
+  ],
+  "account": {
+    "identity": {
+      "account_id_present": true,
+      "account_id_fingerprint": "eabddb2a8122"
+    },
+    "disposition": {
+      "status": "not_run",
+      "disposition": "request_only",
+      "failure_reason": null
+    }
+  },
+  "positions": {
+    "disposition": {
+      "status": "not_run",
+      "disposition": "request_only",
+      "failure_reason": null
+    },
+    "position_count": null,
+    "no_positions": null,
+    "records": []
+  },
+  "instruments": {
+    "requested_symbols": [
+      "c2609"
+    ],
+    "loaded": null,
+    "instrument_count": null,
+    "records": [],
+    "contract_issues": []
+  },
+  "order_trade": {
+    "disposition": "not_run",
+    "observed_order_event_count": null,
+    "observed_trade_event_count": null
+  },
+  "snapshot_complete": false,
+  "process_timeout_seconds": 5.0,
+  "error_stage": "paper_connect",
+  "error_type": null,
+  "completion": {
+    "status": "blocked",
+    "disposition": "connect_process_timeout",
+    "failure_reason": "connect_process_timeout"
+  },
+  "flow_mode": "explicit_override",
+  "export": {
+    "path": "output\\reports\\p004-openctp-tts-simulation-provider-completeness\\cancel-lifecycle\\pre_cancel_snapshot_live_timeout_blocker.json",
+    "written": true,
+    "session_label": "p004-cancel-pre-20260608",
+    "evidence_root": null,
+    "explicit_path": true
+  }
+}

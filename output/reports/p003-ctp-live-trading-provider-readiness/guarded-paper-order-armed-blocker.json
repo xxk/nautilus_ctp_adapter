@@ -1,0 +1,36 @@
+{
+  "baseline": "ctp-guarded-paper-order-loop-v1",
+  "account_profile": "openctp-paper",
+  "evidence_class": "paper-simulation",
+  "success": false,
+  "status": "blocked",
+  "failure_reason": "paper_order_exception",
+  "blocker_type": "paper-resource",
+  "action_mode": "paper_send",
+  "paper_send_armed": true,
+  "pre_snapshot": {
+    "accepted": true,
+    "issues": []
+  },
+  "intent_contract": {
+    "instrument": "TEST",
+    "side": "BUY",
+    "quantity": 1,
+    "limit_price": 1.0,
+    "position_effect": "OPEN",
+    "price_mode": "best_level_1",
+    "client_order_id": "paper-order-armed-blocker"
+  },
+  "order_contract": null,
+  "mapped_submit": null,
+  "order_lifecycle": null,
+  "post_snapshot": null,
+  "reconciliation": null,
+  "issues": [
+    "RuntimeError"
+  ],
+  "exception": {
+    "type": "RuntimeError",
+    "message": "live order smoke requires ExecutionGuardrails.AllowLiveOrderSmoke=true in config"
+  }
+}

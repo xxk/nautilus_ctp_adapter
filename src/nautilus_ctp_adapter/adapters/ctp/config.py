@@ -96,6 +96,7 @@ class CtpAdapterConfig:
     native_pack_dir: str = ""
     managed_assembly_dir: str = ""
     instruments: list[str] = field(default_factory=list)
+    allow_empty_broker_id: bool = False
     execution_guardrails: CtpExecutionGuardrails = field(default_factory=CtpExecutionGuardrails)
 
     @classmethod
@@ -138,12 +139,13 @@ class CtpAdapterConfig:
             native_pack_dir=str(_first("native_pack_dir", "NativePackDir")),
             managed_assembly_dir=str(_first("managed_assembly_dir", "ManagedAssemblyDir")),
             instruments=[str(item) for item in instruments],
+            allow_empty_broker_id=_as_bool(_first("allow_empty_broker_id", "AllowEmptyBrokerID")),
             execution_guardrails=execution_guardrails,
         )
 
     @classmethod
     def from_json_file(cls, path: str | Path) -> "CtpAdapterConfig":
-        payload = json.loads(Path(path).read_text(encoding="utf-8"))
+        payload = json.loads(Path(path).read_text(encoding="utf-8-sig"))
         if not isinstance(payload, dict):
             raise ValueError("CTP config file must contain a JSON object")
         return cls.from_dict(payload)
@@ -174,6 +176,7 @@ class CtpAdapterConfig:
             native_pack_dir=_env("NATIVE_PACK_DIR"),
             managed_assembly_dir=_env("MANAGED_ASSEMBLY_DIR"),
             instruments=instruments,
+            allow_empty_broker_id=_as_bool(_env("ALLOW_EMPTY_BROKER_ID", "")),
             execution_guardrails=CtpExecutionGuardrails(
                 enabled=_as_bool(_env("EXECUTION_GUARDRAILS_ENABLED", "")),
                 allowed_instruments=guardrail_instruments,
@@ -188,12 +191,13 @@ class CtpAdapterConfig:
     def validate(self) -> list[str]:
         missing: list[str] = []
         required_pairs = {
-            "broker_id": self.broker_id,
             "user_id": self.user_id,
             "password": self.password,
             "md_front": self.md_front,
             "td_front": self.td_front,
         }
+        if not self.allow_empty_broker_id:
+            required_pairs["broker_id"] = self.broker_id
         for field_name, value in required_pairs.items():
             if not value:
                 missing.append(field_name)

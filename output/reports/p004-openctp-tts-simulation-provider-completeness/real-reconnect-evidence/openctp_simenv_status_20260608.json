@@ -1,0 +1,7 @@
+{
+  "captured_at": "2026-06-08T21:51:52",
+  "uri": "http://www.openctp.cn/simenv.html",
+  "status_code": 200,
+  "contains_openctp_7x24": true,
+  "content_sample": "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\">\n<head>\n<title>CTPAPI模拟环境监控</title>\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" />\n<link rel=\"stylesheet\" href=\"assets/css/styles.css\">\n<style>\nhtml {\n  box-sizing: border-box;\n}\n*, *:before, *:after {\n  box-sizing: inherit;\n}\nbody {\n\tfont:100% \"Couriew New\",Courier,monospace;\n\tmargin: 0;\n    min-height: 100vh;\n    display: flex;\n    flex-direction: column;\n    padding: 10px;\n}\n.content-wrapper {\n    flex: 1;\n\tdisplay: flex;\n}\n.main-content {\n\tflex: 1;\n\tpadding: 0px 15px 15px; /* 上 0px，左右 15px，下 15px */\n}\ntable{\n\tborder-collapse:collapse;\n}\nth,td{\n\tfont-size:.875em;\n\tpadding:.5em .75em;\n}\nth,td{\n\tborder:1px solid #000;\n}\nth.subsystem{\n\twidth:10%;\n}\nth.monitorname{\n\twidth:10%;\n}\ntd.monitorstatus{\n\twidth:10%;\n}\ntd.monitorinfo{\n\twidth:70%;\n}\nh2{\n\ttext-align:center;\n\twidth:100%;\n}\ntable:hover\n{\n\tbackgroun"
+}

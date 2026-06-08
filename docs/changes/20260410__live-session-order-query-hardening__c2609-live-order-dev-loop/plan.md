@@ -20,8 +20,8 @@ dependencies:
 
 # C2609 Live Order Dev Loop 开发计划
 
-**状态**：draft
-**进度**：0%
+**状态**：blocked
+**进度**：55%
 **日期**：2026-04-10
 **范围**：`scripts/ctp_order_lifecycle_smoke.py`、`src/nautilus_ctp_adapter/adapters/ctp/execution_client.py`、`tests/`、当前 change 三件套、当前 topic README
 **topic-id**：live-session-order-query-hardening
@@ -71,9 +71,9 @@ dependencies:
 
 | 步骤 | 任务 | 来源 | 修改文件 | 产出 | 验证动作 | 回写目标 | 完成定义 | 状态 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| P1 | 冻结 trade-window preflight 入口与通过信号 | C1/A1 | 当前 change、`scripts/ctp_td_order_truth_smoke.py` | preflight checklist | `python scripts/check_topic_docs.py` | topic README | live-send 前不再靠口头确认 | 未开始 |
-| P2 | 推进 `c2609` 一手 submit/cancel/fill dev loop | A2/A5 | `scripts/ctp_order_lifecycle_smoke.py`、`execution_client.py`、`tests/` | 结构化 live-send 结果与 guardrail 失败语义 | `python scripts/check_topic_docs.py`；必要时 `python -m pytest` | 当前 change | `live_send_armed`、exec match、guardrail reject 可区分 | 未开始 |
-| P3 | 回写 trade-window evidence 与交接 | C4 handoff | 当前 change、topic README | evidence 路径、handoff note | `python scripts/check_topic_governance.py --root .` | topic README | C4 可直接消费当前 evidence | 未开始 |
+| P1 | 冻结 trade-window preflight 入口与通过信号 | C1/A1 | 当前 change、`scripts/ctp_td_order_truth_smoke.py` | preflight checklist | help/source/focused pytest | topic README | live-send 前不再靠口头确认 | 已完成 |
+| P2 | 推进 `c2609` 一手 submit/cancel/fill dev loop | A2/A5 | `scripts/ctp_order_lifecycle_smoke.py`、`execution_client.py`、`tests/` | 结构化 live-send 结果与 guardrail 失败语义 | focused pytest | 当前 change | `live_send_armed`、exec match、guardrail reject 可区分 | 部分完成 |
+| P3 | 回写 trade-window evidence 与交接 | C4 handoff | 当前 change、topic README | evidence 路径、handoff note | `python scripts/check_topic_governance.py --root .` | topic README | C4 可直接消费当前 evidence | 阻塞 |
 
 ## 七、验证动作（可选）
 
@@ -108,9 +108,12 @@ python -m pytest
 
 ## 十一、阻塞项（可选）
 
-1. vendor-bridge 未 ready 前，真实 live-send 不应启动。
+1. formal-trading vendor-bridge/live front 未 ready 前，真实 `c2609` live-send 不应启动。
 2. 交易窗口不可用或净持仓未知时，A2 无法执行。
+3. OpenCTP paper baseline 已在 `20260607__openctp-tts__test-baseline` 完成；它只能解锁 paper simulation development，不能伪造 real-account `c2609` live-send pass。
 
 ## 十二、进度记录（可选）
 
 1. 2026-04-10：创建 C2 正式 change bundle，作为 vendor-bridge ready 后的第一优先交易开发面。
+2. 2026-06-08：repo-only contract 复核通过：`ctp_order_lifecycle_smoke.py` 暴露 `--live-send`；`ctp_td_order_truth_smoke.py` 暴露 `--flow-path`、`--session-label`、`--evidence-root`、`--output-json`；guardrail/live-send-arm focused tests 通过。
+3. 2026-06-08：真实 A1/A2 live-send 验收阻塞于外部 live front/交易窗口/净持仓前置条件，不执行真实报单。

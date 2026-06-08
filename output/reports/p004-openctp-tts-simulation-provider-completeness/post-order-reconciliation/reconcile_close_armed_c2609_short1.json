@@ -1,0 +1,34 @@
+{
+  "scenario_id": "A1",
+  "evidence_class": "openctp-tts-7x24-simulation",
+  "account_profile": "openctp-tts-7x24-simulation",
+  "intent_contract": {
+    "instrument": "c2609",
+    "side": "BUY",
+    "quantity": 1,
+    "limit_price": 2350.0,
+    "position_effect": "CLOSE",
+    "price_mode": "snapshot_close",
+    "client_order_id": "p004-close-armed-c2609-short-20260608-01"
+  },
+  "lifecycle_verdict": {
+    "disposition": "filled",
+    "fill_volume": 1,
+    "leaves_qty": 0
+  },
+  "reconciliation": {
+    "accepted": true,
+    "disposition": "filled_reconciled",
+    "position_count_before": 5,
+    "position_count_after": 5,
+    "position_count_delta": 0,
+    "target_position_key": {
+      "venue_symbol": "c2609",
+      "direction": "SHORT"
+    },
+    "target_position_delta": -1,
+    "expected_position_delta": -1,
+    "requires_followup": false,
+    "issues": []
+  }
+}

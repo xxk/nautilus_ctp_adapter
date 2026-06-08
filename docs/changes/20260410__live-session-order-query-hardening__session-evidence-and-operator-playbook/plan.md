@@ -20,8 +20,8 @@ dependencies:
 
 # Session Evidence 与 Operator Playbook 开发计划
 
-**状态**：draft
-**进度**：0%
+**状态**：completed
+**进度**：100%
 **日期**：2026-04-10
 **范围**：当前 change 三件套、当前 topic README、`docs/README.md`、`scripts/README.md`、必要的 `docs/architecture/` 回写
 **topic-id**：live-session-order-query-hardening
@@ -71,9 +71,9 @@ dependencies:
 
 | 步骤 | 任务 | 来源 | 修改文件 | 产出 | 验证动作 | 回写目标 | 完成定义 | 状态 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| P1 | 冻结 operator 决策树 | C1/C2/C3/U1 | 当前 change、topic README | trade-window vs offhours 决策树 | `python scripts/check_topic_docs.py` | topic README | operator 不再需要临时判断入口 | 未开始 |
-| P2 | 收口 evidence matrix 与入口索引 | sibling change evidence | 当前 change、`docs/README.md`、`scripts/README.md` | 统一证据索引 | `python scripts/check_topic_governance.py --root .` | docs/README | evidence 可按 change/session 查找 | 未开始 |
-| P3 | 回写长期导航与 closeout 说明 | topic closeout | 当前 change、必要的 architecture 文档 | playbook closeout | `python scripts/check_topic_docs.py` | 长期文档 | topic 可以从“推进中”切向稳定操作面 | 未开始 |
+| P1 | 冻结 operator 决策树 | C1/C2/C3/U1 | 当前 change、topic README | trade-window vs offhours 决策树 | `python scripts/check_topic_docs.py` | topic README | operator 不再需要临时判断入口 | 已完成 |
+| P2 | 收口 evidence matrix 与入口索引 | sibling change evidence | 当前 change、`docs/README.md`、`scripts/README.md` | 统一证据索引 | `python scripts/check_topic_governance.py --root .` | docs/README | evidence 可按 change/session 查找 | 已完成 |
+| P3 | 回写长期导航与 closeout 说明 | topic closeout | 当前 change、必要的 architecture 文档 | playbook closeout | `python scripts/check_topic_docs.py` | 长期文档 | topic 可以从“推进中”切向稳定操作面 | 已完成 |
 
 ## 七、验证动作（可选）
 
@@ -107,8 +107,9 @@ python scripts/check_topic_governance.py --root .
 
 ## 十一、阻塞项（可选）
 
-1. 若 sibling changes 没有形成足够 evidence，本 change 只能先冻结框架，不能宣告完成。
+1. C8 OpenCTP paper live smoke 已完成；C2 real-account live-send 仍为外部 formal-trading blocked evidence。本 change 只关闭 operator playbook / evidence matrix 的 repo-only 文档面。
 
 ## 十二、进度记录（可选）
 
 1. 2026-04-10：创建 C4 正式 change bundle，作为 session-window topic 的 operator playbook 收口面。
+2. 2026-06-08：topic README 新增 Operator Decision Playbook，docs README 新增 Operator Entry Matrix，scripts README 新增 Operator decision note；`check_topic_docs.py`、`check_topic_governance.py`、`check_harness.py` 通过。

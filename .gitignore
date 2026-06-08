@@ -1,6 +1,10 @@
 __pycache__/
 .pytest_cache/
 .venv/
+.env
+.env.*
+!.env.example
+.env.d/
 *.pyc
 *.pyo
 *.pyd
@@ -21,3 +25,6 @@ src/**/*.egg-info/
 # Local downloaded inputs / cloned references
 output/sdk_download/
 output/vnpy_ctp_clone/
+output/openctp/
+output/debug/
+output/pytest-tmp/

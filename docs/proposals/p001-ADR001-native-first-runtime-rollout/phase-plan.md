@@ -48,6 +48,29 @@ artifact_boundary:
 
 ---
 
+## ADR Decision Coverage Mapping
+
+Primary ADR: `ADR001`
+Covered decisions: `D1, D2, D3, D4, D5`
+
+| ADR decision item | ADR section / successor scenario | Phase | Child change or proposal-only work | Acceptance row |
+| --- | --- | --- | --- | --- |
+| D1 | ADR001 Section 4.5: Native owns hot path | Phase 2 | `20260529__runtime-performance__p2-native-hot-path-ownership-cutover` | A7 |
+| D2 | ADR001 Section 4.5: Python stays thin host glue | Phase 3 | `20260529__runtime-performance__p3-thin-python-host-glue-contract-lock` | A8 / A9 |
+| D3 | ADR001 Section 4.5: Batch boundary is canonical | Phase 1 | `20260529__runtime-performance__p1` | A5 / A6 |
+| D4 | ADR001 Section 4.5: Daemon path requires measurement gate | Phase 4 | `20260529__runtime-performance__p4-benchmark-gate-and-daemon-decision` | A10 / A11 |
+| D5 | ADR001 Section 4.5: Managed bridge remains non-mainline | Phase 0 / active external change | `20260410__live-session-order-query-hardening__vendor-bridge-readiness-and-sdk-handoff` remains separate scope | A3 / A4 |
+
+---
+
+## Blocker Handling Discipline
+
+1. P001 may not stop on repo-local docs, gate, or contract-lock gaps; those are fixed in the relevant phase or child change.
+2. External live SDK, vendor DLL, or live-account blockers stay typed under the corresponding child change and may not be converted into fake pass evidence.
+3. If a future daemon or full hot-path migration needs live performance proof, that evidence must be produced by a successor proposal or child change before ADR001 landing status is upgraded beyond boundary-locked evidence.
+
+---
+
 ## AI 跟踪状态（AI Tracking Status）
 
 <!-- AI-PHASE-STATUS-BEGIN

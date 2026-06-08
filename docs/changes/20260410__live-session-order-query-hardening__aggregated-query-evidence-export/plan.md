@@ -14,8 +14,8 @@ dependencies:
 
 # Aggregated Query Evidence Export 开发计划
 
-**状态**：draft
-**进度**：0%
+**状态**：completed
+**进度**：100%
 **日期**：2026-04-10
 **范围**：`scripts/ctp_query_adapter_smoke.py`、必要的 `src/nautilus_ctp_adapter/adapters/ctp/` 聚合辅助、`tests/`、当前 change 三件套
 **topic-id**：live-session-order-query-hardening
@@ -106,3 +106,5 @@ python -m pytest tests/test_smoke_import.py -k aggregated_query
 ## 十二、进度记录（可选）
 
 1. 2026-04-10：创建 C5 change bundle，作为 C3 后续的持续 offhours 聚合开发面。
+2. 2026-06-08：复核发现 successor implementation 已落地：`ctp_query_adapter_smoke.py` 支持 `--include-reconciliation`、`--include-order-truth`、`--include-order-trade-snapshot`、`--include-merged-policy`、`--instrument-symbol`、`--flow-path`、`--session-label`、`--evidence-root`、`--output-json`，并由 `scripts/README.md` 记录统一 offhours export 口径。
+3. 2026-06-08：focused pytest `query_adapter_smoke` export/session 相关用例通过，C5 按 repo-only contract 完成；真实 TD/OpenCTP live evidence 仍继承 OpenCTP/front blocker，不作为本 change repo-only 完成前置。

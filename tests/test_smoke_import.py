@@ -81,12 +81,14 @@ from nautilus_ctp_adapter.adapters.ctp.factory import build_ctp_stack
 from nautilus_ctp_adapter.native.loader import (
     BOOTSTRAP_MANAGED_DLLS,
     REQUIRED_NATIVE_DLLS,
+    add_windows_dll_directories,
     candidate_managed_paths,
     candidate_native_dll_paths,
     candidate_native_paths,
     find_native_pack_dir,
     find_repo_owned_native_dll,
 )
+import nautilus_ctp_adapter.native.loader as native_loader_module
 from nautilus_ctp_adapter.native.md_ctypes import CtpMdApi
 from nautilus_ctp_adapter.native.td_ctypes import CtpTdApi, NativeExecView
 from nautilus_ctp_adapter.native.td_ctypes import NativePositionView, NativeTradingAccountView
@@ -449,6 +451,50 @@ def test_ctp_config_loads_repo_example(tmp_path: Path) -> None:
     assert config.execution_guardrails.max_net_position == 5
     assert config.execution_guardrails.max_submit_per_minute == 10
     assert config.execution_guardrails.price_mode == "best_level_1"
+    assert config.execution_guardrails.allow_live_order_smoke is False
+    assert config.validate() == []
+
+
+def test_ctp_config_allows_empty_broker_id_only_when_explicit() -> None:
+    payload = {
+        "BrokerID": "",
+        "UserID": "openctp-user",
+        "Password": "secret",
+        "Pricer": "tcp://trading.openctp.cn:30011",
+        "Host": "tcp://trading.openctp.cn:30001",
+        "Instruments": ["TEST"],
+        "AllowEmptyBrokerID": True,
+    }
+
+    config = CtpAdapterConfig.from_dict(payload)
+
+    assert config.allow_empty_broker_id is True
+    assert config.broker_id == ""
+    assert config.validate() == []
+    assert CtpAdapterConfig.from_dict({**payload, "AllowEmptyBrokerID": False}).validate() == [
+        "broker_id"
+    ]
+
+
+def test_ctp_config_loads_openctp_tts_7x24_example(tmp_path: Path) -> None:
+    source = Path(__file__).resolve().parents[1] / "cfgs" / "ctp.openctp.tts.7x24.example.json"
+    payload = json.loads(source.read_text(encoding="utf-8"))
+    payload["UserID"] = "openctp-user"
+    payload["Password"] = "secret"
+    local_path = tmp_path / "ctp.openctp.tts.7x24.local.json"
+    local_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    config = CtpAdapterConfig.from_json_file(local_path)
+
+    assert config.allow_empty_broker_id is False
+    assert config.broker_id == "9999"
+    assert config.md_front == "tcp://trading.openctp.cn:30011"
+    assert config.td_front == "tcp://trading.openctp.cn:30001"
+    assert config.instruments == ["TEST"]
+    assert config.execution_guardrails.enabled is True
+    assert config.execution_guardrails.allowed_instruments == ["TEST"]
+    assert config.execution_guardrails.max_order_qty == 1
+    assert config.execution_guardrails.max_net_position == 5
     assert config.execution_guardrails.allow_live_order_smoke is False
     assert config.validate() == []
 
@@ -901,6 +947,37 @@ def test_native_loader_prefers_repo_built_ctp_native_before_vendor_pack(tmp_path
 
     assert find_repo_owned_native_dll(tmp_path) == debug_artifact  # [CONTRACT-LOCK: loader must prefer rust/target repo-built ctp_native.dll before vendor/bin fallback copies]
     assert find_native_pack_dir(tmp_path) == vendor_dir  # [CONTRACT-LOCK: vendor/bin remains the dependency root for thost runtime DLL resolution even after repo-owned ctp_native cutover]
+
+
+def test_native_loader_keeps_windows_dll_directory_handles(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    class FakeDllDirectoryHandle:
+        def __init__(self, path: str) -> None:
+            self.path = path
+
+    handles: list[FakeDllDirectoryHandle] = []
+
+    def fake_add_dll_directory(path: str) -> FakeDllDirectoryHandle:
+        handle = FakeDllDirectoryHandle(path)
+        handles.append(handle)
+        return handle
+
+    monkeypatch.setattr(
+        native_loader_module.os,
+        "add_dll_directory",
+        fake_add_dll_directory,
+        raising=False,
+    )
+    monkeypatch.setattr(native_loader_module, "_DLL_DIRECTORY_HANDLES", [])
+    dll_dir = tmp_path / "native"
+    dll_dir.mkdir()
+
+    registered = add_windows_dll_directories(dll_dir)
+
+    assert registered == [dll_dir]
+    assert native_loader_module._DLL_DIRECTORY_HANDLES == handles
 
 
 def test_native_manifest_tracks_repo_owned_abi_and_pack_layout() -> None:
@@ -5208,6 +5285,59 @@ def test_check_rust_gate_prepends_vendor_runtime_bin_to_path(tmp_path: Path) -> 
 
     assert result.returncode == 0
     assert f"INFO rust-gate: runtime-dll-search={runtime_bin}" in result.stdout  # [CONTRACT-LOCK: rust gate must prepend vendor runtime DLL search path before cargo commands so live-ready cargo test can resolve thost*_se.dll]
+
+
+def test_check_rust_gate_syncs_vendor_runtime_dlls_to_cargo_target(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[1]
+    script = root / "scripts" / "check_rust_gate.py"
+    fake_root = _prepare_fake_rust_gate_root(tmp_path)
+    fake_runtime_bin = fake_root / "vendor" / "ctp" / "bin"
+    fake_runtime_bin.mkdir(parents=True)
+    runtime_payloads = {
+        "thostmduserapi_se.dll": b"fresh-md-runtime",
+        "thosttraderapi_se.dll": b"fresh-td-runtime",
+    }
+    for filename, payload in runtime_payloads.items():
+        (fake_runtime_bin / filename).write_bytes(payload)
+
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake_target_dir = tmp_path / "rust-target"
+    for target_dir in (fake_target_dir / "debug", fake_target_dir / "debug" / "deps"):
+        target_dir.mkdir(parents=True)
+        for filename in runtime_payloads:
+            (target_dir / filename).write_bytes(b"stale-runtime")
+
+    metadata_json = json.dumps(
+        {
+            "workspace_members": [
+                "ctp_runtime_core 0.1.0 (path+file:///D:/Nautilus/nautilus_ctp_adapter/rust/ctp_runtime_core)"
+            ],
+            "target_directory": fake_target_dir.as_posix(),
+            "version": 1,
+        }
+    )
+    _write_fake_cargo(fake_bin, fake_target_dir, metadata_json)
+    env = os.environ.copy()
+    env["PATH"] = str(fake_bin)
+    env["NAUTILUS_CTP_ADAPTER_ROOT_OVERRIDE"] = str(fake_root)
+
+    result = subprocess.run(
+        [sys.executable, str(script)],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+        env=env,
+    )
+
+    assert result.returncode == 0
+    for target_dir in (fake_target_dir / "debug", fake_target_dir / "debug" / "deps"):
+        for filename, payload in runtime_payloads.items():
+            assert (target_dir / filename).read_bytes() == payload
+    assert "INFO rust-gate: runtime-dll-synced=" in result.stdout
 
 
 def test_check_rust_gate_reports_vendor_bridge_ready_when_sdk_is_present(tmp_path: Path) -> None:

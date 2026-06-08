@@ -1,0 +1,25 @@
+{
+  "BrokerID": "9999",
+  "UserID": "",
+  "Password": "",
+  "ProductInfo": "OpenCTP",
+  "AppID": "",
+  "AuthCode": "",
+  "Pricer": "tcp://trading.openctp.cn:30011",
+  "Host": "tcp://trading.openctp.cn:30001",
+  "ProviderId": 45,
+  "PostLoginDelaySeconds": 3,
+  "ManagedAssemblyDir": "",
+  "NativePackDir": "",
+  "AllowEmptyBrokerID": false,
+  "Instruments": ["TEST"],
+  "ExecutionGuardrails": {
+    "Enabled": true,
+    "AllowedInstruments": ["TEST"],
+    "MaxOrderQty": 1,
+    "MaxNetPosition": 5,
+    "MaxSubmitPerMinute": 10,
+    "PriceMode": "best_level_1",
+    "AllowLiveOrderSmoke": false
+  }
+}

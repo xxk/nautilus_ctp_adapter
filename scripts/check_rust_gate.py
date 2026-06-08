@@ -20,6 +20,7 @@ SDK_REQUIRED_FILES = (
     "thostmduserapi_se.lib",
     "thosttraderapi_se.lib",
 )
+RUNTIME_VENDOR_DLLS = ("thostmduserapi_se.dll", "thosttraderapi_se.dll")
 SDK_SEARCH_MAX_DEPTH = 8
 
 
@@ -88,6 +89,44 @@ def vendor_runtime_bin(root: Path) -> Path | None:
     if candidate.exists():
         return candidate
     return None
+
+
+def sync_vendor_runtime_dlls_to_target_dirs(
+    root: Path,
+    build_target_dir: Path,
+) -> list[Path]:
+    """Keep Cargo test DLL loading aligned with the repo native pack.
+
+    On Windows, Cargo may put target output directories ahead of the vendor
+    runtime pack when launching test binaries.  If an older CTP runtime DLL is
+    left in target/debug, the test executable can fail during process load with
+    STATUS_ENTRYPOINT_NOT_FOUND before any Rust test runs.
+    """
+    runtime_bin = vendor_runtime_bin(root)
+    if runtime_bin is None:
+        return []
+
+    target_dirs = [build_target_dir / "debug", build_target_dir / "debug" / "deps"]
+    copied: list[Path] = []
+    for target_dir in target_dirs:
+        target_dir.mkdir(parents=True, exist_ok=True)
+        for filename in RUNTIME_VENDOR_DLLS:
+            source = runtime_bin / filename
+            if not source.exists():
+                continue
+            target = target_dir / filename
+            if target.exists():
+                try:
+                    if (
+                        target.stat().st_size == source.stat().st_size
+                        and target.read_bytes() == source.read_bytes()
+                    ):
+                        continue
+                except OSError:
+                    pass
+            shutil.copy2(source, target)
+            copied.append(target)
+    return copied
 
 
 def build_command_env(root: Path) -> dict[str, str]:
@@ -427,6 +466,11 @@ def main() -> int:
         print_block("STDOUT rust-gate: ", ctp_py_build_result.stdout)
     else:
         print("WARN rust-gate: ctp_py-not-found (skipping PyO3 bridge check)")
+
+    synced_runtime_dlls = sync_vendor_runtime_dlls_to_target_dirs(root, build_target_dir)
+    if synced_runtime_dlls:
+        for copied_path in synced_runtime_dlls:
+            print(f"INFO rust-gate: runtime-dll-synced={copied_path}")
 
     # ── cargo test ────────────────────────────────────────────────────────
     test_command = [cargo, "test", "--manifest-path", str(manifest)]

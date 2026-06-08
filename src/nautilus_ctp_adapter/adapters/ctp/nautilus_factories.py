@@ -10,7 +10,6 @@ import asyncio
 
 from nautilus_trader.cache.cache import Cache
 from nautilus_trader.common.component import LiveClock, MessageBus
-from nautilus_trader.common.providers import InstrumentProvider
 from nautilus_trader.live.data_client import LiveMarketDataClient
 from nautilus_trader.live.execution_client import LiveExecutionClient
 from nautilus_trader.live.factories import LiveDataClientFactory, LiveExecClientFactory
@@ -22,15 +21,16 @@ from .nautilus_config import (
 )
 from .nautilus_data import CtpLiveDataClient
 from .nautilus_execution import CtpLiveExecutionClient
+from .nautilus_provider import CtpNautilusInstrumentProvider
 
 # Module-level cache for shared InstrumentProvider instances.
 # Key: "{td_front}:{broker_id}:{user_id}"
-_CTP_PROVIDERS: dict[str, InstrumentProvider] = {}
+_CTP_PROVIDERS: dict[str, CtpNautilusInstrumentProvider] = {}
 
 
 def get_ctp_instrument_provider(
     config: CtpInstrumentProviderConfig,
-) -> InstrumentProvider:
+) -> CtpNautilusInstrumentProvider:
     """Return a cached InstrumentProvider for the given CTP config.
 
     Uses td_front:broker_id:user_id as the cache key so that
@@ -38,7 +38,7 @@ def get_ctp_instrument_provider(
     """
     key = f"{config.td_front}:{config.broker_id}:{config.user_id}"
     if key not in _CTP_PROVIDERS:
-        _CTP_PROVIDERS[key] = InstrumentProvider()
+        _CTP_PROVIDERS[key] = CtpNautilusInstrumentProvider(config)
     return _CTP_PROVIDERS[key]
 
 

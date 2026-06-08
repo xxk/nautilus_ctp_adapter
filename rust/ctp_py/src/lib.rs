@@ -1077,6 +1077,42 @@ impl CtpTdLiveSession {
         ))
     }
 
+    #[allow(clippy::too_many_arguments)]
+    fn order_action(
+        &mut self,
+        broker_id: &str,
+        investor_id: &str,
+        instrument_id: &str,
+        order_ref: &str,
+        front_id: i32,
+        session_id: i32,
+        exchange_id: &str,
+        order_sys_id: &str,
+        action_flag: i32,
+    ) -> PyResult<i32> {
+        if self.disposed {
+            return Ok(INVALID_HANDLE);
+        }
+        let broker_id_c = to_cstring("broker_id", broker_id)?;
+        let investor_id_c = to_cstring("investor_id", investor_id)?;
+        let instrument_id_c = to_cstring("instrument_id", instrument_id)?;
+        let order_ref_c = to_cstring("order_ref", order_ref)?;
+        let exchange_id_c = to_cstring("exchange_id", exchange_id)?;
+        let order_sys_id_c = to_cstring("order_sys_id", order_sys_id)?;
+        Ok(ffi::TdOrderAction(
+            self.handle_ptr(),
+            broker_id_c.as_ptr(),
+            investor_id_c.as_ptr(),
+            instrument_id_c.as_ptr(),
+            order_ref_c.as_ptr(),
+            front_id,
+            session_id,
+            exchange_id_c.as_ptr(),
+            order_sys_id_c.as_ptr(),
+            action_flag,
+        ))
+    }
+
     fn dispose(&mut self) {
         if self.disposed {
             return;

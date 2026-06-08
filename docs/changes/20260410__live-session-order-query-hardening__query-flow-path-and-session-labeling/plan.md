@@ -14,8 +14,8 @@ dependencies:
 
 # Query Flow Path And Session Labeling 开发计划
 
-**状态**：draft
-**进度**：0%
+**状态**：completed
+**进度**：100%
 **日期**：2026-04-10
 **范围**：offhours 相关 `scripts/`、必要的 evidence 命名辅助、`tests/`、当前 change 三件套
 **topic-id**：live-session-order-query-hardening
@@ -53,9 +53,9 @@ dependencies:
 
 | 步骤 | 任务 | 来源 | 修改文件 | 产出 | 验证动作 | 回写目标 | 完成定义 | 状态 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| P1 | 冻结参数命名与默认行为 | operator 使用痛点 | 当前 change、脚本 | `flow-path/session-label/evidence-root` contract | 文档自检 | `scripts/README.md` | 多入口参数语义一致 | 未开始 |
-| P2 | 实现参数下沉与 evidence 命名 | 持续开发 backlog | 脚本、helper、`tests/` | 一致的 flow/session 命名 | targeted pytest | topic README | evidence 不再互相覆盖 | 未开始 |
-| P3 | 回写导航与示例 | operator discoverability | 当前 change、`scripts/README.md` | 参数示例 | `python scripts/check_topic_docs.py --root .` | scripts/README | 使用方式清楚 | 未开始 |
+| P1 | 冻结参数命名与默认行为 | operator 使用痛点 | 当前 change、脚本 | `flow-path/session-label/evidence-root` contract | 文档自检 | `scripts/README.md` | 多入口参数语义一致 | 已完成 |
+| P2 | 实现参数下沉与 evidence 命名 | 持续开发 backlog | 脚本、helper、`tests/` | 一致的 flow/session 命名 | targeted pytest | topic README | evidence 不再互相覆盖 | 已完成 |
+| P3 | 回写导航与示例 | operator discoverability | 当前 change、`scripts/README.md` | 参数示例 | `python scripts/check_topic_docs.py --root .` | scripts/README | 使用方式清楚 | 已完成 |
 
 ## 五、长期规则增量摘要 / Long-Term Rule Delta Summary
 
@@ -73,3 +73,4 @@ dependencies:
 8. 2026-04-10：同一套 contract 已继续扩到 `ctp_md_startup_truth_smoke.py`、`ctp_md_restore_policy_smoke.py` 与 `ctp_md_truth_evidence_matrix_smoke.py`，并补齐为统一 `baseline / success / failure_reason` operator contract；这说明 C7 在主要 offhours evidence-bearing 脚本面上的参数/命名重复工作已经基本被 active C3 吸收，后续更适合把剩余工作收敛到 runbook、topic 规则、少量非 evidence 入口与是否保留独立 C7 的治理判断。
 9. 2026-04-10：同一套 contract 已继续扩到 `ctp_instrument_query_smoke.py`、`ctp_position_query_smoke.py` 与 `ctp_account_query_smoke.py` 这三条核心只读 leaf 入口，连单脚本 query evidence 也能稳定落到统一 session namespace；这说明 C7 在 offhours 查询主线上的参数/命名重复工作已进一步被 active C3 吸收，后续更适合把剩余工作聚焦到 runbook、topic 规则与是否保留独立 change 的治理判断。
 10. 2026-04-10：同一套 contract 已继续扩到 `ctp_md_login_smoke.py`、`ctp_live_data_client_bootstrap_smoke.py` 与 `ctp_marketdata_smoke.py` 这三条剩余 MD diagnostics-only leaf 入口；这说明 C7 在脚本参数/命名层面的重复工作几乎已被 active C3 吸收，后续若仍保留独立 C7，更适合只承接 runbook、topic rule 与 change 治理收口。
+11. 2026-06-08：focused pytest 覆盖 `flow_path/session_label/evidence_root/conflicting_export_targets/stable_default_label` 共 37 个用例通过；`scripts/README.md` 已记录统一 offhours evidence naming note，本 change 完成收口。

@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 import time
 
+from nautilus_ctp_adapter.native.pyo3_runtime import create_td_live_session
 from nautilus_ctp_adapter.runtime import (
     CtpRuntimeBridge,
     CtpRuntimeCommand,
@@ -19,13 +20,7 @@ from .normalization import NormalizedCtpInstrument, normalize_instrument_record
 
 
 def _create_td_live_session(flow_path: Path):
-    try:
-        from ctp_runtime._ctp_runtime import CtpTdLiveSession
-    except ImportError as exc:
-        raise RuntimeError(
-            "PyO3 TD bridge unavailable; run maturin develop or pip install -e . before TD instrument smoke"
-        ) from exc
-    return CtpTdLiveSession(str(flow_path))
+    return create_td_live_session(flow_path)
 
 
 @dataclass(slots=True)
