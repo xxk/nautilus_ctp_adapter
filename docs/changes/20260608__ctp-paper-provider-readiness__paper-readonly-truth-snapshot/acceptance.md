@@ -74,10 +74,10 @@ scenarios:
 | C0 Venue | `ExchangeID` / normalized exchange | venue routing、订阅、下单 exchange 约束 | covered |
 | C0 Trading unit | `PriceTick`, `VolumeMultiple` | tick-size、notional、order price/qty preflight | covered |
 | C0 Product | `ProductClass` / normalized product kind | futures/options/security 分类与 provider hydration | covered |
-| C1 Human metadata | `InstrumentName` | operator/runbook 展示、人工核对 | planned |
-| C1 Lifecycle | `OpenDate`, `ExpireDate`, `StartDelivDate`, `EndDelivDate`, `IsTrading` | 合约是否可交易、到期/交割窗口 guardrail | planned |
-| C1 Market limits | `LongMarginRatio`, `ShortMarginRatio`, `MaxMarketOrderVolume`, `MinMarketOrderVolume`, `MaxLimitOrderVolume`, `MinLimitOrderVolume` | order guardrail、risk preview、最小/最大委托量 | planned |
-| C1 Product relation | `ProductID`, `UnderlyingInstrID`, `DeliveryYear`, `DeliveryMonth` | 合约月份、underlying、跨品种校验 | planned |
+| C1 Human metadata | `InstrumentName` | operator/runbook 展示、人工核对 | covered via `20260610__ctp-paper-provider-readiness__instrument-detail-completeness` |
+| C1 Lifecycle | `OpenDate`, `ExpireDate`, `StartDelivDate`, `EndDelivDate`, `IsTrading` | 合约是否可交易、到期/交割窗口 guardrail | partially_covered via `20260610__ctp-paper-provider-readiness__instrument-detail-completeness`; real OpenCTP evidence currently provides `OpenDate`/`ExpireDate`, while remaining fields stay typed missing |
+| C1 Market limits | `LongMarginRatio`, `ShortMarginRatio`, `MaxMarketOrderVolume`, `MinMarketOrderVolume`, `MaxLimitOrderVolume`, `MinLimitOrderVolume` | order guardrail、risk preview、最小/最大委托量 | contract_ready via `20260610__ctp-paper-provider-readiness__instrument-detail-completeness`; real OpenCTP evidence currently keeps these fields typed missing |
+| C1 Product relation | `ProductID`, `UnderlyingInstrID`, `DeliveryYear`, `DeliveryMonth` | 合约月份、underlying、跨品种校验 | partially_covered via `20260610__ctp-paper-provider-readiness__instrument-detail-completeness`; `ProductID` / `DeliveryYear` / `DeliveryMonth` present, `UnderlyingInstrID` typed missing in current evidence |
 | C2 Options-specific | `OptionsType`, `StrikePrice`, `UnderlyingMultiple`, `CombinationType` | 期权链与组合合约；P003 paper futures baseline 不强制 | out_of_scope_current |
 
 ### 正确性校验规则 / Correctness Rules
@@ -85,26 +85,31 @@ scenarios:
 | ID | 类型 | 规则 | Must fail if | 状态 |
 | --- | --- | --- | --- | --- |
 | CD-C1 | completeness | C0 字段全部存在且非空：symbol、exchange、product kind、price tick、volume multiple、display id | 任一 C0 字段缺失却进入 provider/cache | covered |
-| CD-C2 | completeness | C1 字段若 runtime 可见，必须原样进入 redacted snapshot 的 `raw_detail` 或 `detail_fields` | 查询结果含字段但 wrapper 丢弃且无 disposition | planned |
+| CD-C2 | completeness | C1 字段若 runtime 可见，必须原样进入 redacted snapshot 的 `raw_detail` 或 `detail_fields` | 查询结果含字段但 wrapper 丢弃且无 disposition | covered via `20260610__ctp-paper-provider-readiness__instrument-detail-completeness` |
 | CD-C3 | correctness | `display_symbol` 必须由 normalized symbol + normalized exchange 派生，且与 provider/cache 使用一致 | 同一合约在 snapshot 和 provider/cache 中出现不同 id | covered |
 | CD-C4 | correctness | `price_tick > 0`，`volume_multiple > 0`，委托价格必须可按 tick 对齐 | tick/multiplier 非正数仍允许下单 preflight | covered |
-| CD-C5 | correctness | `ProductClass` 映射到已知 product kind；未知类型只能进入 `unknown_product_kind` disposition | unknown product kind 被当作 futures pass | planned |
-| CD-C6 | correctness | 若 `IsTrading=false` 或合约处于到期/交割禁用窗口，Phase 3 下单 preflight 必须阻断 | 非交易合约仍进入 paper order send | planned |
-| CD-C7 | correctness | 若 min/max order volume 可见，Phase 3 qty 必须落在范围内 | qty 超出合约限制仍通过 | planned |
-| CD-C8 | negative | 同一 `InstrumentID` 返回多个 exchange 或冲突 tick/multiplier | 冲突字段被静默合并 | planned |
+| CD-C5 | correctness | `ProductClass` 映射到已知 product kind；未知类型只能进入 `unknown_product_kind` disposition | unknown product kind 被当作 futures pass | covered via `20260610__ctp-paper-provider-readiness__instrument-detail-completeness` |
+| CD-C6 | correctness | 若 `IsTrading=false` 或合约处于到期/交割禁用窗口，Phase 3 下单 preflight 必须阻断 | 非交易合约仍进入 paper order send | contract_ready via `20260610__ctp-paper-provider-readiness__instrument-detail-completeness`; real field availability remains typed missing when upstream omits it |
+| CD-C7 | correctness | 若 min/max order volume 可见，Phase 3 qty 必须落在范围内 | qty 超出合约限制仍通过 | contract_ready via `20260610__ctp-paper-provider-readiness__instrument-detail-completeness`; real field availability remains typed missing when upstream omits it |
+| CD-C8 | negative | 同一 `InstrumentID` 返回多个 exchange 或冲突 tick/multiplier | 冲突字段被静默合并 | covered by successor tests in `20260610__ctp-paper-provider-readiness__instrument-detail-completeness` |
 
 ### Evidence Shape
 
 | 字段 | 要求 | 示例 disposition |
 | --- | --- | --- |
 | `instruments.records[]` | 保留 normalized C0 字段，供 provider/cache 和 Phase 3 preflight 使用 | `passed` |
-| `instruments.detail_fields[]` | 后续承接 C1/C2 原始明细字段，字段缺失时记录 missing list | `planned` |
+| `instruments.detail_fields[]` | 后续承接 C1/C2 原始明细字段，字段缺失时记录 missing list | `covered via 20260610__ctp-paper-provider-readiness__instrument-detail-completeness` |
 | `instruments.contract_issues[]` | 字段缺失、非正 tick/multiplier、未知 product kind、冲突字段 | `data-contract` |
-| `instruments.correctness_summary` | total、passed、failed、unknown、out_of_scope 计数 | `planned` |
+| `instruments.correctness_summary` | total、passed、failed、unknown、out_of_scope 计数 | `covered via 20260610__ctp-paper-provider-readiness__instrument-detail-completeness` |
 
 ### Completion Rule
 
-当前 Phase 2 的 `passed` 只覆盖 C0 基础合约查询正确性。若要声明“合约明细查询完整性完成”，必须新增或扩展 runtime/query record，使 C1 字段可进入 evidence，并通过 CD-C2、CD-C5、CD-C6、CD-C7、CD-C8；否则只能声明为 `basic_contract_fields_passed`。
+当前 Phase 2 的 `passed` 已通过 `20260610__ctp-paper-provider-readiness__instrument-detail-completeness` 扩展到 “C1 contract ready + real evidence partial coverage”。
+当前可正式声明：
+
+1. `InstrumentName`、`OpenDate`、`ExpireDate`、`ProductID`、`DeliveryYear`、`DeliveryMonth` 若由 upstream query 提供，已进入 redacted snapshot evidence。
+2. `UnderlyingInstrID` 与 market-limit / trading-status 相关字段在当前真实 OpenCTP evidence 中仍可能缺失，但缺失会进入 `missing_fields`，不会被伪造为 covered。
+3. preflight 已具备消费 `IsTrading`、日期格式和 min/max order volume 的 contract；若上游未来提供这些字段，将直接生效。
 
 ## 最终结论 / Final Verdict
 

@@ -97,6 +97,13 @@ Governance layout is aligned toward `DSLReserach`:
 6. Executable child changes live under `docs/changes/<change-id>/`
 7. New child changes should start from the local `_template` bundle, including `design.md` when needed
 
+Doc harness baseline rule:
+
+1. `docs/doc_harness_kit/README.md` is the local stable entry.
+2. The upstream basic kit baseline is `D:\Nautilus\docs\doc_harness_kit\`.
+3. The advanced governance capability baseline is `D:\Nautilus\nautilus_strategies`.
+4. Neither external path may become this repository's execution state source.
+
 ## Topic Transition Rule
 
 > **DEPRECATED**: Topic registry and sync_topic_index are replaced by Route B.

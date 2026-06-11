@@ -1,6 +1,6 @@
 # Work Item Type System / 工作项类型系统
 
-**状态**：proposed-specification
+**状态**：binding-specification
 **ADR**：[ADR003](../adr/ADR003%20Doc%20Harness%20Capability%20Replication%20And%20Strategies%20Alignment.md)
 
 ---
@@ -66,4 +66,3 @@ Templates live in workflows.
 Instances live in proposals and changes.
 Evidence lives in changes and typed artifacts.
 ```
-

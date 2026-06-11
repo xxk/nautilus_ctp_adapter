@@ -52,6 +52,13 @@ class NormalizedCtpInstrument:
     instrument_name: str | None
     price_tick: float | None
     volume_multiple: int | None
+    product_id: str | None = None
+    underlying_instr_id: str | None = None
+    open_date: str | None = None
+    expire_date: str | None = None
+    create_date: str | None = None
+    exchange_inst_id: str | None = None
+    lot_size: int | None = None
 
 
 def normalize_exchange_id(exchange_id: str | None) -> str | None:
@@ -143,4 +150,11 @@ def normalize_instrument_record(record: CtpInstrumentRecord) -> NormalizedCtpIns
         instrument_name=record.instrument_name,
         price_tick=record.price_tick,
         volume_multiple=record.volume_multiple,
+        product_id=record.product_id,
+        underlying_instr_id=record.underlying_instr_id,
+        open_date=record.open_date,
+        expire_date=record.expire_date,
+        create_date=record.create_date,
+        exchange_inst_id=record.exchange_inst_id,
+        lot_size=record.lot_size,
     )

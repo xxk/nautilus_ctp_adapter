@@ -1,7 +1,7 @@
 # Workflows / 工作流规范
 
 **创建日期**：2026-06-07
-**状态**：proposed-specification
+**状态**：binding-specification
 **Authority boundary**：本目录定义“工作如何被规划、拆分、约束、验收、gate”。它不是新的执行状态源。
 
 ---
@@ -22,6 +22,11 @@ docs/changes/<change-id>/ owns executable plan, tests and acceptance evidence.
 2. proposal 实例仍落在 `docs/proposals/<proposal-id>/`。
 3. 可执行状态仍落在 `docs/changes/<change-id>/plan.md`。
 4. 真实证据仍落在 child change `acceptance.md` 或明确声明的 artifact root。
+
+ADR003 closeout status:
+
+1. 本目录已经成为本仓 binding workflow specification。
+2. 后续若继续补 profile-aware validation，应在本仓 change 中推进，而不是把外部仓目录直接当作运行时依赖。
 
 ## Non-Goals / 非目标
 
@@ -57,4 +62,3 @@ Governance fragments and gates:
 `scripts/check_adr_docs.py` owns the current executable ADR gate.
 `scripts/check_proposal_docs.py` owns the current executable proposal template gate.
 `scripts/check_harness.py` remains the aggregate docs gate.
-

@@ -2,7 +2,7 @@
 
 > AI 先读本索引，再按需打开具体 ADR。
 
-- 更新日期：2026-06-07
+- 更新日期：2026-06-10
 - 模板入口：[ADR模板 / ADR Template](./ADR模板_ADR%20Template.md)
 
 ---
@@ -22,7 +22,7 @@
 | --- | --- | --- | --- |
 | ADR001 | [高性能优先原生主线适配边界 / High-Performance Native-First Adapter Boundary](./ADR001%20%E9%AB%98%E6%80%A7%E8%83%BD%E4%BC%98%E5%85%88%E5%8E%9F%E7%94%9F%E4%B8%BB%E7%BA%BF%E9%80%82%E9%85%8D%E8%BE%B9%E7%95%8C_High-Performance%20Native-First%20Adapter%20Boundary.md) | native-first runtime + thin Python host glue | completed via p001 |
 | ADR002 | [OpenCTP TTS / Paper Simulation Test Environment](./ADR002%20OpenCTP%20TTS%20Paper%20Simulation%20Test%20Environment.md) | 默认 paper simulation / development test environment 采用 OpenCTP TTS 7x24；real-account CTP 保留为最终证据路径 | completed via `20260607__openctp-tts__test-baseline` |
-| ADR003 | [Doc Harness Capability Replication And Strategies Alignment](./ADR003%20Doc%20Harness%20Capability%20Replication%20And%20Strategies%20Alignment.md) | 本仓 doc / harness 能力缺失时，默认向 `D:\Nautilus\nautilus_strategies` 的治理能力对齐，但保持本仓 local frontier authority | planned |
+| ADR003 | [Doc Harness Capability Replication And Strategies Alignment](./ADR003%20Doc%20Harness%20Capability%20Replication%20And%20Strategies%20Alignment.md) | 本仓 doc / harness 能力缺失时，默认向 `D:\Nautilus\nautilus_strategies` 的治理能力对齐，但保持本仓 local frontier authority | completed via `20260610__governance__adr003-landing-closeout` |
 
 ---
 

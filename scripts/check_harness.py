@@ -31,6 +31,9 @@ REQUIRED_VERIFY_COMMANDS = (
     "python scripts/show_current_frontier.py",
 )
 
+DOC_HARNESS_README = "docs/doc_harness_kit/README.md"
+DOC_HARNESS_TOPIC_CHECKLIST = "docs/doc_harness_kit/checks/topic-transition-checklist.md"
+
 
 def _check_agents_md(root: Path) -> list[str]:
     findings: list[str] = []
@@ -142,6 +145,31 @@ def _check_workflows_dir(root: Path) -> list[str]:
     return findings
 
 
+def _check_doc_harness_entry(root: Path) -> list[str]:
+    findings: list[str] = []
+    readme_path = root / DOC_HARNESS_README
+    checklist_path = root / DOC_HARNESS_TOPIC_CHECKLIST
+
+    if not readme_path.exists():
+        findings.append(f"{DOC_HARNESS_README} does not exist")
+        return findings
+
+    text = readme_path.read_text(encoding="utf-8")
+    if "D:\\Nautilus\\docs\\doc_harness_kit" not in text:
+        findings.append(
+            f"{DOC_HARNESS_README} must point to the upstream doc harness kit baseline"
+        )
+    if "nautilus_strategies" not in text:
+        findings.append(
+            f"{DOC_HARNESS_README} must describe nautilus_strategies as the advanced governance baseline"
+        )
+
+    if not checklist_path.exists():
+        findings.append(f"{DOC_HARNESS_TOPIC_CHECKLIST} does not exist")
+
+    return findings
+
+
 def check_harness(root: Path) -> list[str]:
     findings: list[str] = []
     findings.extend(_check_agents_md(root))
@@ -149,6 +177,7 @@ def check_harness(root: Path) -> list[str]:
     findings.extend(_check_adr_dir(root))
     findings.extend(_check_proposals_dir(root))
     findings.extend(_check_workflows_dir(root))
+    findings.extend(_check_doc_harness_entry(root))
     findings.extend(validate_adr_docs(root))
     return findings
 

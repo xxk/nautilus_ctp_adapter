@@ -22,6 +22,8 @@ The current simulation provider path has these completed capabilities:
 6. Nautilus-facing execution report projection through `CtpLiveExecutionClient`, including accepted, canceled, rejected, fill, account and position reports.
 7. Callback idempotency for duplicate fill/order events in the Nautilus report path.
 8. Controlled MD/TD reconnect evidence using a process-scoped localhost front proxy, including disconnect typing, resubscribe-once, TD readiness, query recovery and `paper_send_armed=false`.
+9. Paper readonly instrument snapshot now preserves C1 contract details when upstream query provides them, including `instrument_name`, lifecycle dates, `product_id`, derived delivery year/month, and typed missing-field lists for unavailable detail fields.
+10. Guarded paper order preflight now shares the same normalized instrument-detail contract and can conservatively block on non-tradable status, malformed lifecycle dates, and min/max order-volume violations when those fields are available.
 
 ## Controlled Reconnect Boundary
 

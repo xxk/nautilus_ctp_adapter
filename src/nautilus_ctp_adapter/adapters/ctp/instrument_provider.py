@@ -103,6 +103,13 @@ class CtpInstrumentProvider:
         instrument_name: str,
         price_tick: float,
         volume_multiple: int,
+        product_id: str | None = None,
+        underlying_instr_id: str | None = None,
+        open_date: str | None = None,
+        expire_date: str | None = None,
+        create_date: str | None = None,
+        exchange_inst_id: str | None = None,
+        lot_size: int | None = None,
     ) -> None:
         self._runtime_bridge.push_event(
             CtpRuntimeEvent(
@@ -117,6 +124,13 @@ class CtpInstrumentProvider:
                     "instrument_name": instrument_name,
                     "price_tick": str(price_tick),
                     "volume_multiple": str(volume_multiple),
+                    "product_id": product_id or "",
+                    "underlying_instr_id": underlying_instr_id or "",
+                    "open_date": open_date or "",
+                    "expire_date": expire_date or "",
+                    "create_date": create_date or "",
+                    "exchange_inst_id": exchange_inst_id or "",
+                    "lot_size": "" if lot_size is None else str(lot_size),
                 },
             )
         )
@@ -236,6 +250,13 @@ class CtpInstrumentProvider:
             instrument_name=instrument.instrument_name,
             price_tick=instrument.tick_size,
             volume_multiple=instrument.volume_multiple,
+            product_id=instrument.product_id,
+            underlying_instr_id=instrument.underlying_instr_id,
+            open_date=instrument.open_date,
+            expire_date=instrument.expire_date,
+            create_date=instrument.create_date,
+            exchange_inst_id=instrument.exchange_inst_id,
+            lot_size=instrument.lot_size,
         )
         if is_last:
             self.complete_instrument_query(request_id=request_id)

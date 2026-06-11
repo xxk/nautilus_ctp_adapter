@@ -250,10 +250,25 @@ def validate_order_boundary_from_snapshot(
 
     price_tick = instrument_record.get("price_tick")
     volume_multiple = instrument_record.get("volume_multiple")
+    detail_fields = instrument_record.get("detail_fields") or {}
     if price_tick in {None, 0}:
         issues.append("price_tick_missing")
     if volume_multiple in {None, 0}:
         issues.append("volume_multiple_missing")
+    if detail_fields.get("is_trading") is False:
+        issues.append("instrument_not_tradable")
+    open_date = detail_fields.get("open_date")
+    expire_date = detail_fields.get("expire_date")
+    if open_date and not _looks_like_yyyymmdd(str(open_date)):
+        issues.append("open_date_invalid")
+    if expire_date and not _looks_like_yyyymmdd(str(expire_date)):
+        issues.append("expire_date_invalid")
+    min_limit_order_volume = _optional_int(detail_fields.get("min_limit_order_volume"))
+    max_limit_order_volume = _optional_int(detail_fields.get("max_limit_order_volume"))
+    if min_limit_order_volume is not None and quantity < min_limit_order_volume:
+        issues.append("min_limit_order_volume_violated")
+    if max_limit_order_volume is not None and quantity > max_limit_order_volume:
+        issues.append("max_limit_order_volume_violated")
     if price_tick not in {None, 0} and limit_price > 0 and not _is_price_tick_aligned(limit_price, price_tick):
         issues.append("off_tick_price")
     return {
@@ -265,6 +280,7 @@ def validate_order_boundary_from_snapshot(
             "exchange_id": instrument_record.get("exchange_id"),
             "price_tick": price_tick,
             "volume_multiple": volume_multiple,
+            "detail_fields": detail_fields,
         },
         "limit_boundary": {"source": "not_available", "status": "unknown"},
     }
@@ -289,6 +305,7 @@ def extract_risk_facts_from_snapshot(snapshot_payload: dict[str, Any], *, instru
         elif direction == "SHORT":
             short_qty += qty
 
+    instrument_record = _instrument_record_from_snapshot(snapshot_payload, instrument)
     return {
         "account": {
             "account_id_present": bool(identity.get("account_id_present")),
@@ -307,6 +324,10 @@ def extract_risk_facts_from_snapshot(snapshot_payload: dict[str, Any], *, instru
             "short_qty": short_qty,
             "net_position": long_qty - short_qty,
             "gross_position": long_qty + short_qty,
+        },
+        "instrument": {
+            "venue_symbol": instrument,
+            "detail_fields": {} if instrument_record is None else dict(instrument_record.get("detail_fields") or {}),
         },
     }
 
@@ -345,6 +366,7 @@ def build_risk_preflight_from_snapshot(
         guards[name] = {"accepted": accepted, **extra}
 
     account = facts["account"]
+    instrument_facts = facts["instrument"].get("detail_fields") or {}
     _record_guard(
         "account_identity",
         bool(account["account_id_present"]),
@@ -361,6 +383,12 @@ def build_risk_preflight_from_snapshot(
         bool(account["margin_present"]),
         "account_margin_metric_unavailable",
         basis="presence_only_redacted",
+    )
+    _record_guard(
+        "instrument_trading_status",
+        instrument_facts.get("is_trading") is not False,
+        "instrument_not_tradable",
+        is_trading=instrument_facts.get("is_trading"),
     )
     _record_guard(
         "kill_switch",
@@ -448,6 +476,17 @@ def _instrument_record_from_snapshot(snapshot_payload: dict[str, Any], instrumen
         if str(record.get("venue_symbol", "")).strip() == instrument:
             return record
     return None
+
+
+def _optional_int(value: Any) -> int | None:
+    if value in {None, ""}:
+        return None
+    return int(value)
+
+
+def _looks_like_yyyymmdd(value: str) -> bool:
+    text = str(value or "").strip()
+    return len(text) == 8 and text.isdigit()
 
 
 def _is_price_tick_aligned(limit_price: float, price_tick: float) -> bool:

@@ -32,6 +32,24 @@ from scripts.ctp_paper_session_preflight import paper_config_issues
 BASELINE = "ctp-paper-readonly-snapshot-v1"
 DEFAULT_CONFIG = REPO_ROOT / "cfgs" / "local" / "ctp.openctp.tts.7x24.local.json"
 OPENCTP_TTS_7X24_PROFILE = "openctp-tts-7x24-simulation"
+C1_DETAIL_FIELD_NAMES = (
+    "instrument_name",
+    "open_date",
+    "expire_date",
+    "start_deliv_date",
+    "end_deliv_date",
+    "is_trading",
+    "long_margin_ratio",
+    "short_margin_ratio",
+    "max_market_order_volume",
+    "min_market_order_volume",
+    "max_limit_order_volume",
+    "min_limit_order_volume",
+    "product_id",
+    "underlying_instr_id",
+    "delivery_year",
+    "delivery_month",
+)
 
 
 def _fingerprint(value: str | None) -> str:
@@ -46,7 +64,14 @@ def _path_text(path: Path | None) -> str | None:
 
 
 def _emit_payload(payload: dict[str, Any]) -> None:
-    print(json.dumps(payload, ensure_ascii=False))
+    data = (json.dumps(payload, ensure_ascii=False) + "\n").encode("utf-8")
+    stdout_buffer = getattr(sys.stdout, "buffer", None)
+    if stdout_buffer is not None:
+        stdout_buffer.write(data)
+        stdout_buffer.flush()
+        return
+    sys.stdout.write(data.decode(sys.stdout.encoding or "utf-8", errors="backslashreplace"))
+    sys.stdout.flush()
 
 
 def snapshot_schema_metadata(*, run_id: str, flow_path: Path | None, session_label: str) -> dict[str, Any]:
@@ -160,6 +185,88 @@ def instrument_contract_issues(instrument: Any) -> list[str]:
     if getattr(instrument, "volume_multiple", None) in {None, 0}:
         issues.append("volume_multiple")
     return issues
+
+
+def instrument_detail_contract_issues(instrument: Any) -> list[str]:
+    issues: list[str] = []
+    product_kind = getattr(instrument, "product_kind", None)
+    if product_kind is not None and getattr(product_kind, "value", product_kind) == "unknown":
+        issues.append("unknown_product_kind")
+    open_date = _normalized_text(getattr(instrument, "open_date", None))
+    expire_date = _normalized_text(getattr(instrument, "expire_date", None))
+    if open_date and not _looks_like_yyyymmdd(open_date):
+        issues.append("open_date_invalid")
+    if expire_date and not _looks_like_yyyymmdd(expire_date):
+        issues.append("expire_date_invalid")
+    contract_month = _normalized_text(getattr(instrument, "contract_month", None))
+    if contract_month and len(contract_month) != 4:
+        issues.append("delivery_month_ambiguous")
+    return issues
+
+
+def build_instrument_detail_payload(instrument: Any) -> dict[str, Any]:
+    contract_month = _normalized_text(getattr(instrument, "contract_month", None))
+    delivery_year, delivery_month = _parse_delivery_year_month(contract_month)
+    detail_fields = {
+        "instrument_name": _normalized_text(getattr(instrument, "instrument_name", None)) or None,
+        "open_date": _normalized_text(getattr(instrument, "open_date", None)) or None,
+        "expire_date": _normalized_text(getattr(instrument, "expire_date", None)) or None,
+        "start_deliv_date": None,
+        "end_deliv_date": None,
+        "is_trading": None,
+        "long_margin_ratio": None,
+        "short_margin_ratio": None,
+        "max_market_order_volume": None,
+        "min_market_order_volume": None,
+        "max_limit_order_volume": None,
+        "min_limit_order_volume": None,
+        "product_id": _normalized_text(getattr(instrument, "product_id", None)) or None,
+        "underlying_instr_id": _normalized_text(getattr(instrument, "underlying_instr_id", None)) or None,
+        "delivery_year": delivery_year,
+        "delivery_month": delivery_month,
+    }
+    missing_fields = [name for name, value in detail_fields.items() if value in {None, ""}]
+    issue_codes = instrument_detail_contract_issues(instrument)
+    return {
+        "detail_fields": detail_fields,
+        "raw_detail": dict(detail_fields),
+        "missing_fields": missing_fields,
+        "contract_issues": issue_codes,
+        "correctness_status": "failed" if issue_codes else "passed",
+        "completeness_status": "covered" if not missing_fields else "partial",
+    }
+
+
+def build_instrument_correctness_summary(records: list[dict[str, Any]]) -> dict[str, int]:
+    summary = {
+        "total": len(records),
+        "passed": 0,
+        "failed": 0,
+        "partial": 0,
+        "out_of_scope_current": 0,
+    }
+    out_of_scope_names = {
+        "start_deliv_date",
+        "end_deliv_date",
+        "is_trading",
+        "long_margin_ratio",
+        "short_margin_ratio",
+        "max_market_order_volume",
+        "min_market_order_volume",
+        "max_limit_order_volume",
+        "min_limit_order_volume",
+    }
+    for record in records:
+        if record.get("contract_issues"):
+            summary["failed"] += 1
+        elif record.get("missing_fields"):
+            summary["partial"] += 1
+        else:
+            summary["passed"] += 1
+        summary["out_of_scope_current"] += len(
+            [name for name in (record.get("missing_fields") or []) if name in out_of_scope_names]
+        )
+    return summary
 
 
 def build_config_only_snapshot(
@@ -309,12 +416,14 @@ def build_connected_snapshot(
                     "product_kind": instrument.product_kind.value,
                     "price_tick": instrument.price_tick,
                     "volume_multiple": instrument.volume_multiple,
+                    **build_instrument_detail_payload(instrument),
                 }
             )
             issues = instrument_contract_issues(instrument)
-            if issues:
+            detail_issues = instrument_detail_contract_issues(instrument)
+            if issues or detail_issues:
                 instrument_contract_findings.append(
-                    {"display_symbol": instrument.display_symbol, "issues": issues}
+                    {"display_symbol": instrument.display_symbol, "issues": sorted(set([*issues, *detail_issues]))}
                 )
 
     payload["account"] = {
@@ -358,6 +467,8 @@ def build_connected_snapshot(
         "instrument_count": None if instrument_result is None else instrument_result.instrument_count,
         "records": instrument_records,
         "contract_issues": instrument_contract_findings,
+        "detail_fields": list(C1_DETAIL_FIELD_NAMES),
+        "correctness_summary": build_instrument_correctness_summary(instrument_records),
     }
     payload["order_trade"] = {
         "disposition": order_trade.disposition,
@@ -561,6 +672,24 @@ def _emit_exception(*, stage: str, exc: Exception) -> int:
         }
     )
     return 1
+
+
+def _normalized_text(value: str | None) -> str:
+    return str(value or "").strip()
+
+
+def _looks_like_yyyymmdd(value: str) -> bool:
+    return len(value) == 8 and value.isdigit()
+
+
+def _parse_delivery_year_month(contract_month: str) -> tuple[int | None, int | None]:
+    if len(contract_month) != 4 or not contract_month.isdigit():
+        return (None, None)
+    year = 2000 + int(contract_month[:2])
+    month = int(contract_month[2:])
+    if month < 1 or month > 12:
+        return (None, None)
+    return (year, month)
 
 
 def main() -> int:

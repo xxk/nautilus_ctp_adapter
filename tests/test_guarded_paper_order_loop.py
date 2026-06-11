@@ -51,6 +51,18 @@ def _snapshot(
                             "exchange_id": "DCE",
                             "price_tick": 1.0,
                             "volume_multiple": 10,
+                            "detail_fields": {
+                                "instrument_name": "Iron Ore",
+                                "open_date": "20250101",
+                                "expire_date": "20260930",
+                                "is_trading": None,
+                                "min_limit_order_volume": None,
+                                "max_limit_order_volume": None,
+                                "product_id": "i",
+                                "underlying_instr_id": "i2609",
+                                "delivery_year": 2026,
+                                "delivery_month": 9,
+                            },
                         }
                     ]
                 },
@@ -172,6 +184,41 @@ def test_order_boundary_blocks_invalid_quantity_before_native_send(tmp_path: Pat
     assert "invalid_quantity" in verdict["issues"]
 
 
+def test_order_boundary_blocks_non_tradable_and_min_max_volume_violations(tmp_path: Path) -> None:
+    payload = json.loads(_snapshot(tmp_path / "pre.json").read_text(encoding="utf-8"))
+    payload["instruments"]["records"][0]["detail_fields"]["is_trading"] = False
+    payload["instruments"]["records"][0]["detail_fields"]["min_limit_order_volume"] = 2
+    payload["instruments"]["records"][0]["detail_fields"]["max_limit_order_volume"] = 3
+
+    verdict = order_loop.validate_order_boundary_from_snapshot(
+        payload,
+        instrument="c2609",
+        quantity=1,
+        limit_price=2300.0,
+    )
+
+    assert verdict["accepted"] is False
+    assert "instrument_not_tradable" in verdict["issues"]
+    assert "min_limit_order_volume_violated" in verdict["issues"]
+
+
+def test_order_boundary_blocks_invalid_lifecycle_dates(tmp_path: Path) -> None:
+    payload = json.loads(_snapshot(tmp_path / "pre.json").read_text(encoding="utf-8"))
+    payload["instruments"]["records"][0]["detail_fields"]["open_date"] = "2025-01-01"
+    payload["instruments"]["records"][0]["detail_fields"]["expire_date"] = "2026/09/30"
+
+    verdict = order_loop.validate_order_boundary_from_snapshot(
+        payload,
+        instrument="c2609",
+        quantity=1,
+        limit_price=2300.0,
+    )
+
+    assert verdict["accepted"] is False
+    assert "open_date_invalid" in verdict["issues"]
+    assert "expire_date_invalid" in verdict["issues"]
+
+
 def test_risk_facts_are_loaded_from_redacted_snapshot(tmp_path: Path) -> None:
     payload = json.loads(_snapshot(tmp_path / "pre.json").read_text(encoding="utf-8"))
     payload["account"] = {
@@ -233,6 +280,7 @@ def test_risk_preflight_passes_dry_run_with_redacted_account_metrics(tmp_path: P
     assert verdict["disposition"] == "risk_preflight_passed"
     assert verdict["projected_net_position"] == -2
     assert verdict["facts"]["account"]["numeric_values_redacted"] is True
+    assert verdict["facts"]["instrument"]["detail_fields"]["delivery_year"] == 2026
 
 
 def test_risk_preflight_blocks_guardrail_failures_before_native_send(tmp_path: Path) -> None:
@@ -327,6 +375,44 @@ def test_risk_preflight_blocks_missing_external_account_metrics(tmp_path: Path) 
     assert "account_identity_unavailable" in verdict["issues"]
     assert "account_available_metric_unavailable" in verdict["issues"]
     assert "account_margin_metric_unavailable" in verdict["issues"]
+
+
+def test_risk_preflight_blocks_non_tradable_instrument_from_snapshot(tmp_path: Path) -> None:
+    payload = json.loads(_snapshot(tmp_path / "pre.json").read_text(encoding="utf-8"))
+    payload["instruments"]["records"][0]["detail_fields"]["is_trading"] = False
+    config = order_loop.CtpAdapterConfig.from_dict(
+        {
+            "BrokerID": "9999",
+            "UserID": "u",
+            "Password": "p",
+            "Pricer": "tcp://md",
+            "Host": "tcp://td",
+            "Instruments": ["c2609"],
+            "ExecutionGuardrails": {
+                "Enabled": True,
+                "AllowedInstruments": ["c2609"],
+                "MaxOrderQty": 3,
+                "MaxNetPosition": 5,
+                "MaxSubmitPerMinute": 10,
+                "PriceMode": "best_level_1",
+                "AllowLiveOrderSmoke": False,
+            },
+        }
+    )
+
+    verdict = order_loop.build_risk_preflight_from_snapshot(
+        payload,
+        config=config,
+        instrument="c2609",
+        side="BUY",
+        quantity=1,
+        position_effect="OPEN",
+        client_order_id="risk-tradable",
+        arm_paper_send=False,
+    )
+
+    assert verdict["accepted"] is False
+    assert "instrument_not_tradable" in verdict["issues"]
 
 
 def test_pre_order_snapshot_rejects_partial_snapshot(tmp_path: Path) -> None:

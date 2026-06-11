@@ -13,6 +13,13 @@ class CtpInstrumentRecord:
     instrument_name: str | None
     price_tick: float | None
     volume_multiple: int | None
+    product_id: str | None = None
+    underlying_instr_id: str | None = None
+    open_date: str | None = None
+    expire_date: str | None = None
+    create_date: str | None = None
+    exchange_inst_id: str | None = None
+    lot_size: int | None = None
 
 
 @dataclass(slots=True)
@@ -81,6 +88,13 @@ class CtpQueryRuntime:
                     instrument_name=event.payload.get("instrument_name"),
                     price_tick=_parse_float(event.payload.get("price_tick")),
                     volume_multiple=_parse_int(event.payload.get("volume_multiple")),
+                    product_id=event.payload.get("product_id"),
+                    underlying_instr_id=event.payload.get("underlying_instr_id"),
+                    open_date=event.payload.get("open_date"),
+                    expire_date=event.payload.get("expire_date"),
+                    create_date=event.payload.get("create_date"),
+                    exchange_inst_id=event.payload.get("exchange_inst_id"),
+                    lot_size=_parse_int(event.payload.get("lot_size")),
                 )
             )
             return

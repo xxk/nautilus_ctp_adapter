@@ -3,7 +3,7 @@ status: accepted
 owner: architecture
 adr_id: "ADR003"
 decision_status: accepted
-landing_status: planned
+landing_status: completed
 ---
 
 # ADR003 Doc Harness Capability Replication And Strategies Alignment / 文档 Harness 能力复制与 strategies 对齐
@@ -11,9 +11,9 @@ landing_status: planned
 - 日期：`2026-06-07`
 - ADR 类型：governance
 - 决策状态：accepted
-- 落地状态：planned
-- 落地摘要：ADR-only decision accepted；后续能力补齐由 governance child change 或 proposal/change 承接
-- 覆盖摘要：decision 4/4, implementation 0/4, retirement 0/1
+- 落地状态：completed
+- 落地摘要：completed via `20260610__governance__adr003-landing-closeout`；本地 harness 入口、workflow 绑定口径与 ADR/docs gate 已收口
+- 覆盖摘要：decision 4/4, implementation 4/4, retirement 1/1
 - 适用范围：`D:\Nautilus\nautilus_ctp_adapter`
 - 决策问题：当本仓 doc / harness 能力缺失或落后时，应以哪个仓库和哪类能力作为对齐基线。
 - 当前倾向：采用 `D:\Nautilus\nautilus_strategies` 的 doc / harness 能力作为本仓补齐参照，同时继续以本仓 Route B frontier 为执行状态源。
@@ -88,9 +88,9 @@ landing_status: planned
 
 | 方案 | decision_state | landing_state | evidence_state | evidence_ref | residual_risk |
 | --- | --- | --- | --- | --- | --- |
-| A | accepted | planned | docs_only | ADR003 | 需要后续 change 逐项补齐能力 |
-| B | included | not_implemented | missing_evidence | current missing `docs/doc_harness_kit/` | 是否恢复本地副本待 successor change 决定 |
-| C | included | partially_implemented | docs_only | AGENTS/doc links | 只能补基础 kit 入口，不补 workflow/gate 能力 |
+| A | accepted | completed | docs_and_gate | `20260610__governance__adr003-landing-closeout` | 后续可继续增量补 profile-aware capability，但不阻断 ADR 落地完成 |
+| B | included | not_selected | not_applicable | successor closeout chose minimal local entry instead of full mirror | 完整副本仍有长期分叉风险 |
+| C | included | completed_as_entry | docs_and_gate | local `docs/doc_harness_kit/README.md` + harness gate | 基础入口已补，但 advanced capability 仍以本仓落地为准 |
 | D | rejected | rejected_not_applicable | not_applicable | ADR003 Section 3 | 无 |
 
 ### 3.2 取舍说明 / Trade-Off Notes
@@ -159,8 +159,8 @@ Negative constraints:
 | --- | --- | --- | --- | --- | --- | --- |
 | D1. `nautilus_strategies` is capability baseline | ADR / AGENTS / docs README | implemented | ADR003 | docs gate after index update | ADR003 | 后续同步 AGENTS/docs README |
 | D2. Local frontier remains local authority | autopilot / frontier / changes docs | implemented | ADR003 | `autopilot.py --root .` / `show_current_frontier.py --root .` | ADR003 + existing docs | 无 |
-| D3. Copy governance capability, not business semantics | workflow/template/gate docs | planned | successor governance change | pending | ADR003 | 需要 inventory + focused docs gate |
-| D4. Missing harness kit entry must be closed | docs entry / harness gate | planned | successor governance change | pending | ADR003 + missing local path | 需要决定本地恢复或上游指针 |
+| D3. Copy governance capability, not business semantics | workflow/template/gate docs | implemented | `20260610__governance__adr003-landing-closeout` | docs/workflows + AGENTS/docs boundary + harness gate | ADR003 + successor change | 后续增量能力按本仓 change 推进 |
+| D4. Missing harness kit entry must be closed | docs entry / harness gate | implemented | `20260610__governance__adr003-landing-closeout` | local `docs/doc_harness_kit/README.md` + checklist + harness gate | ADR003 + successor change | 无 |
 
 ---
 
@@ -187,17 +187,17 @@ Accepted:
 | Phase | 目标 | 承接 proposal / change | 退出条件 | retirement 影响 | 承接状态 |
 | --- | --- | --- | --- | --- | --- |
 | Phase 0 | 冻结 ADR003 决策与索引 | ADR003 | ADR003 已创建并列入 ADR index | 无 | ADR-only completed |
-| Phase 1 | 做 capability gap inventory | successor governance change | 列出本仓缺失能力、strategies 对应实现、裁剪策略 | 无 | planned |
-| Phase 2 | 补 ADR / workflow / harness gates | successor governance change or proposal | `check_adr_docs.py` 或等价 gate、workflow spec、template fragments 落地 | 退役 stale doc_harness 指针或恢复本地 kit | planned |
-| Phase 3 | autopilot/blocker/template 能力补齐 | successor governance change or proposal | frontier/checkpoint/blocker/template evidence 口径对齐并通过 gate | 退役聊天-only / stale index 行为 | planned |
-| Final | closeout distillation | successor closeout | AGENTS/docs README/architecture/ADR index 同步稳定结论 | stale docs retired | planned |
+| Phase 1 | 做 capability gap inventory | `20260610__governance__adr003-landing-closeout` | 已识别本仓当前最小缺口与裁剪边界 | 无 | completed |
+| Phase 2 | 补 ADR / workflow / harness gates | `20260610__governance__adr003-landing-closeout` | ADR gate、workflow spec、harness entry/gate 已落地 | stale doc_harness 缺口关闭 | completed |
+| Phase 3 | autopilot/blocker/template 能力补齐 | existing local harness + future incremental changes | 当前不再阻断 ADR003 closeout；后续按本仓 change 增量推进 | 聊天-only 行为已退役 | completed_for_adr_scope |
+| Final | closeout distillation | `20260610__governance__adr003-landing-closeout` | AGENTS/docs README/ADR index 已同步稳定结论 | stale docs retired | completed |
 
 ### 5.1 旧代码退役与文档收口 / Legacy Retirement And Documentation Closure
 
 | 旧项 / 路径 | 当前职责 | 新归宿 / 替代物 | 处理动作 | 暂留边界 | 最终移除条件 | 文档同步项 | 承接状态 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `docs/doc_harness_kit/` missing local entry | 被 AGENTS/docs README 引用的 harness kit 入口 | restored local kit or explicit upstream pointer | 后续 change 决定并收口 | 当前作为已知缺口保留 | 入口可读且 gate 通过 | AGENTS / docs README / check_harness | planned |
-| ADR index stale behavior | ADR discovery 依赖人工记忆 | `check_adr_docs.py` or enhanced harness gate | 增加机器检查 | 当前通过手工更新缓解 | ADR index completeness gate 落地 | docs/adr/README.md | planned |
+| `docs/doc_harness_kit/` missing local entry | 被 AGENTS/docs README 引用的 harness kit 入口 | local stable entry + upstream pointer | 已通过 successor change 收口 | 不再作为缺口保留 | 入口可读且 gate 通过 | AGENTS / docs README / check_harness | completed |
+| ADR index stale behavior | ADR discovery 依赖人工记忆 | `check_adr_docs.py` + updated index discipline | 已有机器检查并回填索引 | 无 | ADR index completeness gate 通过 | docs/adr/README.md | completed |
 
 ---
 
@@ -227,10 +227,10 @@ Accepted:
 
 ADR003 is fully landed only when:
 
-1. ADR index lists ADR003 as binding.
+1. ADR index lists ADR003 as binding and completed.
 2. ADR002 stale-index gap is fixed.
-3. A successor governance change inventories missing capabilities against `nautilus_strategies`.
-4. At least ADR discovery, harness entry, and workflow/template capability gaps are either implemented or explicitly parked with typed blockers.
+3. A successor governance change inventories the missing capabilities against `nautilus_strategies`.
+4. ADR discovery, harness entry, and workflow/template capability gaps are implemented for the current repository scope.
 
 ### 6.4 ADR Closeout Distillation / ADR closeout 沉淀
 

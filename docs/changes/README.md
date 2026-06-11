@@ -31,7 +31,7 @@ Use the local project templates:
 1. Active topic: `none`
 2. Active change: `none`
 3. Parked topic: [live-session-order-query-hardening](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/live-session-order-query-hardening.md); [live-ops-truth-snapshot](/D:/Nautilus/nautilus_ctp_adapter/docs/topics/live-ops-truth-snapshot.md)
-4. Recent closeout change: [20260413__autopilot-openhands-absorption__session-management-upgrade](/D:/Nautilus/nautilus_ctp_adapter/docs/changes/20260413__autopilot-openhands-absorption__session-management-upgrade/plan.md)
+4. Recent closeout change: [20260610__governance__adr003-landing-closeout](/D:/Nautilus/nautilus_ctp_adapter/docs/changes/20260610__governance__adr003-landing-closeout/plan.md)
 
 ## Governance Commands
 

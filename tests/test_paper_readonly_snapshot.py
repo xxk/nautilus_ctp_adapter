@@ -6,11 +6,13 @@ from pathlib import Path
 from nautilus_ctp_adapter.adapters.ctp.config import CtpAdapterConfig
 
 from scripts.ctp_paper_readonly_snapshot import (
+    build_instrument_detail_payload,
     build_connected_snapshot_with_watchdog,
     build_config_only_snapshot,
     classify_account_disposition,
     classify_positions_disposition,
     instrument_contract_issues,
+    instrument_detail_contract_issues,
     position_contract_issues,
     redacted_account_identity,
     snapshot_schema_metadata,
@@ -132,6 +134,49 @@ def test_instrument_correctness_requires_provider_cache_fields() -> None:
 
     Instrument.price_tick = None
     assert "price_tick" in instrument_contract_issues(Instrument())
+
+
+def test_instrument_detail_payload_preserves_c1_fields_and_missing_list() -> None:
+    class ProductKind:
+        value = "futures"
+
+    class Instrument:
+        venue_symbol = "c2609"
+        display_symbol = "c2609.DCE"
+        exchange_id = "DCE"
+        product_kind = ProductKind()
+        instrument_name = "Iron Ore"
+        open_date = "20250101"
+        expire_date = "20260930"
+        contract_month = "2609"
+        product_id = "i"
+        underlying_instr_id = "i2609"
+
+    payload = build_instrument_detail_payload(Instrument())
+
+    assert payload["detail_fields"]["instrument_name"] == "Iron Ore"
+    assert payload["detail_fields"]["delivery_year"] == 2026
+    assert payload["detail_fields"]["delivery_month"] == 9
+    assert "is_trading" in payload["missing_fields"]
+    assert payload["correctness_status"] == "passed"
+
+
+def test_instrument_detail_contract_issues_flag_unknown_product_and_bad_dates() -> None:
+    class ProductKind:
+        value = "unknown"
+
+    class Instrument:
+        product_kind = ProductKind()
+        open_date = "2025-01-01"
+        expire_date = "2026/09/30"
+        contract_month = "609"
+
+    issues = instrument_detail_contract_issues(Instrument())
+
+    assert "unknown_product_kind" in issues
+    assert "open_date_invalid" in issues
+    assert "expire_date_invalid" in issues
+    assert "delivery_month_ambiguous" in issues
 
 
 def test_position_correctness_requires_direction_and_qty_split() -> None:

@@ -27,6 +27,13 @@ This repository uses Route B governance:
 7. `docs/topics/` and the legacy topic registry are grouped roadmap projections only
 8. `docs/archive/` for archived docs and historical snapshots
 
+## Harness Baseline
+
+1. Local stable entry: [doc_harness_kit README](/D:/Nautilus/nautilus_ctp_adapter/docs/doc_harness_kit/README.md)
+2. Upstream basic kit baseline: `D:\Nautilus\docs\doc_harness_kit\`
+3. Advanced governance capability baseline: `D:\Nautilus\nautilus_strategies`
+4. External repositories provide capability reference only; this repo's frontier authority remains local
+
 topic 不作为 proposal 推进容器。Proposal 状态由 `docs/proposals/<proposal-id>/phase-plan.md` 的 `AI-PHASE-STATUS` 承载；执行状态由 child change `plan.md` 承载。
 
 ## Current Frontier
