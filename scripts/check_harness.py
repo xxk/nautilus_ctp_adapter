@@ -155,7 +155,7 @@ def _check_doc_harness_entry(root: Path) -> list[str]:
         return findings
 
     text = readme_path.read_text(encoding="utf-8")
-    if "D:\\Nautilus\\docs\\doc_harness_kit" not in text:
+    if "D:\\Nautilus\\global_docs\\doc_harness_kit" not in text:
         findings.append(
             f"{DOC_HARNESS_README} must point to the upstream doc harness kit baseline"
         )

@@ -86,7 +86,7 @@ python scripts/autopilot.py --root . --backfill
 
 ## 八、长期规则增量摘要 / Long-Term Rule Delta Summary
 
-新增规则：本仓以本地 `docs/doc_harness_kit/README.md` 作为稳定读入口，以 `D:\Nautilus\docs\doc_harness_kit\` 作为基础 kit 上游，以 `D:\Nautilus\nautilus_strategies` 作为 advanced governance baseline；但本仓 frontier authority 始终保持本地。
+新增规则：本仓以本地 `docs/doc_harness_kit/README.md` 作为稳定读入口，以 `D:\Nautilus\global_docs\doc_harness_kit\` 作为基础 kit 上游，以 `D:\Nautilus\nautilus_strategies` 作为 advanced governance baseline；但本仓 frontier authority 始终保持本地。
 
 ## 九、回写与相关变更 / Write-back & Related Changes
 

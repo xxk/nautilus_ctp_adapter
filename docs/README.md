@@ -30,7 +30,7 @@ This repository uses Route B governance:
 ## Harness Baseline
 
 1. Local stable entry: [doc_harness_kit README](/D:/Nautilus/nautilus_ctp_adapter/docs/doc_harness_kit/README.md)
-2. Upstream basic kit baseline: `D:\Nautilus\docs\doc_harness_kit\`
+2. Upstream basic kit baseline: `D:\Nautilus\global_docs\doc_harness_kit\`
 3. Advanced governance capability baseline: `D:\Nautilus\nautilus_strategies`
 4. External repositories provide capability reference only; this repo's frontier authority remains local
 

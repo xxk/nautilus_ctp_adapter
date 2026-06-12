@@ -1,6 +1,6 @@
 # AGENTS.md
 
-**Updated**: 2026-05-30
+**Updated**: 2026-06-13
 **Status**: Active
 
 ## Read First
@@ -13,9 +13,11 @@ Read these in order:
 4. [docs/adr/README.md](/D:/Nautilus/nautilus_ctp_adapter/docs/adr/README.md)
 5. [docs/proposals/README.md](/D:/Nautilus/nautilus_ctp_adapter/docs/proposals/README.md)
 6. [docs/workflows/README.md](/D:/Nautilus/nautilus_ctp_adapter/docs/workflows/README.md)
-7. [../docs/harness/任务分层与命名统一口径_Cross-Repo Work Item Layering And Naming.md](/D:/Nautilus/docs/harness/%E4%BB%BB%E5%8A%A1%E5%88%86%E5%B1%82%E4%B8%8E%E5%91%BD%E5%90%8D%E7%BB%9F%E4%B8%80%E5%8F%A3%E5%BE%84_Cross-Repo%20Work%20Item%20Layering%20And%20Naming.md)
-8. [docs/architecture/runtime-performance-guidelines.md](/D:/Nautilus/nautilus_ctp_adapter/docs/architecture/runtime-performance-guidelines.md)
-9. The current change bundle under `docs/changes/<change-id>/` when the frontier reports one
+7. [../global_docs/harness/任务分层与命名统一口径_Cross-Repo Work Item Layering And Naming.md](/D:/Nautilus/global_docs/harness/%E4%BB%BB%E5%8A%A1%E5%88%86%E5%B1%82%E4%B8%8E%E5%91%BD%E5%90%8D%E7%BB%9F%E4%B8%80%E5%8F%A3%E5%BE%84_Cross-Repo%20Work%20Item%20Layering%20And%20Naming.md)
+8. [../global_docs/adr/0003-owner-side-blocker-repair-loop.md](/D:/Nautilus/global_docs/adr/0003-owner-side-blocker-repair-loop.md)
+9. [../global_docs/harness/Owner-Side Blocker Repair Loop Contract.md](/D:/Nautilus/global_docs/harness/Owner-Side%20Blocker%20Repair%20Loop%20Contract.md)
+10. [docs/architecture/runtime-performance-guidelines.md](/D:/Nautilus/nautilus_ctp_adapter/docs/architecture/runtime-performance-guidelines.md)
+11. The current change bundle under `docs/changes/<change-id>/` when the frontier reports one
 
 ## Autonomous Execution Policy
 
@@ -37,6 +39,16 @@ Only these count as true blockers:
 2. Missing external dependency or live resource with no local fallback verification path.
 3. A conflict between roadmap state, change docs, and registry that cannot be resolved from repository facts.
 4. Acceptance criteria that cannot be judged as pass/fail.
+
+## Cross-Repo Owner-Side Blocker Repair Loop
+
+This repository participates in `D:/Nautilus/global_docs/adr/0003-owner-side-blocker-repair-loop.md` and `D:/Nautilus/global_docs/harness/Owner-Side Blocker Repair Loop Contract.md`.
+
+When an upstream proposal / change / tracer typed blocker names `nautilus_ctp_adapter`, `rust/`, `src/nautilus_ctp_adapter/runtime/`, `src/nautilus_ctp_adapter/adapters/ctp/`, local native/vendor tooling, CTP market data route, CTP runtime, CTP adapter config, Nautilus CTP glue, or adapter gates as owner, the AI should enter this repo, repair inside this `AGENTS.md` boundary, run owner gates, and return retry / closeout evidence to the caller.
+
+The following remain typed blockers or must be split to the external owner; they must not be faked here: missing broker/CTP credentials, auth code, account permission, external endpoint outage, market window unavailability, remote machine permission, Live/Paper admission, capital/PM approval, unsafe order emission, or defects owned by strategies runtime, factor truth, contract metadata/catalog, or verifier owners.
+
+This rule establishes the cross-repo repair loop only. It does not move `nautilus_ctp_adapter` execution truth into central docs, and it must not create a second runtime, gateway, market data route, schema family, validator, artifact root, or CTP evidence truth.
 
 ## Current Frontier Shortcut
 
@@ -100,7 +112,7 @@ Governance layout is aligned toward `DSLReserach`:
 Doc harness baseline rule:
 
 1. `docs/doc_harness_kit/README.md` is the local stable entry.
-2. The upstream basic kit baseline is `D:\Nautilus\docs\doc_harness_kit\`.
+2. The upstream basic kit baseline is `D:\Nautilus\global_docs\doc_harness_kit\`.
 3. The advanced governance capability baseline is `D:\Nautilus\nautilus_strategies`.
 4. Neither external path may become this repository's execution state source.
 
@@ -145,6 +157,9 @@ python scripts/check_change_docs.py --root .
 
 # Proposal docs completeness
 python scripts/check_proposal_docs.py --root .
+
+# ADR0003 owner-side blocker repair loop and commit hook drift gate
+python D:/Nautilus/global_docs/scripts/check_owner_side_blocker_repair_adoption.py --check-hooks
 
 # Frontier status
 python scripts/show_current_frontier.py --root .

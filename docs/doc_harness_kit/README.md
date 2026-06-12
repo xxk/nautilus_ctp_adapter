@@ -8,13 +8,13 @@
 
 ## 当前口径
 
-1. 基础 harness kit 上游源码入口：`D:\Nautilus\docs\doc_harness_kit\`
+1. 基础 harness kit 上游源码入口：`D:\Nautilus\global_docs\doc_harness_kit\`
 2. 高阶治理能力基线：`D:\Nautilus\nautilus_strategies`
 3. 本仓执行状态源仍然只有本地 `docs/changes/*/plan.md`、proposal `phase-plan.md` 与本仓 gate 脚本
 
 ## 使用边界
 
-1. 需要基础 adoption checklist、runbook 或通用 harness 约定时，先看 `D:\Nautilus\docs\doc_harness_kit\`
+1. 需要基础 adoption checklist、runbook 或通用 harness 约定时，先看 `D:\Nautilus\global_docs\doc_harness_kit\`
 2. 需要 ADR/workflow/harness/autopilot 的已落地治理能力时，按 ADR003 向 `D:\Nautilus\nautilus_strategies` 对齐，再裁剪回本仓
 3. 不得把外部仓 issue、topic、proposal 或 runtime owner 当作本仓状态源
 

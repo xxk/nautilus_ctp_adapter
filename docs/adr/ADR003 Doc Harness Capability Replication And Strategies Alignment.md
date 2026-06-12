@@ -51,7 +51,7 @@ landing_status: completed
 1. 新增治理 owner 口径：`nautilus_strategies` 是本仓 doc / harness capability baseline。
 2. 本仓 canonical execution entries 不变：`scripts/autopilot.py`、`scripts/show_current_frontier.py`、`scripts/check_harness.py`、`scripts/check_change_docs.py --root .`、`scripts/check_proposal_docs.py --root .`。
 3. 后续若新增 `check_adr_docs.py`、`docs/workflows/` 或 workflow validation，owner 应归本仓 governance harness，而不是归 `nautilus_strategies` 或共享外部仓。
-4. 当前缺失的 `docs/doc_harness_kit/` 必须在后续 change 中收口为以下二选一：恢复本地副本并由本仓 gate 维护，或把入口改为 `D:\Nautilus\docs\doc_harness_kit\` / 等价上游位置。
+4. 当前缺失的 `docs/doc_harness_kit/` 必须在后续 change 中收口为以下二选一：恢复本地副本并由本仓 gate 维护，或把入口改为 `D:\Nautilus\global_docs\doc_harness_kit\` / 等价上游位置。
 
 ### 1.4 概念判重 / Canonical Naming Check
 
@@ -69,7 +69,7 @@ landing_status: completed
 1. 本 ADR 补充 [ADR001](./ADR001%20%E9%AB%98%E6%80%A7%E8%83%BD%E4%BC%98%E5%85%88%E5%8E%9F%E7%94%9F%E4%B8%BB%E7%BA%BF%E9%80%82%E9%85%8D%E8%BE%B9%E7%95%8C_High-Performance%20Native-First%20Adapter%20Boundary.md) 的治理外层，不改变 runtime 或 adapter owner。
 2. 本 ADR 补充 [ADR002](./ADR002%20OpenCTP%20TTS%20Paper%20Simulation%20Test%20Environment.md) 的 ADR discovery 需求：新增 ADR 后必须能被 index/gate 发现。
 3. 本 ADR 继承 `docs/README.md` 与 `docs/proposals/README.md` 的 Route B 口径：proposal/change/topic/ADR 继续分层，不让 workflow 或 harness 成为新的执行状态源。
-4. 本 ADR 与跨仓文档 [任务分层与命名统一口径](../../../docs/harness/%E4%BB%BB%E5%8A%A1%E5%88%86%E5%B1%82%E4%B8%8E%E5%91%BD%E5%90%8D%E7%BB%9F%E4%B8%80%E5%8F%A3%E5%BE%84_Cross-Repo%20Work%20Item%20Layering%20And%20Naming.md) 一致：正式执行单元仍叫 `change`，task 只存在于 change 内部。
+4. 本 ADR 与跨仓文档 [任务分层与命名统一口径](../../../global_docs/harness/%E4%BB%BB%E5%8A%A1%E5%88%86%E5%B1%82%E4%B8%8E%E5%91%BD%E5%90%8D%E7%BB%9F%E4%B8%80%E5%8F%A3%E5%BE%84_Cross-Repo%20Work%20Item%20Layering%20And%20Naming.md) 一致：正式执行单元仍叫 `change`，task 只存在于 change 内部。
 
 ---
 
@@ -81,7 +81,7 @@ landing_status: completed
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | A. 以 `nautilus_strategies` 为能力基线，按本仓裁剪复制 | 缺什么补什么：ADR gate、workflow fragments、harness validation、autopilot policy 等 | 本仓 doc / harness 能力缺失或落后 | 有已验证参照；减少重新发明规则；便于跨仓一致 | 需要严格裁剪业务语义和 issue lane | 高 | 中 | 推荐 | accepted + planned |
 | B. 恢复/复制完整 `doc_harness_kit` 本地副本 | 把上游 kit 重新放回本仓并维护本地副本 | 需要离线、自包含治理模板 | 自包含，读入口直接可用 | 容易长期分叉；当前已出现缺失/删除状态 | 中 | 中 | 过渡候选 | included as implementation option |
-| C. 只引用共享上游 kit，不复制 strategies 能力 | 将本仓入口改指 `D:\Nautilus\docs\doc_harness_kit\` | 只需基础模板而不需要 advanced workflows | 减少本地副本维护 | 无法覆盖 strategies 已有的 ADR/workflow/autopilot 高阶能力 | 中 | 低 | 不足 | retained as partial source |
+| C. 只引用共享上游 kit，不复制 strategies 能力 | 将本仓入口改指 `D:\Nautilus\global_docs\doc_harness_kit\` | 只需基础模板而不需要 advanced workflows | 减少本地副本维护 | 无法覆盖 strategies 已有的 ADR/workflow/autopilot 高阶能力 | 中 | 低 | 不足 | retained as partial source |
 | D. 本仓独立重新设计 harness | 为 CTP adapter 从零设计新规则 | 有强烈本仓特化需求时 | 完全贴合本仓 | 高重复、高漂移，容易产生第二套口径 | 低 | 高 | 拒绝 | rejected |
 
 ### 3.1 Landing Evidence / 落地证据
@@ -108,7 +108,7 @@ landing_status: completed
 
 1. 采用方案 A：`D:\Nautilus\nautilus_strategies` 是本仓 doc / harness capability baseline。
 2. 本仓能力欠缺时，优先查找 `nautilus_strategies` 已有实现、文档、fragment、gate 和 ADR，再按本仓事实裁剪落地。
-3. 允许从共享上游 `D:\Nautilus\docs\doc_harness_kit\` 补基础 kit 入口，但不得因此跳过 `nautilus_strategies` 已沉淀的 advanced governance 能力。
+3. 允许从共享上游 `D:\Nautilus\global_docs\doc_harness_kit\` 补基础 kit 入口，但不得因此跳过 `nautilus_strategies` 已沉淀的 advanced governance 能力。
 4. 拒绝为本仓从零重写第二套 harness vocabulary、workflow taxonomy 或 ADR gate 体系。
 
 ### 4.2 决策边界 / Decision Boundaries
@@ -148,7 +148,7 @@ Negative constraints:
 ### 4.4 推荐产物 / Recommended Deliverables
 
 1. 新增 `scripts/check_adr_docs.py` 或增强 `check_harness.py` 覆盖 ADR index completeness。
-2. 建立或恢复 doc harness kit 入口：本地副本或明确指向 `D:\Nautilus\docs\doc_harness_kit\`。
+2. 建立或恢复 doc harness kit 入口：本地副本或明确指向 `D:\Nautilus\global_docs\doc_harness_kit\`。
 3. 按需新增 `docs/workflows/`，至少承载 ADR/template/work-item/gate fragments，不承载状态。
 4. 增强 proposal/change template fragments，对齐 `nautilus_strategies` 的 reusable fragment 和 gate 口径。
 5. 更新 `AGENTS.md`、`docs/README.md`、`docs/changes/README.md`，使缺失能力的对齐路径可被 AI 直接执行。
@@ -250,7 +250,7 @@ Closeout 后只沉淀稳定结论：
 4. [`nautilus_strategies` AGENTS.md](../../../nautilus_strategies/AGENTS.md)
 5. [`nautilus_strategies` workflows README](../../../nautilus_strategies/docs/workflows/README.md)
 6. [`nautilus_strategies` ADR index](../../../nautilus_strategies/docs/adr/README.md)
-7. [Cross-Repo Work Item Layering And Naming](../../../docs/harness/%E4%BB%BB%E5%8A%A1%E5%88%86%E5%B1%82%E4%B8%8E%E5%91%BD%E5%90%8D%E7%BB%9F%E4%B8%80%E5%8F%A3%E5%BE%84_Cross-Repo%20Work%20Item%20Layering%20And%20Naming.md)
+7. [Cross-Repo Work Item Layering And Naming](../../../global_docs/harness/%E4%BB%BB%E5%8A%A1%E5%88%86%E5%B1%82%E4%B8%8E%E5%91%BD%E5%90%8D%E7%BB%9F%E4%B8%80%E5%8F%A3%E5%BE%84_Cross-Repo%20Work%20Item%20Layering%20And%20Naming.md)
 
 ---
 
