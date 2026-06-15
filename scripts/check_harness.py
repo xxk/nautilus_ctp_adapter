@@ -8,6 +8,11 @@ import argparse
 import sys
 from pathlib import Path
 
+try:
+    from check_adr_docs import validate_adr_docs
+except ModuleNotFoundError:
+    from scripts.check_adr_docs import validate_adr_docs
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 AGENTS_MD = "AGENTS.md"
@@ -20,10 +25,14 @@ REQUIRED_SECTIONS = (
 
 REQUIRED_VERIFY_COMMANDS = (
     "python scripts/check_harness.py",
+    "python scripts/check_adr_docs.py",
     "python scripts/check_change_docs.py",
     "python scripts/check_proposal_docs.py --root .",
     "python scripts/show_current_frontier.py",
 )
+
+DOC_HARNESS_README = "docs/doc_harness_kit/README.md"
+DOC_HARNESS_TOPIC_CHECKLIST = "docs/doc_harness_kit/checks/topic-transition-checklist.md"
 
 
 def _check_agents_md(root: Path) -> list[str]:
@@ -111,12 +120,65 @@ def _check_proposals_dir(root: Path) -> list[str]:
     return findings
 
 
+def _check_workflows_dir(root: Path) -> list[str]:
+    findings: list[str] = []
+    workflows_dir = root / "docs" / "workflows"
+    if not workflows_dir.exists():
+        findings.append("docs/workflows/ directory does not exist")
+        return findings
+
+    for required_file in (
+        "README.md",
+        "work-item-type-system.md",
+        "fragments/adr-template-contract.md",
+        "gates/adr-template-contract-gate.md",
+    ):
+        if not (workflows_dir / required_file).exists():
+            findings.append(f"docs/workflows/{required_file} does not exist")
+
+    for manifest_path in workflows_dir.rglob("tracer-manifest.md"):
+        findings.append(
+            f"{manifest_path.relative_to(root).as_posix()} must not be a concrete tracer manifest; "
+            "docs/workflows/ only owns templates and gate specs"
+        )
+
+    return findings
+
+
+def _check_doc_harness_entry(root: Path) -> list[str]:
+    findings: list[str] = []
+    readme_path = root / DOC_HARNESS_README
+    checklist_path = root / DOC_HARNESS_TOPIC_CHECKLIST
+
+    if not readme_path.exists():
+        findings.append(f"{DOC_HARNESS_README} does not exist")
+        return findings
+
+    text = readme_path.read_text(encoding="utf-8")
+    if "D:\\Nautilus\\global_docs\\doc_harness_kit" not in text:
+        findings.append(
+            f"{DOC_HARNESS_README} must point to the upstream doc harness kit baseline"
+        )
+    if "nautilus_strategies" not in text:
+        findings.append(
+            f"{DOC_HARNESS_README} must describe nautilus_strategies as the advanced governance baseline"
+        )
+
+    if not checklist_path.exists():
+        findings.append(f"{DOC_HARNESS_TOPIC_CHECKLIST} does not exist")
+
+    return findings
+
+
 def check_harness(root: Path) -> list[str]:
     findings: list[str] = []
     findings.extend(_check_agents_md(root))
     findings.extend(_check_changes_dir(root))
     findings.extend(_check_adr_dir(root))
     findings.extend(_check_proposals_dir(root))
+    findings.extend(_check_workflows_dir(root))
+    findings.extend(_check_doc_harness_entry(root))
+    findings.extend(validate_adr_docs(root))
     return findings
 
 

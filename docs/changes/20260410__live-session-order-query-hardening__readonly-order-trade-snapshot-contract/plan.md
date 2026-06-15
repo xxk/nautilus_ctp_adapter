@@ -17,8 +17,8 @@ dependencies:
 
 # Readonly Order Trade Snapshot Contract 开发计划
 
-**状态**：draft
-**进度**：0%
+**状态**：completed
+**进度**：100%
 **日期**：2026-04-10
 **范围**：新的 `ORDER / TRADE` 只读 snapshot 入口、必要的 adapter contract、`tests/`、当前 change 三件套
 **topic-id**：live-session-order-query-hardening
@@ -62,9 +62,9 @@ dependencies:
 
 | 步骤 | 任务 | 来源 | 修改文件 | 产出 | 验证动作 | 回写目标 | 完成定义 | 状态 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| P1 | 冻结 `ORDER / TRADE` 只读结果 taxonomy | topic 目标 | 当前 change、必要入口 | success/failure/boundary taxonomy | 文档自检 | topic README | `无订单/无成交/历史残留/query失败` 可区分 | 未开始 |
-| P2 | 实现 read-only snapshot 入口 | 持续开发 backlog | 脚本、adapter、`tests/` | 正式 read-only snapshot | targeted pytest | `scripts/README.md` | 新入口不依赖交易动作 | 未开始 |
-| P3 | 回写长期导航 | operator 可发现性 | 当前 change、`scripts/README.md`、topic README | 使用说明与 evidence path | `python scripts/check_topic_docs.py --root .` | topic README | 后续 operator 能直接找到入口 | 未开始 |
+| P1 | 冻结 `ORDER / TRADE` 只读结果 taxonomy | topic 目标 | 当前 change、必要入口 | success/failure/boundary taxonomy | 文档自检 | topic README | `无订单/无成交/历史残留/query失败` 可区分 | 已完成 |
+| P2 | 实现 read-only snapshot 入口 | 持续开发 backlog | 脚本、adapter、`tests/` | 正式 read-only snapshot | targeted pytest | `scripts/README.md` | 新入口不依赖交易动作 | 已完成 |
+| P3 | 回写长期导航 | operator 可发现性 | 当前 change、`scripts/README.md`、topic README | 使用说明与 evidence path | `python scripts/check_topic_docs.py --root .` | topic README | 后续 operator 能直接找到入口 | 已完成 |
 
 ## 六、长期规则增量摘要 / Long-Term Rule Delta Summary
 
@@ -73,3 +73,5 @@ dependencies:
 ## 七、进度记录（可选）
 
 1. 2026-04-10：创建 C6 change bundle，作为 offhours `ORDER / TRADE` 只读 contract 的正式宿主。
+2. 2026-06-08：successor implementation 已落地：`ctp_query_adapter_smoke.py` 暴露 `--include-order-trade-snapshot`，`scripts/README.md` 记录 order/trade snapshot lane 的 `no_order_events / no_trade_events / historical_residue_*` 语义。
+3. 2026-06-08：focused pytest `order_trade_snapshot / td_order_truth / historical_callback_boundary` 通过，完成 repo-only contract 收口。

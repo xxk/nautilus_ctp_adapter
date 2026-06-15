@@ -1,0 +1,79 @@
+{
+  "schema": "p077.t6.onrsp-offset-authority-guardrail-repair-no-send.v1",
+  "artifact_id": "p077_t6_onrsp_offset_authority_guardrail_repair_no_send",
+  "created_at": "2026-06-14T08:23:57Z",
+  "owner_repo": "D:/Nautilus/nautilus_ctp_adapter",
+  "selected_lane": "ctp_owner_onrsp_offset_authority_guardrail_repair",
+  "action_mode": "no_send_code_repair",
+  "authorization": {
+    "formal_authorization_present": false,
+    "active_bounded_authorization": false,
+    "paper_send_armed": false,
+    "native_send_attempted": false,
+    "submit_attempted": false,
+    "paper_only": true,
+    "live_forbidden": true
+  },
+  "source_artifacts": {
+    "field_provenance_no_send": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T081927Z/p077_t6_onrsp_order_insert_field_provenance_no_send.json",
+      "checksum": "sha256:49ee1b353789a18e62d188e0df121b16b745d920e0ceebf6bf2b3df35a7583eb"
+    },
+    "latest_source_bearing_closeout": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T080757Z/p077_t6_e56_authorized_close_slice_insufficient_position_closeout.json",
+      "checksum": "sha256:2082ad92ee674460e99ca35d5fdf18ec6424e903e10ff3eaf97800ba10a9e0ff"
+    }
+  },
+  "repair": {
+    "files": [
+      {
+        "path": "D:/Nautilus/nautilus_ctp_adapter/scripts/ctp_guarded_paper_order_loop.py",
+        "checksum": "sha256:7723cc41b5fd769d0f9733c5b1c5cf8c07b62dec502f1ba1d2e6bd032f6b5ad0",
+        "change": "native_offset_semantics now records submit_offset_authority, callback_offset_authority and callback_offset_rewrites_submit_truth"
+      },
+      {
+        "path": "D:/Nautilus/nautilus_ctp_adapter/tests/test_guarded_paper_order_loop.py",
+        "checksum": "sha256:826e95a6052b72fa2b2863f6316d2a2b7f26efd5c2a6425d7a29aa0e4395c623",
+        "change": "contract-lock asserts OnRspOrderInsert response offset is front_response_diagnostic and cannot rewrite submit truth"
+      }
+    ],
+    "new_semantic_fields": {
+      "submit_offset_authority": "submit_request_provenance",
+      "callback_offset_authority": "front_response_diagnostic",
+      "callback_offset_rewrites_submit_truth": false
+    }
+  },
+  "verification": {
+    "focused_gate": {
+      "command": "python -m pytest tests/test_guarded_paper_order_loop.py -q -p no:cacheprovider --basetemp output/tmp/pytest-p077-082357",
+      "result": "48 passed"
+    }
+  },
+  "semantic_interpretation": {
+    "submit_boundary_offset_writes_submit_truth": true,
+    "onrsp_order_insert_response_offset_writes_submit_truth": false,
+    "future_guarded_lifecycle_artifacts_carry_field_authority": true,
+    "local_submit_provenance_gap_ruled_out": true,
+    "fill_producing_acceptance_satisfied": false,
+    "acceptance_implication": "typed_blocker_only_not_fill_or_closeout_truth"
+  },
+  "typed_blocker": {
+    "active": true,
+    "blocker_type": "broker-or-front-onrsp-order-insert-close-rejection-semantics",
+    "reason": "The CTP owner guarded-loop diagnostics now explicitly distinguish submit_request_provenance from OnRspOrderInsert front_response_diagnostic offset fields, so future evidence cannot treat response offset 1 as submit truth. The remaining blocker is still independent broker/front response semantics or adapter/native repair beyond authority annotation.",
+    "retry_condition": "Do not submit again until independent broker/front response semantics evidence or a repair beyond diagnostic authority is recorded, then P077 records a new formal bounded Paper authorization and owner collects fresh same-slice market/account/preflight evidence."
+  },
+  "truth_boundaries": {
+    "paper_ready": false,
+    "live_ready": false,
+    "production_ready": false,
+    "capital_allocated": false,
+    "broker_tradable": false,
+    "runtime_truth_created": false,
+    "account_console_runtime_truth": false,
+    "ui_truth_created": false,
+    "china_s2_pass": false,
+    "hft_s3_pass": false,
+    "loop_complete": false
+  }
+}

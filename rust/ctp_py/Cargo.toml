@@ -12,3 +12,4 @@ crate-type = ["cdylib"]
 [dependencies]
 pyo3 = { version = "0.23", features = ["extension-module"] }
 ctp_native = { package = "ctp_runtime_core", path = "../ctp_runtime_core" }
+encoding_rs = "0.8"

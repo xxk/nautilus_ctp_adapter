@@ -1,0 +1,51 @@
+{
+  "schema_version": "p077.t6.close-today-offset-mismatch-regression.v1",
+  "artifact_kind": "p077_t6_close_today_offset_mismatch_regression_no_send",
+  "created_at_utc": "2026-06-14T03:19:39Z",
+  "owner": "owner://nautilus_ctp_adapter",
+  "truth_owner": "owner://nautilus_ctp_adapter/ctp-paper-19053",
+  "source_blocker": {
+    "artifact": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T030139Z/p077_t6_authorized_retry_cancelled_insufficient_position_closeout.json",
+    "checksum": "sha256:8b4c38f4fc95f43ba9ee944766cee806c1cb9c4c2178b933debbb0296e834500",
+    "requested_position_effect": "CLOSETODAY",
+    "decoded_error_message": "持仓不足",
+    "observed_callback_offset_flag": "1"
+  },
+  "regression": {
+    "test": "tests/test_guarded_paper_order_loop.py::test_native_offset_semantics_flags_close_today_submit_callback_mismatch",
+    "submit_native_comb_offset": "3",
+    "callback_offset_flag": "1",
+    "expected_disposition": "callback_offset_differs_from_submit_native_comb_offset",
+    "writes_truth": false
+  },
+  "focused_gates": [
+    {
+      "command": "$env:PYTHONPATH='.;src'; pytest -q -p no:cacheprovider --basetemp .tmp/pytest-tmp tests/test_guarded_paper_order_loop.py",
+      "status": "passed",
+      "result": "38 passed"
+    },
+    {
+      "command": "$env:PYTHONPATH='.;src'; pytest -q -p no:cacheprovider tests/test_nautilus_integration.py",
+      "status": "passed",
+      "result": "83 passed"
+    }
+  ],
+  "owner_boundary": {
+    "sent_order": false,
+    "native_send_attempted": false,
+    "submit_attempted": false,
+    "retry_authorized_by_this_artifact": false,
+    "fill_producing_acceptance_satisfied": false,
+    "runtime_truth_created": false,
+    "account_console_truth_created": false,
+    "paper_ready_claimed": false,
+    "live_ready_claimed": false,
+    "broker_tradable_claimed": false
+  },
+  "typed_outcome": "passed_no_send_regression_for_close_today_offset_mismatch_still_blocked",
+  "remaining_blocker": {
+    "blocker_type": "broker-or-adapter-close-position-semantics",
+    "wait_only": false,
+    "retry_condition": "Use the native_offset_semantics field in the next fresh no-send or separately authorized guarded lifecycle artifact to decide whether the observed rb2610 CLOSETODAY rejection is outbound native offset mapping, callback projection semantics, or broker/account position-detail semantics."
+  }
+}

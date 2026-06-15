@@ -77,7 +77,11 @@ struct TdSession {
     TdOnAccountCallback account_callback = nullptr;
     std::unordered_map<std::string, SessionIdentity> identity_by_order_ref;
     std::unordered_map<std::string, SessionIdentity> identity_by_order_sys_id;
+    std::unordered_map<std::string, int> submit_offset_by_order_ref;
 };
+
+constexpr const char* SUBMIT_REQUEST_OFFSET_SOURCE =
+    "repo_ctp_td_order_send.CThostFtdcInputOrderField.CombOffsetFlag[0]";
 
 std::string trim_text(std::string value) {
     auto begin = value.begin();
@@ -402,6 +406,25 @@ SessionIdentity resolve_td_order_identity_locked(const TdSession& session, const
     return current_td_identity_locked(session);
 }
 
+void remember_td_submit_offset_locked(TdSession& session, const std::string& order_ref, int offset_flag) {
+    if (!order_ref.empty()) {
+        session.submit_offset_by_order_ref[order_ref] = offset_flag;
+    }
+}
+
+int resolve_td_submit_offset_locked(const TdSession& session, const std::string& order_ref) {
+    if (!order_ref.empty()) {
+        if (const auto found = session.submit_offset_by_order_ref.find(order_ref); found != session.submit_offset_by_order_ref.end()) {
+            return found->second;
+        }
+    }
+    return -1;
+}
+
+const char* submit_offset_source_for(int offset_flag) {
+    return offset_flag >= 0 ? SUBMIT_REQUEST_OFFSET_SOURCE : nullptr;
+}
+
 void MdSpiImpl::OnFrontConnected() {
     if (MdSession* session_ptr = session()) {
         {
@@ -642,10 +665,12 @@ void TdSpiImpl::OnRspQryInvestorPosition(CThostFtdcInvestorPositionField* positi
             return;
         }
         const std::string symbol = normalized_text(position->InstrumentID);
+        const std::string exchange_id = normalized_text(position->ExchangeID);
         const std::string broker_id = normalized_text(position->BrokerID);
         const std::string investor_id = normalized_text(position->InvestorID);
         const NativePosition snapshot{
             symbol.c_str(),
+            exchange_id.c_str(),
             broker_id.c_str(),
             investor_id.c_str(),
             normalize_enum_value(position->PosiDirection),
@@ -705,17 +730,19 @@ void TdSpiImpl::OnRspQryTradingAccount(CThostFtdcTradingAccountField* account, C
 
 void TdSpiImpl::OnRspOrderInsert(CThostFtdcInputOrderField* input_order,
                                   CThostFtdcRspInfoField* rsp_info,
-                                  int /*request_id*/, bool /*is_last*/) {
+                                  int request_id, bool is_last) {
     if (input_order == nullptr) {
         return;
     }
     if (TdSession* session_ptr = session()) {
         TdOnExecCallback callback = nullptr;
         SessionIdentity fallback_identity{};
+        int submit_request_offset_flag = -1;
         {
             std::scoped_lock lock(session_ptr->mutex);
             callback = session_ptr->exec_callback;
             fallback_identity = current_td_identity_locked(*session_ptr);
+            submit_request_offset_flag = resolve_td_submit_offset_locked(*session_ptr, normalized_text(input_order->OrderRef));
         }
         if (callback == nullptr) {
             return;
@@ -747,6 +774,12 @@ void TdSpiImpl::OnRspOrderInsert(CThostFtdcInputOrderField* input_order,
             0,
             error_msg.empty() ? "OnRspOrderInsert: order rejected" : error_msg.c_str(),
             0,
+            "OnRspOrderInsert",
+            submit_request_offset_flag,
+            submit_offset_source_for(submit_request_offset_flag),
+            request_id,
+            is_last ? 1 : 0,
+            rsp_info == nullptr ? 0 : rsp_info->ErrorID,
         };
         callback(&snapshot);
     }
@@ -760,10 +793,12 @@ void TdSpiImpl::OnErrRtnOrderInsert(CThostFtdcInputOrderField* input_order,
     if (TdSession* session_ptr = session()) {
         TdOnExecCallback callback = nullptr;
         SessionIdentity fallback_identity{};
+        int submit_request_offset_flag = -1;
         {
             std::scoped_lock lock(session_ptr->mutex);
             callback = session_ptr->exec_callback;
             fallback_identity = current_td_identity_locked(*session_ptr);
+            submit_request_offset_flag = resolve_td_submit_offset_locked(*session_ptr, normalized_text(input_order->OrderRef));
         }
         if (callback == nullptr) {
             return;
@@ -794,6 +829,12 @@ void TdSpiImpl::OnErrRtnOrderInsert(CThostFtdcInputOrderField* input_order,
             0,
             error_msg.empty() ? "OnErrRtnOrderInsert: exchange rejected" : error_msg.c_str(),
             0,
+            "OnErrRtnOrderInsert",
+            submit_request_offset_flag,
+            submit_offset_source_for(submit_request_offset_flag),
+            -1,
+            0,
+            rsp_info == nullptr ? 0 : rsp_info->ErrorID,
         };
         callback(&snapshot);
     }
@@ -806,12 +847,14 @@ void TdSpiImpl::OnRtnOrder(CThostFtdcOrderField* order) {
     if (TdSession* session_ptr = session()) {
         TdOnExecCallback callback = nullptr;
         SessionIdentity fallback_identity{};
+        int submit_request_offset_flag = -1;
         const std::string order_ref = normalized_text(order->OrderRef);
         const std::string order_sys_id = normalized_text(order->OrderSysID);
         {
             std::scoped_lock lock(session_ptr->mutex);
             callback = session_ptr->exec_callback;
             fallback_identity = current_td_identity_locked(*session_ptr);
+            submit_request_offset_flag = resolve_td_submit_offset_locked(*session_ptr, order_ref);
             remember_td_order_identity_locked(
                 *session_ptr,
                 order_ref,
@@ -844,6 +887,12 @@ void TdSpiImpl::OnRtnOrder(CThostFtdcOrderField* order) {
             0,
             status_message.empty() ? nullptr : status_message.c_str(),
             order->VolumeTotal,
+            "OnRtnOrder",
+            submit_request_offset_flag,
+            submit_offset_source_for(submit_request_offset_flag),
+            -1,
+            0,
+            0,
         };
         callback(&snapshot);
     }
@@ -858,10 +907,12 @@ void TdSpiImpl::OnRtnTrade(CThostFtdcTradeField* trade) {
         const std::string order_ref = normalized_text(trade->OrderRef);
         const std::string order_sys_id = normalized_text(trade->OrderSysID);
         SessionIdentity identity{};
+        int submit_request_offset_flag = -1;
         {
             std::scoped_lock lock(session_ptr->mutex);
             callback = session_ptr->exec_callback;
             identity = resolve_td_order_identity_locked(*session_ptr, order_ref, order_sys_id);
+            submit_request_offset_flag = resolve_td_submit_offset_locked(*session_ptr, order_ref);
         }
         if (callback == nullptr) {
             return;
@@ -886,6 +937,12 @@ void TdSpiImpl::OnRtnTrade(CThostFtdcTradeField* trade) {
             trade->Price,
             trade->Volume,
             nullptr,
+            0,
+            "OnRtnTrade",
+            submit_request_offset_flag,
+            submit_offset_source_for(submit_request_offset_flag),
+            -1,
+            0,
             0,
         };
         callback(&snapshot);
@@ -1226,6 +1283,7 @@ extern "C" std::int32_t repo_ctp_td_order_send(
     void* handle,
     const char* order_id,
     const char* symbol,
+    std::int32_t request_id,
     double price,
     std::int32_t qty,
     std::int32_t side,
@@ -1286,9 +1344,13 @@ extern "C" std::int32_t repo_ctp_td_order_send(
     {
         std::scoped_lock lock(session->mutex);
         remember_td_order_identity_locked(*session, order_ref_text, "", identity);
+        remember_td_submit_offset_locked(
+            *session,
+            order_ref_text,
+            normalize_enum_value(order.CombOffsetFlag[0]));
     }
 
-    return api->ReqOrderInsert(&order, 0);
+    return api->ReqOrderInsert(&order, request_id);
 }
 
 extern "C" std::int32_t repo_ctp_td_order_action(

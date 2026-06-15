@@ -1,0 +1,8 @@
+profile_id: tracer
+description: Standard tracer proposal with capability and design tracking.
+fragments:
+  - issue_list
+  - capability_contract
+  - design
+  - change_map
+  - strict_acceptance

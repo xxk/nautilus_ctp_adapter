@@ -1,0 +1,101 @@
+{
+  "schema": "p077.t6.ctp-paper-pyo3-gb18030-text-decode-repair.v1",
+  "created_at": "2026-06-14T02:23:38Z",
+  "owner_repo": "D:/Nautilus/nautilus_ctp_adapter",
+  "calling_repo": "D:/Nautilus/nautilus_strategies",
+  "proposal_id": "p077-p076-timed-paper-loop-workflow",
+  "change_ids": [
+    "20260613__paper__p077-real-paper-node-capability-runway",
+    "20260614__paper__p077-safer-retry-lane"
+  ],
+  "account_alias": "19053",
+  "instrument": "rb2610",
+  "exchange": "SHFE",
+  "typed_outcome": "repair_landed_no_send",
+  "paper_send_attempted": false,
+  "native_send_attempted": false,
+  "submit_attempted": false,
+  "cancel_attempted": false,
+  "retry_authorized_by_this_artifact": false,
+  "fill_producing_acceptance_satisfied": false,
+  "runtime_truth_created": false,
+  "account_console_truth_created": false,
+  "readiness_claims": {
+    "paper_ready": false,
+    "live_ready": false,
+    "production_ready": false,
+    "broker_tradable": false,
+    "capital_allocated": false,
+    "admitted": false
+  },
+  "source_artifacts": [
+    {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T020238Z/p077_t6_armed_repaired_projection_cancelled_no_fill_closeout.json",
+      "checksum": "sha256:f8b489723e868a38abcee28c403b324100b4ff1ded0a7cdd9e8138deeb38d6da",
+      "meaning": "latest guarded lifecycle callback still cancelled with fill volume 0"
+    },
+    {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T021508Z/p077_t6_native_status_53_diagnostic_repair_no_send.json",
+      "checksum": "sha256:f230d0ef0b12a72caa22858fdc50b0fe1c94fe5dcac501b4b6b3ae737156929f",
+      "meaning": "status 53 classified as CTP order status char 5 / cancelled; semantic reason remains unknown"
+    },
+    {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T020238Z/armed_lifecycle_repaired_projection.json",
+      "checksum": "sha256:11c1285dba8e04a510e0aadff8ed6eb2b0c746e89021010f951756c5ee3209f5",
+      "meaning": "raw lifecycle artifact cited by repaired-projection closeout"
+    }
+  ],
+  "code_changes": [
+    {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/rust/ctp_py/Cargo.toml",
+      "change": "add encoding_rs dependency for CTP text decoding"
+    },
+    {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/rust/ctp_py/src/lib.rs",
+      "change": "replace PyO3 decode_ptr_text UTF-8 lossy-only path with UTF-8 strict, GB18030 fallback, and final UTF-8 lossy fallback; add unit coverage for null, UTF-8, and GB18030 text"
+    },
+    {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/rust/Cargo.lock",
+      "change": "lock encoding_rs v0.8.35"
+    }
+  ],
+  "diagnosis": {
+    "pyo3_mainline_uses_utf8_lossy_before_repair": true,
+    "ctypes_helper_already_has_gb18030_fallback": true,
+    "bridge_normalized_text_is_trim_only": true,
+    "existing_lifecycle_artifacts_retroactively_decodable": false,
+    "broker_semantic_reason_inferred": false,
+    "semantic_reason": "requires_fresh_callback_after_pyo3_decode_repair_or_typed_broker_rule",
+    "status_53_meaning_from_previous_artifact": "ascii_code_53_for_ctp_order_status_char_5_cancelled"
+  },
+  "gates": [
+    {
+      "command": "cargo fmt --all --manifest-path rust/Cargo.toml",
+      "cwd": "D:/Nautilus/nautilus_ctp_adapter",
+      "result": "passed"
+    },
+    {
+      "command": "cargo check -p ctp_py --manifest-path rust/Cargo.toml",
+      "cwd": "D:/Nautilus/nautilus_ctp_adapter",
+      "result": "passed_with_existing_dead_code_warnings"
+    },
+    {
+      "command": "python -m pytest tests/test_native_ctp_text_decode.py -q -p no:cacheprovider",
+      "cwd": "D:/Nautilus/nautilus_ctp_adapter",
+      "result": "passed",
+      "summary": "3 passed"
+    },
+    {
+      "command": "cargo test -p ctp_py --manifest-path rust/Cargo.toml decode_ptr_text -- --nocapture",
+      "cwd": "D:/Nautilus/nautilus_ctp_adapter",
+      "result": "blocked_by_windows_loader",
+      "summary": "compiled, then test executable exited with STATUS_ENTRYPOINT_NOT_FOUND before assertions ran"
+    }
+  ],
+  "next_retry_condition": "Build/deploy the repaired PyO3 bridge, then collect a fresh guarded lifecycle callback or a separately typed broker semantic rule. Do not infer broker semantic reason from the older replacement-character artifacts.",
+  "notes": [
+    "This artifact repairs the owner-side decode path only.",
+    "It does not send an order, authorize a retry, satisfy fill-producing acceptance, or create Account Console/runtime truth.",
+    "The previous guarded lifecycle remains cancelled/no-fill until fresh owner evidence says otherwise."
+  ]
+}

@@ -1,0 +1,83 @@
+{
+  "schema": "p077.t6.broker-front-rule-source-audit-no-send.v1",
+  "artifact_id": "p077_t6_broker_front_rule_source_audit_no_send",
+  "created_at": "2026-06-14T08:28:27Z",
+  "owner_repo": "D:/Nautilus/nautilus_ctp_adapter",
+  "selected_lane": "ctp_owner_broker_front_rule_source_audit_no_send",
+  "action_mode": "no_send_source_audit",
+  "authorization": {
+    "formal_authorization_present": false,
+    "active_bounded_authorization": false,
+    "paper_send_armed": false,
+    "native_send_attempted": false,
+    "submit_attempted": false,
+    "paper_only": true,
+    "live_forbidden": true
+  },
+  "source_artifacts": {
+    "onrsp_offset_authority_guardrail_repair": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T082357Z/p077_t6_onrsp_offset_authority_guardrail_repair_no_send.json",
+      "checksum": "sha256:459c0f1c43e918357836bd9fd17108f4c8533a8aa212a7250b1c4fb70e396f6f"
+    },
+    "onrsp_order_insert_field_provenance": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T081927Z/p077_t6_onrsp_order_insert_field_provenance_no_send.json",
+      "checksum": "sha256:49ee1b353789a18e62d188e0df121b16b745d920e0ceebf6bf2b3df35a7583eb"
+    },
+    "latest_source_bearing_closeout": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T080757Z/p077_t6_e56_authorized_close_slice_insufficient_position_closeout.json",
+      "checksum": "sha256:2082ad92ee674460e99ca35d5fdf18ec6424e903e10ff3eaf97800ba10a9e0ff"
+    }
+  },
+  "local_source_audit": {
+    "command": "rg -n \"OnRspOrderInsert|RspOrderInsert|ReqOrderInsert|CombOffsetFlag|ErrorMsg|持仓不足|CloseToday|CloseYesterday|THOST_FTDC_OF_Close\" . --glob '!output/reports/**' --glob '!target/**' --glob '!node_modules/**'",
+    "scope": "D:/Nautilus/nautilus_ctp_adapter",
+    "findings": [
+      {
+        "kind": "owner_code",
+        "summary": "native bridge records ReqOrderInsert submit offset provenance and OnRspOrderInsert response offset diagnostics separately"
+      },
+      {
+        "kind": "owner_tests",
+        "summary": "focused tests encode the local diagnostic rule and guardrail, but tests are not independent broker/front semantic authority"
+      },
+      {
+        "kind": "vendor_header",
+        "summary": "vendor header confirms constants for Close, CloseToday, CloseYesterday, Today, Long and Speculation, but does not define broker/front insufficient-position response rewriting semantics"
+      },
+      {
+        "kind": "independent_broker_front_rule_source",
+        "summary": "not found in this owner repo"
+      }
+    ],
+    "independent_rule_source_found": false
+  },
+  "semantic_interpretation": {
+    "local_submit_provenance_gap_ruled_out": true,
+    "local_constant_mapping_gap_ruled_out": true,
+    "local_guardrail_gap_repaired": true,
+    "owner_repo_contains_independent_broker_front_rule": false,
+    "cannot_infer_pass_from_local_tests_or_code": true,
+    "cannot_infer_pass_from_rejected_callback_echo": true,
+    "fill_producing_acceptance_satisfied": false,
+    "acceptance_implication": "typed_blocker_only_not_fill_or_closeout_truth"
+  },
+  "typed_blocker": {
+    "active": true,
+    "blocker_type": "independent-broker-front-close-rejection-rule-source-missing",
+    "reason": "The owner repo has local code, tests, vendor constants and typed artifacts that rule out local submit provenance and constant mapping gaps, but it does not contain an independent broker/front source that explains why OnRspOrderInsert returned insufficient-position text with response offset 1 after a remembered CLOSETODAY submit offset 3.",
+    "retry_condition": "Do not submit again until the CTP owner adds independent broker/front rule evidence from a primary source or lands an adapter/native repair beyond local diagnostics, then P077 records a new formal bounded Paper authorization and owner collects fresh same-slice market/account/preflight evidence."
+  },
+  "truth_boundaries": {
+    "paper_ready": false,
+    "live_ready": false,
+    "production_ready": false,
+    "capital_allocated": false,
+    "broker_tradable": false,
+    "runtime_truth_created": false,
+    "account_console_runtime_truth": false,
+    "ui_truth_created": false,
+    "china_s2_pass": false,
+    "hft_s3_pass": false,
+    "loop_complete": false
+  }
+}

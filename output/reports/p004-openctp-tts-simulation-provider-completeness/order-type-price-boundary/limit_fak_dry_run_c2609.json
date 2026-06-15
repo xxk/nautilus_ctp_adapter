@@ -1,0 +1,86 @@
+{
+  "baseline": "ctp-guarded-paper-order-loop-v1",
+  "account_profile": "openctp-tts-7x24-simulation",
+  "evidence_class": "openctp-tts-7x24-simulation",
+  "success": true,
+  "status": "passed",
+  "failure_reason": null,
+  "blocker_type": null,
+  "action_mode": "dry_run",
+  "paper_send_armed": false,
+  "pre_snapshot": {
+    "accepted": true,
+    "issues": []
+  },
+  "close_intent": null,
+  "order_boundary": {
+    "accepted": true,
+    "disposition": "order_boundary_passed",
+    "issues": [],
+    "instrument": {
+      "venue_symbol": "c2609",
+      "exchange_id": "DCE",
+      "price_tick": 1.0,
+      "volume_multiple": 10
+    },
+    "limit_boundary": {
+      "source": "not_available",
+      "status": "unknown"
+    }
+  },
+  "intent_contract": {
+    "instrument": "c2609",
+    "side": "BUY",
+    "quantity": 1,
+    "limit_price": 2300.0,
+    "position_effect": "OPEN",
+    "order_type": "LIMIT",
+    "time_in_force": "FAK",
+    "price_mode": "best_level_1",
+    "client_order_id": "p004-boundary-fak-dryrun-20260608-01"
+  },
+  "order_contract": {
+    "accepted": true,
+    "disposition": "order_contract_passed",
+    "issues": []
+  },
+  "mapped_submit": {
+    "error": null,
+    "client_order_id": "p004-boundary-fak-dryrun-20260608-01",
+    "order_ref": 2,
+    "front_id": 1,
+    "session_id": -1002307197,
+    "order_ref_present": true,
+    "front_id_present": true,
+    "session_id_present": true,
+    "command_kind": "submit_order"
+  },
+  "order_lifecycle": {
+    "dry_run": true,
+    "live_send_armed": false,
+    "bootstrap_ready": true,
+    "matched_exec_count": 0,
+    "command_kinds": [
+      "connect",
+      "submit_order"
+    ],
+    "event_kinds": [
+      "login_succeeded",
+      "settlement_confirmed"
+    ],
+    "lifecycle_events": [],
+    "verdict": {
+      "accepted": true,
+      "disposition": "dry_run_preflight",
+      "matched_event_count": 0,
+      "unique_fill_count": 0,
+      "duplicate_fill_count": 0,
+      "fill_volume": 0,
+      "leaves_qty": 1,
+      "issues": []
+    }
+  },
+  "post_snapshot": null,
+  "reconciliation": null,
+  "issues": []
+}

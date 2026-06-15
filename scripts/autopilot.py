@@ -73,7 +73,6 @@ def show_frontier(root: Path) -> dict[str, object]:
 
     active_changes: list[dict[str, object]] = []
     active_change = frontier.get("active_change")
-    active_topic = frontier.get("active_topic")
     if isinstance(active_change, dict) and active_change.get("change_id"):
         change_id = str(active_change["change_id"])
         plan_path = changes_dir / change_id / "plan.md"
@@ -83,10 +82,8 @@ def show_frontier(root: Path) -> dict[str, object]:
                 "change_id": change_id,
                 "title": meta.get("title", change_id),
                 "progress": meta.get("progress", "N/A"),
-                "topic_id": None if not isinstance(active_topic, dict) else active_topic.get("topic_id"),
-                "execution_order": None
-                if not isinstance(active_topic, dict)
-                else active_topic.get("execution_order"),
+                "topic_id": active_change.get("topic_id") or meta.get("topic_id"),
+                "execution_order": active_change.get("execution_order") or meta.get("execution_order"),
             }
         )
 

@@ -71,6 +71,13 @@ Offhours evidence naming note:
 14. The shared default label is deterministic: `shared-flow` when no explicit flow path is provided, `isolated-flow` when an explicit flow path is used.
 15. `--output-json` and `--evidence-root` remain mutually exclusive across these offhours scripts.
 
+Operator decision note:
+
+1. Use `ctp_query_adapter_smoke.py` as the default no-op/offhours handoff entry because it can aggregate read-only query, reconciliation, order-truth, order/trade snapshot, and evidence export in one run.
+2. Use OpenCTP TTS local config only for 24h simulation evidence; keep OpenCTP credentials in ignored `.env.d/openctp-tts-7x24-simulation.env` and generated config under ignored `cfgs/local/`.
+3. Use `formal-trading` local config only for final broker-facing pre-go-live evidence.
+4. Do not run `ctp_order_lifecycle_smoke.py --live-send` unless TD preflight, trade window, and `c2609 / 1 hand / 5 hand max` guardrails are all explicitly satisfied.
+
 ## Repo-Only Bootstrap And Debug
 
 1. `python scripts/ctp_repo_debug_smoke.py` is the repo-only debug entry for a fresh clone after `python -m pip install -e .`.
@@ -110,6 +117,54 @@ The formal Nautilus-facing live smoke baseline is:
 1. `python scripts/ctp_nautilus_live_smoke.py --config <path>`
 2. It must be the default live smoke entrypoint reused by later topics.
 3. The MD-only and TD-only scripts remain diagnostics helpers.
+
+## OpenCTP TTS 7x24 Test Baseline
+
+Current priority for 24h API development/debug is account profile `openctp-tts-7x24-simulation` when a local OpenCTP account and compatible TTS-CTPAPI runtime/SDK are available.
+The tracked defaults come from the current OpenCTP official pages: `http://www.openctp.cn/simenv.html` for live front status and `http://www.openctp.cn/TTS-CTPAPI.html` for TTS CTPAPI environment parameters.
+
+Setup rules:
+
+1. Use `http://www.openctp.cn/` as the OpenCTP information lookup and paper account application entry.
+2. Register the paper account through the OpenCTP/CTP开放平台 public-account flow. Public docs describe this as an operator-owned WeChat/public-account action, including `注册24`, `注册仿真`, and `查询` account commands.
+3. Put OpenCTP `UserID` and `Password` in ignored `.env.d/openctp-tts-7x24-simulation.env`; do not write secrets into tracked docs or examples.
+4. Generate the ignored local config with `python scripts/write_openctp_tts_config_from_env.py`; keep 7x24 `BrokerID=9999`, while `AuthCode` and `AppID` remain empty.
+5. Keep `AllowEmptyBrokerID=false` for the tracked OpenCTP 7x24 default. The `AllowEmptyBrokerID=true` path remains only as an explicit compatibility escape hatch and does not relax normal CTP validation.
+6. Keep `ExecutionGuardrails.AllowLiveOrderSmoke=false` in tracked templates and local configs until an operator deliberately arms live-send for a specific simulation run.
+7. Use `TEST` as the default OpenCTP 7x24 debug instrument. Do not mix this path with OpenCTP 仿真, broker paper, or formal-trading `c2609` guardrail paths.
+8. Install the OpenCTP TTS-CTPAPI runtime/SDK only as local inputs under ignored paths or explicit environment variables, then prove readiness with `python scripts/check_rust_gate.py`. The current proven local path uses the official TTS 6.6.9 package, assembled as a win64 SDK/runtime directory.
+9. Follow the current runbook at `docs/changes/20260607__openctp-tts__test-baseline/runbook.md` for TCP connectivity checks and evidence paths.
+
+Preferred first-run order:
+
+```powershell
+python scripts/write_openctp_tts_config_from_env.py
+$env:CTP_VENDOR_SDK_ROOT=(Resolve-Path output/openctp/tts-sdk/tts_6.6.9-win64-combined).Path
+python scripts/check_rust_gate.py
+python scripts/ctp_md_login_smoke.py --config cfgs/local/ctp.openctp.tts.7x24.local.json --timeout-seconds 20
+python scripts/ctp_td_login_smoke.py --config cfgs/local/ctp.openctp.tts.7x24.local.json --timeout-seconds 20
+python scripts/ctp_nautilus_live_smoke.py --config cfgs/local/ctp.openctp.tts.7x24.local.json --md-timeout-seconds 20 --td-timeout-seconds 20
+```
+
+After login and first tick are stable, use the existing query and order lifecycle smoke scripts against the same local config. Keep order lifecycle in dry-run first; only add `--live-send` after guardrails and the current simulation account state are explicit.
+
+## Local 260603 CSV Front Override
+
+When these local files exist, use them by default and do not ask the operator for CTP fronts or credentials:
+
+1. `C:\Users\Administrator\Desktop\TradingServer_260603.csv`
+2. `C:\Users\Administrator\Desktop\MarketDataServer_260603.csv`
+3. `cfgs/local/ctp.live.025292.local.json`
+
+Rules:
+
+1. Treat the CSVs as front sources only: TD `tcp://180.168.159.225:51205`, MD `tcp://180.168.159.225:51213`.
+2. Keep BrokerID, UserID, ProductInfo, AppID, AuthCode, Password, and Instruments in the local config only.
+3. Generate a temporary config outside the repository, for example under `D:\Nautilus\_tmp\ctp_login_260603\`, and delete it after the run.
+4. Run `python scripts/check_rust_gate.py`, `python scripts/ctp_md_login_smoke.py --config <temp-config> --timeout-seconds 20`, and then `python scripts/ctp_nautilus_live_smoke.py --config <temp-config> --md-timeout-seconds 20 --td-timeout-seconds 20`.
+5. For TD-only diagnosis on Windows, set `PYTHONIOENCODING=utf-8` before `python scripts/ctp_td_login_smoke.py --config <temp-config> --timeout-seconds 20`.
+
+2026-06-03 local evidence: MD login and first `rb2610` tick succeed with the CSV fronts; TD reaches the live request path but returns `login_error_id=3`. The same TD error class also appears with the original local TD front, so do not reopen front discovery unless the local CSV/config files are missing.
 
 ## Topic 5 Startup Layering
 

@@ -6,6 +6,8 @@ from typing import Iterable
 
 from .manifest import BOOTSTRAP_MANAGED_DLLS, REQUIRED_NATIVE_DLLS
 
+_DLL_DIRECTORY_HANDLES: list[object] = []
+
 
 def candidate_native_paths(base_dir: str | Path) -> list[Path]:
     """Return probable directories for CTP native DLL resolution."""
@@ -61,10 +63,13 @@ def find_managed_assembly_dir(base_dir: str | Path) -> Path | None:
 
 def add_windows_dll_directories(*paths: str | Path) -> list[Path]:
     registered: list[Path] = []
+    add_dll_directory = getattr(os, "add_dll_directory", None)
+    if add_dll_directory is None:
+        return registered
     for raw_path in paths:
         path = Path(raw_path)
         if not path.exists():
             continue
-        os.add_dll_directory(str(path))
+        _DLL_DIRECTORY_HANDLES.append(add_dll_directory(str(path)))
         registered.append(path)
     return registered

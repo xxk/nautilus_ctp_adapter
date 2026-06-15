@@ -1,0 +1,109 @@
+{
+  "artifact_type": "p077_t6_e87_post_fill_owner_status_no_send_audit",
+  "schema": "p077.t6.e87-post-fill-owner-status-no-send-audit.v1",
+  "created_at": "2026-06-14T12:31:00.555Z",
+  "owner_repo": "D:/Nautilus/nautilus_ctp_adapter",
+  "selected_lane": "P077 timed Paper loop T6 / CTP owner post-E87 no-send status audit",
+  "action_mode": "no_send_owner_status_audit",
+  "source_evidence": {
+    "e87_filled_close_yesterday_reconciled": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T112841Z/p077_t6_e86_filled_close_yesterday_reconciled.json",
+      "sha256": "sha256:cb2d8998f72062e48bada1c663eabc57ca98fe84a806472a2c5fb5e52489368d",
+      "owner": "nautilus_ctp_adapter",
+      "authority": "source-bearing lifecycle/post-snapshot/reconcile evidence for the consumed E86 bounded Paper close-yesterday slice"
+    },
+    "e88_post_fill_handoff_audit": {
+      "path": "D:/Nautilus/nautilus_strategies/docs/changes/20260614__paper__p077-safer-retry-lane/evidence/20260614T113441Z_e87_post_fill_owner_handoff_audit_no_send.json",
+      "sha256": "sha256:a8df0faca33ce1beac89f2e0068c4a270ed69534c9279361826a36bda7966628",
+      "owner": "nautilus_strategies",
+      "authority": "P077 governance no-active-authorization handoff after E87"
+    },
+    "e94_account_console_governance_closeout": {
+      "path": "D:/Nautilus/nautilus_account_console/docs/acceptance/2026-06-14-p077-p009-route-matrix-governance-closeout.json",
+      "sha256": "sha256:1bb6cc2fd7ea0675937018096dac1bdc765f937f84cdc4162e136af49057ee4f",
+      "owner": "nautilus_account_console",
+      "authority": "read-only UI governance closeout, not runtime truth"
+    }
+  },
+  "post_e87_owner_state": {
+    "e86_authorization_consumed": true,
+    "active_bounded_authorization": false,
+    "paper_send_attempted_by_this_audit": false,
+    "native_send_attempted_by_this_audit": false,
+    "market_query_attempted_by_this_audit": false,
+    "account_query_attempted_by_this_audit": false,
+    "guarded_dry_run_attempted_by_this_audit": false,
+    "runtime_mutation_attempted_by_this_audit": false,
+    "last_ctp_owner_position_delta_observed": -1,
+    "last_ctp_owner_lifecycle_disposition": "filled_position_delta_reconciled"
+  },
+  "next_owner_conditions": {
+    "future_paper_send_requires_new_formal_authorization": true,
+    "future_paper_send_requires_fresh_same_slice_market_account_preflight": true,
+    "future_paper_send_requires_formal_artifact_budget": true,
+    "future_paper_send_must_use_canonical_owner_runtime": true,
+    "future_paper_send_must_return_lifecycle_post_snapshot_reconcile_or_typed_blocker": true,
+    "wait_only_blocker": false,
+    "safe_next_lanes": [
+      "strategies may issue a new formal bounded authorization artifact if P077 selects another guarded Paper slice",
+      "ctp_adapter may run a no-send diagnostics/contract repair lane that does not query or send",
+      "ctp_adapter may run a fresh same-slice preflight only after a new formal bounded authorization names the slice"
+    ]
+  },
+  "boundaries": {
+    "runtime_truth": false,
+    "ledger_truth": false,
+    "account_console_runtime_truth": false,
+    "paper_ready": false,
+    "live_ready": false,
+    "broker_tradable": false,
+    "admission_truth": false,
+    "capital_truth": false,
+    "production_ready": false,
+    "loop_complete": false,
+    "second_runtime_created": false,
+    "second_scheduler_created": false,
+    "second_matching_engine_created": false,
+    "second_ledger_truth_created": false,
+    "second_artifact_root_created": false
+  },
+  "rejection_rules": [
+    "This audit cannot authorize, arm or imply another Paper submit.",
+    "E87 remains bounded owner-slice evidence only and cannot be promoted to Paper readiness.",
+    "Account Console E94 remains read-only governance/display evidence and cannot become runtime truth.",
+    "Any future send must start from a new formal bounded authorization plus fresh same-slice evidence."
+  ],
+  "gates": [
+    {
+      "name": "json syntax",
+      "status": "passed",
+      "command": "python -m json.tool output/reports/p077-paper-lifecycle/20260614T123100Z/p077_t6_e87_post_fill_owner_status_no_send_audit.json",
+      "summary": "artifact JSON parsed successfully"
+    },
+    {
+      "name": "change docs",
+      "status": "passed",
+      "command": "python scripts/check_change_docs.py --root .",
+      "summary": "CHANGE_DOCS_CHECK_OK: changes=94"
+    },
+    {
+      "name": "harness",
+      "status": "passed",
+      "command": "python scripts/check_harness.py",
+      "summary": "HARNESS_CHECK_OK"
+    },
+    {
+      "name": "owner-side blocker adoption",
+      "status": "passed",
+      "command": "python D:/Nautilus/global_docs/scripts/check_owner_side_blocker_repair_adoption.py --check-hooks",
+      "summary": "OWNER_SIDE_BLOCKER_REPAIR_ADOPTION_OK: checked_files=8 hooks=checked"
+    }
+  ],
+  "remaining_blockers": [
+    {
+      "blocker_id": "p077.t6.no-active-bounded-authorization",
+      "owner": "nautilus_strategies",
+      "retry_condition": "Record a new formal bounded Paper-only authorization naming account, instrument, side, quantity, offset, price policy, risk guard and send budget before any CTP owner fresh preflight or send lane."
+    }
+  ]
+}

@@ -1,20 +1,8 @@
 fragments:
-  change_map:
-    path: fragments/change-map.md
-    applies_when: proposal maps multiple child changes
+  strict_acceptance:
+    path: fragments/strict_acceptance.md
+    applies_when: medium/high complexity proposal requires stricter acceptance
     profile_selectable: true
-  decision_log:
-    path: fragments/decision-log.md
-    applies_when: proposal needs durable review decisions
-    profile_selectable: true
-  design:
-    path: fragments/design.md
-    applies_when: proposal needs a separate design freeze
-    profile_selectable: true
-  review_lane:
-    path: fragments/review-lane.md
-    applies_when: proposal needs formal review lane tracking
-    profile_selectable: truefragments:
   change_map:
     path: fragments/change-map.md
     applies_when: proposal maps multiple child changes
@@ -30,4 +18,28 @@ fragments:
   review_lane:
     path: fragments/review-lane.md
     applies_when: proposal needs formal review lane tracking
+    profile_selectable: true
+  capability_contract:
+    path: fragments/capability_contract.md
+    applies_when: proposal introduces or graduates a capability contract
+    profile_selectable: true
+  cross_tracer_gate:
+    path: fragments/cross_tracer_gate.md
+    applies_when: proposal changes shared tracer surfaces
+    profile_selectable: true
+  parallel_execution:
+    path: fragments/parallel_execution.md
+    applies_when: proposal requires parallel execution proof
+    profile_selectable: true
+  two_stage:
+    path: fragments/two_stage.md
+    applies_when: proposal uses prescreen/final two-stage flow
+    profile_selectable: true
+  factor_board:
+    path: fragments/factor_board.md
+    applies_when: proposal changes Factor Board behavior or acceptance
+    profile_selectable: true
+  issue_list:
+    path: fragments/issue_list.md
+    applies_when: proposal is a continuous tracer, cross-tracer, or other carry-forward driven lane
     profile_selectable: true

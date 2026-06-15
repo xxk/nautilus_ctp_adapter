@@ -62,6 +62,18 @@
 
 ---
 
+## ADR Carrier Acceptance Matrix
+
+| ID | Primary ADR | ADR decision item | ADR successor scenario | Positive path | Must fail if | Authority / retirement boundary | Minimal evidence | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| A-ADR-1 | ADR001 | D1 | Native owns hot path | Phase 2 freezes runtime/native owner inventory and migration boundary | New callback parse, state machine, or query lifecycle ownership is added to Python adapter as runtime truth | Native/Rust remains runtime authority; Python residuals are temporary and listed | `20260529__runtime-performance__p2-native-hot-path-ownership-cutover` | completed |
+| A-ADR-2 | ADR001 | D2 | Python stays thin host glue | Phase 3 freezes allowed host-shell responsibilities and forbidden runtime logic | Python adapter grows runtime state, hot-loop parsing, or query lifecycle ownership | Python owns Nautilus integration only; runtime correctness stays native/Rust | `20260529__runtime-performance__p3-thin-python-host-glue-contract-lock` | completed |
+| A-ADR-3 | ADR001 | D3 | Batch boundary is canonical | Phase 1 freezes adapter-facing batch boundary | A second per-event Python callback mainline is introduced | `submit_command` / `drain_events(limit)` or equivalent batch bridge remains the default boundary | `20260529__runtime-performance__p1` | completed |
+| A-ADR-4 | ADR001 | D4 | Daemon path requires measurement gate | Phase 4 freezes benchmark gate and daemon trigger policy | Daemon is defaulted without measurement evidence or successor proposal | Repo-local benchmark is lower-bound regression evidence only; live/formal daemon approval remains future proposal scope | `20260529__runtime-performance__p4-benchmark-gate-and-daemon-decision` | completed |
+| A-ADR-5 | ADR001 | D5 | Managed bridge remains non-mainline | P001 keeps vendor bridge readiness change separate from runtime performance rollout | P001 rewrites the vendor-bridge active change into the performance rollout carrier | Managed bridge remains debug/readiness scope until its own change closes | `20260410__live-session-order-query-hardening__vendor-bridge-readiness-and-sdk-handoff` | completed |
+
+---
+
 ## Evidence
 
 | 证据 | 路径或命令 | 结论 |

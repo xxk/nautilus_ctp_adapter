@@ -8,8 +8,10 @@ into the asyncio event loop via loop.call_soon_threadsafe().
 from __future__ import annotations
 
 import asyncio
+from dataclasses import dataclass
 import logging
 from pathlib import Path
+from typing import Any
 
 from nautilus_trader.cache.cache import Cache
 from nautilus_trader.common.component import LiveClock, MessageBus
@@ -27,6 +29,8 @@ from nautilus_trader.model.data import QuoteTick
 from nautilus_trader.model.identifiers import ClientId, InstrumentId, Venue
 from nautilus_trader.model.objects import Price, Quantity
 
+from nautilus_ctp_adapter.native.pyo3_runtime import create_md_live_session
+
 from .config import CtpAdapterConfig
 from .data_client import CtpDataClient
 from .nautilus_config import CtpDataClientConfig
@@ -34,14 +38,61 @@ from .nautilus_config import CtpDataClientConfig
 logger = logging.getLogger(__name__)
 
 
+@dataclass(frozen=True, slots=True)
+class CtpTickInstrumentResolution:
+    instrument_id: InstrumentId | None
+    instrument: Any | None
+    diagnostic: str | None = None
+
+
+def resolve_ctp_tick_instrument_id(instrument_provider: InstrumentProvider, symbol: str) -> InstrumentId | None:
+    metadata_getter = getattr(instrument_provider, "ctp_metadata", None)
+    if callable(metadata_getter):
+        metadata = metadata_getter(symbol)
+        if metadata is not None and metadata.exchange_id:
+            return InstrumentId.from_str(metadata.display_symbol)
+    return None
+
+
+def resolve_ctp_tick_instrument(
+    *,
+    cache,
+    instrument_provider: InstrumentProvider,
+    symbol: str,
+) -> CtpTickInstrumentResolution:
+    instrument_id = resolve_ctp_tick_instrument_id(instrument_provider, symbol)
+    if instrument_id is None:
+        return CtpTickInstrumentResolution(
+            instrument_id=None,
+            instrument=None,
+            diagnostic="ctp_metadata_missing",
+        )
+
+    instrument = cache.instrument(instrument_id) or instrument_provider.find(instrument_id)
+    if instrument is None:
+        return CtpTickInstrumentResolution(
+            instrument_id=instrument_id,
+            instrument=None,
+            diagnostic="instrument_not_hydrated",
+        )
+    return CtpTickInstrumentResolution(
+        instrument_id=instrument_id,
+        instrument=instrument,
+    )
+
+
+def provider_backed_subscription_symbols(
+    instrument_provider: InstrumentProvider,
+    symbols: set[str],
+) -> tuple[str, ...]:
+    metadata_getter = getattr(instrument_provider, "ctp_metadata", None)
+    if not callable(metadata_getter):
+        return ()
+    return tuple(sorted(symbol for symbol in symbols if metadata_getter(symbol) is not None))
+
+
 def _create_md_live_session(flow_path: Path):
-    try:
-        from ctp_runtime._ctp_runtime import CtpMdLiveSession
-    except ImportError as exc:
-        raise RuntimeError(
-            "PyO3 MD bridge unavailable; run maturin develop or pip install -e . before MD operations"
-        ) from exc
-    return CtpMdLiveSession(str(flow_path))
+    return create_md_live_session(flow_path)
 
 
 class CtpLiveDataClient(LiveMarketDataClient):
@@ -210,16 +261,21 @@ class CtpLiveDataClient(LiveMarketDataClient):
 
     def _handle_md_tick(self, tick) -> None:
         """Handle tick data in the asyncio event loop. Build QuoteTick."""
-        instrument_id = InstrumentId.from_str(f"{tick.symbol}.CTP")
-        instrument = self._cache.instrument(instrument_id)
-        if instrument is None:
-            self._log.warning(f"Tick for unknown instrument: {tick.symbol}")
+        resolution = resolve_ctp_tick_instrument(
+            cache=self._cache,
+            instrument_provider=self.instrument_provider,
+            symbol=tick.symbol,
+        )
+        if resolution.instrument_id is None or resolution.instrument is None:
+            self._log.warning(
+                f"Tick for unknown instrument: {tick.symbol} ({resolution.diagnostic})"
+            )
             return
 
         quote_tick = QuoteTick(
-            instrument_id=instrument_id,
-            bid_price=instrument.make_price(tick.bid),
-            ask_price=instrument.make_price(tick.ask),
+            instrument_id=resolution.instrument_id,
+            bid_price=resolution.instrument.make_price(tick.bid),
+            ask_price=resolution.instrument.make_price(tick.ask),
             bid_size=Quantity.from_int(max(int(getattr(tick, "bid_volume", 0)), 0)),
             ask_size=Quantity.from_int(max(int(getattr(tick, "ask_volume", 0)), 0)),
             ts_event=self._parse_ctp_timestamp(tick),
@@ -230,6 +286,9 @@ class CtpLiveDataClient(LiveMarketDataClient):
     def _handle_md_disconnect(self, reason: int) -> None:
         """Handle MD front disconnect in the asyncio event loop."""
         self._log.warning(f"CTP MD front disconnected: reason={reason}")
+
+    def _provider_backed_subscribed_symbols(self) -> tuple[str, ...]:
+        return provider_backed_subscription_symbols(self.instrument_provider, self._subscribed_symbols)
 
     # -- Helpers --------------------------------------------------------------
 

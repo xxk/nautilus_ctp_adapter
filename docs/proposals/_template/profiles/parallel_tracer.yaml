@@ -1,0 +1,9 @@
+profile_id: parallel_tracer
+description: Parallel tracer proposal with capability, gate, and proof fragments.
+fragments:
+  - issue_list
+  - capability_contract
+  - parallel_execution
+  - cross_tracer_gate
+  - strict_acceptance
+  - change_map

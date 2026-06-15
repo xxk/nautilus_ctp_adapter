@@ -14,6 +14,7 @@ from .data_client import (
 )
 from .execution_client import (
     CtpCancelOrderIntent,
+    CtpClosePositionPlan,
     CtpAccountQuerySmokeResult,
     CtpExecutionBootstrapResult,
     CtpExecutionClient,
@@ -81,6 +82,7 @@ from .nautilus_factories import (
     CtpLiveExecClientFactory,
     get_ctp_instrument_provider,
 )
+from .nautilus_provider import CtpNautilusInstrumentProvider
 from .normalization import CtpProductKind, NormalizedCtpInstrument, normalize_exchange_id, normalize_instrument_record, normalize_product_kind, normalize_symbol
 
 __all__ = [
@@ -112,6 +114,7 @@ __all__ = [
     "CtpLiveDataClientFactory",
     "CtpLiveExecClientFactory",
     "CtpLiveExecutionClient",
+    "CtpNautilusInstrumentProvider",
     "CtpMappedOrderCommand",
     "CtpMarketdataSmokeBaselineResult",
     "CtpMdEventBatch",
@@ -123,6 +126,7 @@ __all__ = [
     "CtpProductKind",
     "NormalizedCtpInstrument",
     "CtpCancelOrderIntent",
+    "CtpClosePositionPlan",
     "CtpOrderPrecheck",
     "CtpOrderLifecycleSmokeResult",
     "CtpTdHistoricalCallbackBoundaryFinding",

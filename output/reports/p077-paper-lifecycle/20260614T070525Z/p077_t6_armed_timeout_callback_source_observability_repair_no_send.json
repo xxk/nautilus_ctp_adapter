@@ -1,0 +1,65 @@
+{
+  "schema_version": "p077.t6.armed-timeout-callback-source-observability-repair.v1",
+  "artifact_kind": "p077_t6_armed_timeout_callback_source_observability_repair_no_send",
+  "created_at_utc": "2026-06-14T07:05:25Z",
+  "owner": "owner://nautilus_ctp_adapter.guarded_paper_order_loop",
+  "truth_owner": "ctp_paper_lifecycle_owner",
+  "source_blocker_ref": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T064825Z/armed_lifecycle.json",
+  "source_blocker_summary": {
+    "paper_send_armed": true,
+    "matched_exec_count": 1,
+    "lifecycle_events": [],
+    "lifecycle_disposition": "timeout",
+    "fill_volume": 0,
+    "callback_sources": []
+  },
+  "diagnosis": {
+    "observed_shape": "armed Paper close-only lifecycle timed out with no projected order/trade lifecycle events and no callback_source evidence",
+    "root_contract_gap": "callback_source_observability accepted timeout as non-rejection even when a Paper send was armed",
+    "required_contract": "armed lifecycle timeout without source-bearing order/trade event evidence remains a typed owner blocker; dry-run timeout remains non-blocking preflight"
+  },
+  "repair": {
+    "changed_ref": "scripts/ctp_guarded_paper_order_loop.py",
+    "change": "build_callback_source_observability now receives paper_send_armed and returns missing_callback_source_for_armed_lifecycle_timeout for armed timeout without callback source",
+    "dry_run_preserved": true,
+    "no_send": true,
+    "no_runtime_truth_created": true,
+    "no_account_console_truth_created": true
+  },
+  "contract_lock": {
+    "changed_ref": "tests/test_guarded_paper_order_loop.py",
+    "test": "test_callback_source_observability_blocks_armed_timeout_without_source",
+    "positive_boundary": "armed timeout without callback source blocks retry",
+    "negative_boundary": "dry-run timeout without callback source remains accepted preflight"
+  },
+  "gates": [
+    {
+      "command": "python -m pytest tests/test_guarded_paper_order_loop.py::test_callback_source_observability_blocks_armed_timeout_without_source tests/test_guarded_paper_order_loop.py::test_callback_source_observability_blocks_zero_fill_rejection_without_source tests/test_guarded_paper_order_loop.py::test_callback_source_observability_records_source_without_accepting_fill -q -p no:cacheprovider --basetemp output/pytest-tmp/p077-070525-callback-source",
+      "result": "3 passed"
+    },
+    {
+      "command": "python -m pytest tests/test_guarded_paper_order_loop.py -q -p no:cacheprovider --basetemp output/pytest-tmp/p077-070525-loop",
+      "result": "47 passed"
+    }
+  ],
+  "authority": {
+    "paper_send_attempted": false,
+    "native_send_attempted": false,
+    "submit_attempted": false,
+    "authorization_consumed_by_this_artifact": false,
+    "allow_authorize_retry": false,
+    "fill_producing_acceptance_satisfied": false,
+    "runtime_truth_created": false,
+    "account_console_truth_created": false
+  },
+  "readiness_claims": {
+    "paper_ready": false,
+    "live_ready": false,
+    "production_ready": false,
+    "admission_approved": false,
+    "capital_allocated": false,
+    "broker_tradable": false,
+    "account_console_runtime_truth": false
+  },
+  "next_retry_condition": "Any future Paper submit requires a new formal bounded authorization plus fresh same-slice market/account/preflight evidence after this no-send repair."
+}

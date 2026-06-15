@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 import time
 
+from nautilus_ctp_adapter.native.pyo3_runtime import create_md_live_session
 from nautilus_ctp_adapter.runtime import (
     CtpRuntimeBridge,
     CtpRuntimeCommand,
@@ -21,13 +22,7 @@ from .instrument_provider import CtpInstrumentProviderLoadResult
 
 
 def _create_md_live_session(flow_path: Path):
-    try:
-        from ctp_runtime._ctp_runtime import CtpMdLiveSession
-    except ImportError as exc:
-        raise RuntimeError(
-            "PyO3 MD bridge unavailable; run maturin develop or pip install -e . before MD smoke"
-        ) from exc
-    return CtpMdLiveSession(str(flow_path))
+    return create_md_live_session(flow_path)
 
 
 @dataclass(slots=True)
@@ -50,6 +45,7 @@ class CtpMdSmokeResult:
     first_tick_bid: float | None = None
     first_tick_ask: float | None = None
     first_tick_ts_epoch_us: int | None = None
+    first_tick_received_at_epoch_us: int | None = None
 
 
 @dataclass(slots=True)
@@ -455,6 +451,7 @@ class CtpDataClient:
                 first_tick_bid=None if tick is None else tick["bid"],
                 first_tick_ask=None if tick is None else tick["ask"],
                 first_tick_ts_epoch_us=None if tick is None else tick["ts_epoch_us"],
+                first_tick_received_at_epoch_us=None if tick is None else tick["received_at_epoch_us"],
             )
         finally:
             session.dispose()
@@ -681,12 +678,14 @@ class CtpDataClient:
         )
 
     def _on_md_tick_callback(self, tick, state: dict[str, object]) -> None:
+        received_at_epoch_us = int(time.time() * 1_000_000)
         state["tick"] = {
             "symbol": tick.symbol,
             "last": tick.last,
             "bid": tick.bid,
             "ask": tick.ask,
             "ts_epoch_us": tick.ts_epoch_us,
+            "received_at_epoch_us": received_at_epoch_us,
         }
         self._emit_marketdata_event(
             CtpRuntimeEvent(
@@ -698,6 +697,7 @@ class CtpDataClient:
                     "bid": str(tick.bid),
                     "ask": str(tick.ask),
                     "ts_epoch_us": str(tick.ts_epoch_us),
+                    "received_at_epoch_us": str(received_at_epoch_us),
                 },
             )
         )

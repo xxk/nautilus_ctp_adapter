@@ -1,0 +1,56 @@
+{
+  "schema_version": "p077.t6.callback-projection-match-ordering-repair.v1",
+  "artifact_kind": "p077_t6_callback_projection_match_ordering_repair_no_send",
+  "created_at_utc": "2026-06-14T06:57:55Z",
+  "owner": "owner://nautilus_ctp_adapter.execution_client",
+  "truth_owner": "ctp_paper_lifecycle_owner",
+  "source_blocker_ref": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T064825Z/p077_t6_fresh_bounded_paper_close_timeout_deploy_repair.json",
+  "source_blocker_checksum": "sha256:409af36d9410a8618ccb0076b4582d53ff62efd3117d20d983a72e4235bf6817",
+  "diagnosis": {
+    "observed_shape": "armed_lifecycle had matched_exec_count=1 but lifecycle_events=[] after callback projection failed on missing deployed submit_request_offset_flag",
+    "root_contract_gap": "matched exec state was appended before runtime event projection completed",
+    "required_contract": "a callback may only count as matched lifecycle evidence after runtime event projection succeeds"
+  },
+  "repair": {
+    "changed_ref": "src/nautilus_ctp_adapter/adapters/ctp/execution_client.py",
+    "change": "move matched_exec_views/matched_exec_events append after _on_td_exec_callback succeeds while keeping alias registration before projection",
+    "no_send": true,
+    "no_runtime_truth_created": true,
+    "no_account_console_truth_created": true
+  },
+  "contract_lock": {
+    "changed_ref": "tests/test_nautilus_integration.py",
+    "test": "TestCtpClosePositionSemantics::test_exec_callback_projection_must_succeed_before_match_is_counted",
+    "negative_case": "if runtime event projection raises, matched_exec_views and matched_exec_events remain empty"
+  },
+  "gates": [
+    {
+      "command": "python -m pytest tests/test_nautilus_integration.py::TestCtpClosePositionSemantics::test_exec_callback_projection_must_succeed_before_match_is_counted tests/test_nautilus_integration.py::TestCtpClosePositionSemantics::test_exec_callback_preserves_native_submit_offset_boundary tests/test_nautilus_integration.py::TestCtpClosePositionSemantics::test_submit_payload_carries_native_offset_request_field_provenance -q -p no:cacheprovider --basetemp output/pytest-tmp/p077-065755-callback",
+      "result": "3 passed"
+    },
+    {
+      "command": "python -m pytest tests/test_guarded_paper_order_loop.py -q -p no:cacheprovider --basetemp output/pytest-tmp/p077-065755-loop",
+      "result": "46 passed"
+    }
+  ],
+  "authority": {
+    "paper_send_attempted": false,
+    "native_send_attempted": false,
+    "submit_attempted": false,
+    "authorization_consumed_by_this_artifact": false,
+    "allow_authorize_retry": false,
+    "fill_producing_acceptance_satisfied": false,
+    "runtime_truth_created": false,
+    "account_console_truth_created": false
+  },
+  "readiness_claims": {
+    "paper_ready": false,
+    "live_ready": false,
+    "production_ready": false,
+    "admission_approved": false,
+    "capital_allocated": false,
+    "broker_tradable": false,
+    "account_console_runtime_truth": false
+  },
+  "next_retry_condition": "Any future Paper submit requires a new formal bounded authorization plus fresh same-slice market/account/preflight evidence after this no-send repair."
+}

@@ -7,6 +7,7 @@ from pathlib import Path
 import time
 
 from nautilus_ctp_adapter.native import NativeExecView, NativePositionView, NativeTradingAccountView
+from nautilus_ctp_adapter.native.pyo3_runtime import create_td_live_session
 from nautilus_ctp_adapter.runtime import (
     CtpAccountRecord,
     CtpPositionRecord,
@@ -21,13 +22,7 @@ from .config import CtpAdapterConfig, CtpExecutionGuardrails
 
 
 def _create_td_live_session(flow_path: Path):
-    try:
-        from ctp_runtime._ctp_runtime import CtpTdLiveSession
-    except ImportError as exc:
-        raise RuntimeError(
-            "PyO3 TD bridge unavailable; run maturin develop or pip install -e . before TD bootstrap smoke"
-        ) from exc
-    return CtpTdLiveSession(str(flow_path))
+    return create_td_live_session(flow_path)
 
 
 @dataclass(slots=True)
@@ -91,6 +86,14 @@ class CtpCancelOrderIntent:
     front_id: int
     session_id: int
     exchange_id: str | None = None
+
+
+@dataclass(slots=True)
+class CtpClosePositionPlan:
+    submit_intent: CtpSubmitOrderIntent | None
+    selected_bucket: str | None
+    closable_quantity: int
+    error: "CtpExecutionError | None" = None
 
 
 @dataclass(slots=True)
@@ -158,10 +161,19 @@ class CtpMatchedExecEvent:
     front_id: int
     session_id: int
     status: int
+    callback_source: str
+    offset_flag: int
+    submit_request_offset_flag: int
+    submit_request_offset_source: str
     is_trade: bool
     trade_volume: int
     leaves_qty: int
     match_reason: str
+    submit_request_id: int = -1
+    submit_request_id_source: str = ""
+    response_request_id: int = -1
+    response_is_last: bool = False
+    response_error_id: int = 0
 
 
 @dataclass(slots=True)
@@ -405,6 +417,19 @@ class CtpExecutionClient:
         self,
         intent: CtpSubmitOrderIntent,
     ) -> CtpMappedOrderCommand:
+        contract_issues = self._submit_order_contract_issues(intent)
+        if contract_issues:
+            return CtpMappedOrderCommand(
+                command=None,
+                client_order_id=intent.client_order_id,
+                order_ref=None,
+                front_id=self._td_session_identity.front_id if self._td_session_identity else None,
+                session_id=self._td_session_identity.session_id if self._td_session_identity else None,
+                error=CtpExecutionError(
+                    error_id=9004,
+                    error_message="; ".join(contract_issues),
+                ),
+            )
         precheck = self.precheck_debug_order(
             instrument_id=intent.instrument_id,
             side=intent.side,
@@ -431,11 +456,13 @@ class CtpExecutionClient:
         identity = self._require_td_session_identity()
         order_ref = self._allocate_order_ref()
         client_order_id = intent.client_order_id or self._next_request_id("order")
+        submit_request_id = self._next_request_id("submit")
+        submit_request_id_int = self._numeric_request_id(submit_request_id)
         command = CtpRuntimeCommand(
             kind=CtpRuntimeCommandKind.SUBMIT_ORDER,
             venue_symbol=intent.instrument_id,
             client_order_id=client_order_id,
-            request_id=self._next_request_id("submit"),
+            request_id=submit_request_id,
             payload={
                 "channel": "td",
                 "side": intent.side.strip().upper(),
@@ -444,6 +471,27 @@ class CtpExecutionClient:
                 "position_effect": intent.position_effect,
                 "order_type": intent.order_type,
                 "time_in_force": intent.time_in_force,
+                "native_side": str(self._native_side_value(intent.side)),
+                "native_order_type": str(self._native_order_type_value(intent.order_type)),
+                "native_comb_offset": self._native_comb_offset_value(intent.position_effect),
+                "native_comb_offset_source_field": (
+                    "CtpExecutionClient._native_comb_offset_value(position_effect)"
+                    " -> TdOrderSend.comb_offset"
+                    " -> CThostFtdcInputOrderField.CombOffsetFlag[0]"
+                ),
+                "native_comb_offset_expected_from_position_effect": {
+                    "OPEN": "0",
+                    "CLOSE": "1",
+                    "CLOSETODAY": "3",
+                    "CLOSEYESTERDAY": "4",
+                }.get(intent.position_effect.strip().upper()),
+                "submit_request_id": str(submit_request_id_int),
+                "submit_request_id_source_field": (
+                    "CtpRuntimeCommand.request_id"
+                    " -> TdOrderSend.request_id"
+                    " -> CTP ReqOrderInsert nRequestID"
+                ),
+                "native_comb_hedge": self._native_comb_hedge_value(),
                 "order_ref": str(order_ref),
                 "front_id": str(identity.front_id),
                 "session_id": str(identity.session_id),
@@ -462,6 +510,28 @@ class CtpExecutionClient:
         self,
         intent: CtpCancelOrderIntent,
     ) -> CtpMappedOrderCommand:
+        contract_issues: list[str] = []
+        if not intent.client_order_id.strip():
+            contract_issues.append("client_order_id_missing")
+        if intent.order_ref <= 0:
+            contract_issues.append("order_ref_missing")
+        if intent.front_id <= 0:
+            contract_issues.append("front_id_missing")
+        if intent.session_id == 0:
+            contract_issues.append("session_id_missing")
+        if contract_issues:
+            return CtpMappedOrderCommand(
+                command=None,
+                client_order_id=intent.client_order_id,
+                order_ref=intent.order_ref,
+                front_id=intent.front_id,
+                session_id=intent.session_id,
+                error=CtpExecutionError(
+                    error_id=9003,
+                    error_message=f"cancel_contract_failed: {', '.join(contract_issues)}",
+                ),
+            )
+
         if self.guardrails.enabled and self.guardrails.allowed_instruments:
             if intent.instrument_id not in self.guardrails.allowed_instruments:
                 return CtpMappedOrderCommand(
@@ -519,6 +589,89 @@ class CtpExecutionClient:
     ) -> CtpMappedOrderCommand:
         return self.submit_mapped_order(self.map_cancel_order(intent))
 
+    def build_close_position_intent(
+        self,
+        *,
+        instrument_id: str,
+        exchange_id: str | None,
+        direction: str,
+        position_qty: int | None,
+        td_position_qty: int | None,
+        yd_position_qty: int | None,
+        close_quantity: int,
+        requested_position_effect: str,
+        limit_price: float,
+        client_order_id: str | None = None,
+    ) -> CtpClosePositionPlan:
+        normalized_effect = requested_position_effect.strip().upper()
+        normalized_exchange = (exchange_id or "").strip().upper()
+        total_qty = max(int(position_qty or 0), 0)
+        today_qty = max(int(td_position_qty or 0), 0)
+        yesterday_qty = max(int(yd_position_qty or 0), 0)
+        closable_qty = total_qty if total_qty > 0 else today_qty + yesterday_qty
+        today_available = min(today_qty, closable_qty)
+        yesterday_available = min(yesterday_qty, max(closable_qty - today_available, 0))
+        close_side = self._close_side_from_position_direction(direction)
+
+        def blocked(code: str) -> CtpClosePositionPlan:
+            return CtpClosePositionPlan(
+                submit_intent=None,
+                selected_bucket=None,
+                closable_quantity=closable_qty,
+                error=CtpExecutionError(error_id=9010, error_message=code),
+            )
+
+        if close_side is None:
+            return blocked("invalid_position_direction")
+        if close_quantity <= 0:
+            return blocked("invalid_close_quantity")
+        if closable_qty <= 0:
+            return blocked("no_closable_position")
+        if close_quantity > closable_qty:
+            return blocked("insufficient_closable_position")
+
+        selected_effect: str
+        selected_bucket: str
+        if normalized_effect == "CLOSETODAY":
+            if close_quantity > today_available:
+                return blocked("insufficient_close_today_position")
+            selected_effect = "CLOSETODAY"
+            selected_bucket = "today"
+        elif normalized_effect == "CLOSEYESTERDAY":
+            if close_quantity > yesterday_available:
+                return blocked("insufficient_close_yesterday_position")
+            selected_effect = "CLOSEYESTERDAY"
+            selected_bucket = "yesterday"
+        elif normalized_effect == "CLOSE":
+            if normalized_exchange in {"SHFE", "INE"}:
+                if close_quantity <= today_available and today_available > 0:
+                    selected_effect = "CLOSETODAY"
+                    selected_bucket = "today"
+                elif close_quantity <= yesterday_available and yesterday_available > 0:
+                    selected_effect = "CLOSEYESTERDAY"
+                    selected_bucket = "yesterday"
+                else:
+                    return blocked("close_split_required")
+            else:
+                selected_effect = "CLOSE"
+                selected_bucket = "generic"
+        else:
+            return blocked("unsupported_position_effect")
+
+        return CtpClosePositionPlan(
+            submit_intent=CtpSubmitOrderIntent(
+                instrument_id=instrument_id,
+                side=close_side,
+                quantity=close_quantity,
+                limit_price=limit_price,
+                position_effect=selected_effect,
+                client_order_id=client_order_id,
+            ),
+            selected_bucket=selected_bucket,
+            closable_quantity=closable_qty,
+            error=None,
+        )
+
     def run_order_lifecycle_smoke_baseline(
         self,
         *,
@@ -526,27 +679,40 @@ class CtpExecutionClient:
         side: str,
         quantity: int,
         limit_price: float,
+        position_effect: str = "OPEN",
         client_order_id: str | None = None,
         timeout_seconds: int = 20,
         flow_path: str | Path | None = None,
         dry_run: bool = True,
         time_in_force: str = "GFD",
         order_type: str = "LIMIT",
+        verified_exposure_reduction: bool = False,
     ) -> CtpOrderLifecycleSmokeResult:
-        live_send_armed = self.guardrails.allow_live_order_smoke and not dry_run
+        normalized_position_effect = position_effect.strip().upper()
+        exposure_reduction_send_armed = (
+            self.guardrails.allow_exposure_reduction_order_smoke
+            and verified_exposure_reduction
+            and normalized_position_effect in {"CLOSE", "CLOSETODAY", "CLOSEYESTERDAY"}
+        )
+        live_send_armed = (
+            self.guardrails.allow_live_order_smoke or exposure_reduction_send_armed
+        ) and not dry_run
         submit_intent = CtpSubmitOrderIntent(
             instrument_id=instrument_id,
             side=side,
             quantity=quantity,
             limit_price=limit_price,
+            position_effect=position_effect,
             client_order_id=client_order_id,
             time_in_force=time_in_force,
             order_type=order_type,
         )
         if not dry_run:
-            if not self.guardrails.allow_live_order_smoke:
+            if not (self.guardrails.allow_live_order_smoke or exposure_reduction_send_armed):
                 raise RuntimeError(
-                    "live order smoke requires ExecutionGuardrails.AllowLiveOrderSmoke=true in config"
+                    "live order smoke requires ExecutionGuardrails.AllowLiveOrderSmoke=true "
+                    "or ExecutionGuardrails.AllowExposureReductionOrderSmoke=true with "
+                    "verified_exposure_reduction=true"
                 )
             return self._run_live_order_lifecycle_smoke(
                 submit_intent=submit_intent,
@@ -1520,6 +1686,16 @@ class CtpExecutionClient:
         self._request_sequence += 1
         return f"{prefix}-{self._request_sequence}"
 
+    def _numeric_request_id(self, request_id: str) -> int:
+        suffix = request_id.rsplit("-", 1)[-1]
+        try:
+            value = int(suffix)
+        except ValueError as exc:
+            raise ValueError(f"request_id lacks numeric suffix: {request_id}") from exc
+        if value <= 0:
+            raise ValueError(f"request_id numeric suffix must be positive: {request_id}")
+        return value
+
     def _allocate_order_ref(self) -> int:
         identity = self._require_td_session_identity()
         if self._next_order_ref is None:
@@ -1649,11 +1825,16 @@ class CtpExecutionClient:
             state["expected_order_ref"] = None if mapped_submit.order_ref is None else str(mapped_submit.order_ref)
             state["expected_instrument_id"] = submit_intent.instrument_id
             state["expected_quantity"] = submit_intent.quantity
+            state["expected_submit_request_id"] = mapped_submit.command.payload["submit_request_id"]
+            state["expected_submit_request_id_source"] = mapped_submit.command.payload[
+                "submit_request_id_source_field"
+            ]
             state["pre_send_exec_view_count"] = len(state["exec_views"])
             self.submit_mapped_order(mapped_submit)
             native_code = session.order_send(
                 order_id=str(mapped_submit.order_ref),
                 symbol=submit_intent.instrument_id,
+                request_id=int(mapped_submit.command.payload["submit_request_id"]),
                 price=submit_intent.limit_price,
                 qty=submit_intent.quantity,
                 side=self._native_side_value(submit_intent.side),
@@ -1783,7 +1964,21 @@ class CtpExecutionClient:
         normalized_position_effect = position_effect.strip().upper()
         if normalized_position_effect == "OPEN":
             return "0"
+        if normalized_position_effect == "CLOSE":
+            return "1"
+        if normalized_position_effect == "CLOSETODAY":
+            return "3"
+        if normalized_position_effect == "CLOSEYESTERDAY":
+            return "4"
         raise ValueError(f"Unsupported position_effect: {position_effect}")
+
+    def _close_side_from_position_direction(self, direction: str) -> str | None:
+        normalized_direction = direction.strip().upper()
+        if normalized_direction in {"LONG", "BUY", "2"}:
+            return "SELL"
+        if normalized_direction in {"SHORT", "SELL", "3"}:
+            return "BUY"
+        return None
 
     def _native_comb_hedge_value(self) -> str:
         return "1"
@@ -1792,15 +1987,25 @@ class CtpExecutionClient:
         normalized_time_in_force = time_in_force.strip().upper()
         if normalized_time_in_force == "GFD":
             return 3
-        if normalized_time_in_force == "IOC":
+        if normalized_time_in_force in {"IOC", "FAK", "FOK"}:
             return 1
         raise ValueError(f"Unsupported time_in_force: {time_in_force}")
 
     def _native_volume_condition_value(self, time_in_force: str) -> int:
         normalized_time_in_force = time_in_force.strip().upper()
-        if normalized_time_in_force in {"GFD", "IOC"}:
+        if normalized_time_in_force in {"GFD", "IOC", "FAK"}:
             return 1
+        if normalized_time_in_force == "FOK":
+            return 3
         raise ValueError(f"Unsupported time_in_force: {time_in_force}")
+
+    def _submit_order_contract_issues(self, intent: CtpSubmitOrderIntent) -> list[str]:
+        issues: list[str] = []
+        if intent.order_type.strip().upper() not in {"LIMIT", "MARKET"}:
+            issues.append(f"unsupported_order_type:{intent.order_type}")
+        if intent.time_in_force.strip().upper() not in {"GFD", "IOC", "FAK", "FOK"}:
+            issues.append(f"unsupported_time_in_force:{intent.time_in_force}")
+        return issues
 
     def _native_contingent_condition_value(self) -> int:
         return 1
@@ -1871,6 +2076,7 @@ class CtpExecutionClient:
                     payload={
                         "broker_id": position_view.broker_id,
                         "investor_id": position_view.investor_id,
+                        "exchange_id": position_view.exchange_id,
                         "direction": self._native_position_direction_value(position_view.pos_direction),
                         "hedge_flag": str(position_view.hedge_flag),
                         "date_type": str(position_view.date_type),
@@ -1959,7 +2165,14 @@ class CtpExecutionClient:
                     "side": str(exec_view.side),
                     "direction": str(exec_view.direction),
                     "offset_flag": str(exec_view.offset_flag),
+                    "submit_request_offset_flag": str(exec_view.submit_request_offset_flag),
+                    "submit_request_offset_source": exec_view.submit_request_offset_source,
+                    "response_request_id": str(exec_view.response_request_id),
+                    "response_is_last": "1" if exec_view.response_is_last else "0",
+                    "response_error_id": str(exec_view.response_error_id),
                     "hedge_flag": str(exec_view.hedge_flag),
+                    "error_msg": exec_view.error_msg,
+                    "callback_source": exec_view.callback_source,
                     "match_reason": match_reason or "",
                 },
             )
@@ -1970,6 +2183,12 @@ class CtpExecutionClient:
         matched_client_order_id, match_reason = self._match_exec_callback_reason(exec_view, state=state)
         if matched_client_order_id and match_reason:
             self._register_native_exec_alias(exec_view, matched_client_order_id)
+        self._on_td_exec_callback(
+            exec_view,
+            client_order_id=matched_client_order_id,
+            match_reason=match_reason,
+        )
+        if matched_client_order_id and match_reason:
             state["matched_exec_views"].append(exec_view)
             state["matched_exec_events"].append(
                 CtpMatchedExecEvent(
@@ -1980,17 +2199,26 @@ class CtpExecutionClient:
                     front_id=int(exec_view.front_id),
                     session_id=int(exec_view.session_id),
                     status=int(exec_view.status),
+                    callback_source=exec_view.callback_source,
+                    offset_flag=int(exec_view.offset_flag),
+                    submit_request_offset_flag=int(exec_view.submit_request_offset_flag),
+                    submit_request_offset_source=exec_view.submit_request_offset_source,
+                    submit_request_id=self._parse_native_int(
+                        str(state.get("expected_submit_request_id", "") or "")
+                    )
+                    or -1,
+                    submit_request_id_source=str(
+                        state.get("expected_submit_request_id_source", "") or ""
+                    ),
                     is_trade=bool(exec_view.is_trade),
                     trade_volume=int(exec_view.trade_volume),
                     leaves_qty=int(exec_view.leaves_qty),
                     match_reason=match_reason,
+                    response_request_id=int(exec_view.response_request_id),
+                    response_is_last=bool(exec_view.response_is_last),
+                    response_error_id=int(exec_view.response_error_id),
                 )
             )
-        self._on_td_exec_callback(
-            exec_view,
-            client_order_id=matched_client_order_id,
-            match_reason=match_reason,
-        )
 
     def _on_td_exec_observation_callback(self, exec_view: NativeExecView, state: dict[str, object]) -> None:
         state["exec_views"].append(exec_view)

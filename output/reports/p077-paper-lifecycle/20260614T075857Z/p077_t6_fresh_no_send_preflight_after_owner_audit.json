@@ -1,0 +1,97 @@
+{
+  "schema": "p077.t6.fresh-no-send-preflight-after-owner-audit.v1",
+  "artifact_id": "p077_t6_fresh_no_send_preflight_after_owner_audit",
+  "created_at": "2026-06-14T07:58:57Z",
+  "owner_repo": "D:/Nautilus/nautilus_ctp_adapter",
+  "selected_lane": "ctp_owner_fresh_no_send_preflight_after_architecture_audit",
+  "action_mode": "dry_run_no_send",
+  "authorization": {
+    "formal_authorization_present_for_this_slice": false,
+    "formal_authorization_consumed_by_this_slice": false,
+    "paper_only": true,
+    "live_forbidden": true,
+    "paper_send_armed": false,
+    "native_send_attempted": false,
+    "submit_attempted": false,
+    "retry_authorized_by_this_artifact": false
+  },
+  "request_scope": {
+    "account_alias": "19053",
+    "instrument": "rb2610",
+    "side": "SELL",
+    "quantity": 1,
+    "position_effect": "CLOSETODAY",
+    "limit_price": 3180.0,
+    "client_order_id": "p077-t6-rb2610-close1-075857-dryrun-gfd",
+    "session_send_budget": 1
+  },
+  "same_slice_evidence": {
+    "market_freshness": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T075857Z/fresh_market_freshness.json",
+      "checksum": "sha256:4801d99e792c8c4f87840cc84ed5198ec53ea19490b6cc0f139951e7ab0f50ac",
+      "status": "passed",
+      "freshness_basis": "received_at",
+      "first_tick_received_at_utc": "2026-06-14T07:59:55Z",
+      "bid": 3180.0,
+      "ask": 3181.0,
+      "warnings": ["first_tick_exchange_timestamp_stale"]
+    },
+    "pre_snapshot": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T075857Z/fresh_pre_snapshot.json",
+      "checksum": "sha256:3bb118e8f62b999a7c6450fee41ce2862b8af999bbe8fef73a2fa3a39666684d",
+      "status": "passed",
+      "run_id": "paper-readonly-1781424016120",
+      "rb2610_position": {
+        "direction": "LONG",
+        "position_qty": 5,
+        "td_position_qty": 5,
+        "yd_position_qty": 0,
+        "exchange_id": "SHFE",
+        "date_type": "1",
+        "hedge_flag": "1"
+      }
+    },
+    "dry_run_preflight": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T075857Z/fresh_guarded_dry_run_preflight.json",
+      "checksum": "sha256:789606db52b2512fc1f21eb38d965f4a3c1d18425b97b3fd0fc6e39b5e1a8c34",
+      "status": "passed",
+      "paper_send_armed": false,
+      "native_send_allowed": true,
+      "native_comb_offset": "3",
+      "native_comb_offset_source_field": "CtpExecutionClient._native_comb_offset_value(position_effect) -> TdOrderSend.comb_offset -> CThostFtdcInputOrderField.CombOffsetFlag[0]",
+      "projected_net_position": 4,
+      "order_contract_disposition": "order_contract_passed",
+      "mapped_command_kind": "submit_order"
+    }
+  },
+  "owner_observations": {
+    "fresh_market_received_at_passed": true,
+    "account_snapshot_passed": true,
+    "close_intent_ready": true,
+    "selected_bucket": "today",
+    "position_detail_sufficient": true,
+    "dry_run_passed": true,
+    "time_in_force_required_by_owner_mapping": "GFD",
+    "operator_ui_truth_used": false,
+    "stdout_or_latest_truth_used": false
+  },
+  "typed_blocker": {
+    "active": true,
+    "blocker_type": "formal_authorization_and_source_bearing_lifecycle_missing",
+    "reason": "Fresh market, read-only snapshot and guarded dry-run preflight passed after the owner audit, but this artifact intentionally did not create or consume a formal bounded Paper authorization and did not arm Paper send.",
+    "retry_condition": "Before any future Paper send, create a new formal bounded Paper authorization for exactly one owner slice, then repeat fresh same-slice market/account/preflight evidence and require source-bearing lifecycle/post-snapshot/reconcile or typed blocker after send."
+  },
+  "truth_boundaries": {
+    "fill_producing_acceptance_satisfied": false,
+    "runtime_truth_created": false,
+    "account_console_runtime_truth": false,
+    "paper_ready": false,
+    "live_ready": false,
+    "production_ready": false,
+    "capital_allocated": false,
+    "broker_tradable": false,
+    "china_s2_pass": false,
+    "hft_s3_pass": false,
+    "loop_complete": false
+  }
+}

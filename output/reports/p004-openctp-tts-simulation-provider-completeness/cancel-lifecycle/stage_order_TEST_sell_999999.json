@@ -1,0 +1,65 @@
+{
+  "baseline": "ctp-guarded-paper-order-loop-v1",
+  "account_profile": "openctp-tts-7x24-simulation",
+  "evidence_class": "openctp-tts-7x24-simulation",
+  "success": true,
+  "status": "passed",
+  "failure_reason": null,
+  "blocker_type": null,
+  "action_mode": "paper_send",
+  "paper_send_armed": true,
+  "pre_snapshot": {
+    "accepted": true,
+    "issues": []
+  },
+  "intent_contract": {
+    "instrument": "TEST",
+    "side": "SELL",
+    "quantity": 1,
+    "limit_price": 999999.0,
+    "position_effect": "OPEN",
+    "price_mode": "best_level_1",
+    "client_order_id": "p004-cancel-stage-test-20260608-01"
+  },
+  "order_contract": {
+    "accepted": true,
+    "disposition": "order_contract_passed",
+    "issues": []
+  },
+  "mapped_submit": {
+    "error": null,
+    "client_order_id": "p004-cancel-stage-test-20260608-01",
+    "order_ref_present": true,
+    "front_id_present": true,
+    "session_id_present": true,
+    "command_kind": "submit_order"
+  },
+  "order_lifecycle": {
+    "dry_run": false,
+    "live_send_armed": true,
+    "bootstrap_ready": true,
+    "matched_exec_count": 1,
+    "command_kinds": [
+      "connect",
+      "submit_order"
+    ],
+    "event_kinds": [
+      "login_succeeded",
+      "settlement_confirmed",
+      "order"
+    ],
+    "verdict": {
+      "accepted": true,
+      "disposition": "rejected",
+      "matched_event_count": 1,
+      "unique_fill_count": 0,
+      "duplicate_fill_count": 0,
+      "fill_volume": 0,
+      "leaves_qty": 1,
+      "issues": []
+    }
+  },
+  "post_snapshot": null,
+  "reconciliation": null,
+  "issues": []
+}

@@ -11,6 +11,7 @@ import asyncio
 import logging
 from pathlib import Path
 
+from nautilus_trader.core.uuid import UUID4
 from nautilus_trader.cache.cache import Cache
 from nautilus_trader.common.component import LiveClock, MessageBus
 from nautilus_trader.common.providers import InstrumentProvider
@@ -18,6 +19,10 @@ from nautilus_trader.execution.messages import (
     BatchCancelOrders,
     CancelAllOrders,
     CancelOrder,
+    GenerateFillReports,
+    GenerateOrderStatusReport,
+    GenerateOrderStatusReports,
+    GeneratePositionStatusReports,
     ModifyOrder,
     SubmitOrder,
     SubmitOrderList,
@@ -28,9 +33,29 @@ from nautilus_trader.execution.reports import (
     PositionStatusReport,
 )
 from nautilus_trader.live.execution_client import LiveExecutionClient
-from nautilus_trader.model.enums import AccountType, OmsType
-from nautilus_trader.model.identifiers import ClientId, Venue
-from nautilus_trader.model.objects import Currency
+from nautilus_trader.model.events import AccountState
+from nautilus_trader.model.enums import (
+    AccountType,
+    LiquiditySide,
+    OmsType,
+    OrderSide,
+    OrderStatus,
+    OrderType,
+    PositionSide,
+    TimeInForce,
+)
+from nautilus_trader.model.identifiers import (
+    AccountId,
+    ClientId,
+    ClientOrderId,
+    TradeId,
+    Venue,
+    VenueOrderId,
+)
+from nautilus_trader.model.objects import AccountBalance, Currency, MarginBalance, Money, Price, Quantity
+
+from nautilus_ctp_adapter.native.pyo3_runtime import create_td_live_session
+from nautilus_ctp_adapter.runtime.query import CtpAccountRecord, CtpPositionRecord
 
 from .config import CtpAdapterConfig
 from .execution_client import (
@@ -40,18 +65,190 @@ from .execution_client import (
     CtpTdExecEventPayload,
 )
 from .nautilus_config import CtpExecClientConfig
+from .nautilus_data import resolve_ctp_tick_instrument_id
 
 logger = logging.getLogger(__name__)
 
 
 def _create_td_live_session(flow_path: Path):
-    try:
-        from ctp_runtime._ctp_runtime import CtpTdLiveSession
-    except ImportError as exc:
-        raise RuntimeError(
-            "PyO3 TD bridge unavailable; run maturin develop or pip install -e . before TD operations"
-        ) from exc
-    return CtpTdLiveSession(str(flow_path))
+    return create_td_live_session(flow_path)
+
+
+def _account_id(value: str) -> AccountId:
+    return AccountId(value or "CTP")
+
+
+def _venue_order_id(payload: CtpTdExecEventPayload) -> VenueOrderId:
+    value = payload.order_id or payload.order_ref or f"{payload.front_id}-{payload.session_id}"
+    return VenueOrderId(value)
+
+
+def _client_order_id(payload: CtpTdExecEventPayload) -> ClientOrderId | None:
+    return ClientOrderId(payload.order_ref) if payload.order_ref else None
+
+
+def _report_quantity(value: int | float) -> Quantity:
+    return Quantity.from_str(str(abs(int(value))))
+
+
+def _resolve_payload_instrument_id(
+    instrument_provider: InstrumentProvider,
+    venue_symbol: str,
+):
+    if not venue_symbol:
+        return None
+    return resolve_ctp_tick_instrument_id(instrument_provider, venue_symbol)
+
+
+def _order_status_from_payload(payload: CtpTdExecEventPayload) -> OrderStatus:
+    if payload.error_message:
+        return OrderStatus.REJECTED
+    if payload.status in {5, 53}:
+        return OrderStatus.CANCELED
+    if payload.is_trade or payload.leaves_qty == 0:
+        return OrderStatus.FILLED
+    return OrderStatus.ACCEPTED
+
+
+def ctp_exec_event_to_order_status_report(
+    payload: CtpTdExecEventPayload,
+    *,
+    account_id: str,
+    instrument_provider: InstrumentProvider,
+    ts_init: int,
+) -> OrderStatusReport | None:
+    """Convert a normalized CTP order callback into a Nautilus order report."""
+    if payload.is_trade:
+        return None
+    instrument_id = _resolve_payload_instrument_id(instrument_provider, payload.venue_symbol)
+    if instrument_id is None:
+        return None
+
+    leaves_qty = max(payload.leaves_qty, 0)
+    filled_qty = max(payload.trade_volume, 0)
+    total_qty = max(leaves_qty + filled_qty, 1)
+    price = Price.from_str(str(payload.trade_price)) if payload.trade_price > 0 else None
+    return OrderStatusReport(
+        account_id=_account_id(account_id),
+        instrument_id=instrument_id,
+        venue_order_id=_venue_order_id(payload),
+        order_side=OrderSide.BUY,
+        order_type=OrderType.LIMIT,
+        time_in_force=TimeInForce.DAY,
+        order_status=_order_status_from_payload(payload),
+        quantity=_report_quantity(total_qty),
+        filled_qty=_report_quantity(filled_qty),
+        report_id=UUID4(),
+        ts_accepted=ts_init,
+        ts_last=ts_init,
+        ts_init=ts_init,
+        client_order_id=_client_order_id(payload),
+        price=price,
+    )
+
+
+def ctp_exec_event_to_fill_report(
+    payload: CtpTdExecEventPayload,
+    *,
+    account_id: str,
+    instrument_provider: InstrumentProvider,
+    ts_init: int,
+) -> FillReport | None:
+    """Convert a normalized CTP trade callback into a Nautilus fill report."""
+    if not payload.is_trade or payload.trade_volume <= 0 or payload.trade_price <= 0:
+        return None
+    instrument_id = _resolve_payload_instrument_id(instrument_provider, payload.venue_symbol)
+    if instrument_id is None:
+        return None
+
+    trade_id = payload.order_id or payload.order_ref or f"{payload.front_id}-{payload.session_id}"
+    return FillReport(
+        account_id=_account_id(account_id),
+        instrument_id=instrument_id,
+        venue_order_id=_venue_order_id(payload),
+        trade_id=TradeId(trade_id),
+        order_side=OrderSide.BUY,
+        last_qty=_report_quantity(payload.trade_volume),
+        last_px=Price.from_str(str(payload.trade_price)),
+        commission=Money(0, Currency.from_str("CNY")),
+        liquidity_side=LiquiditySide.NO_LIQUIDITY_SIDE,
+        report_id=UUID4(),
+        ts_event=ts_init,
+        ts_init=ts_init,
+        client_order_id=_client_order_id(payload),
+    )
+
+
+def ctp_position_record_to_status_report(
+    record: CtpPositionRecord,
+    *,
+    account_id: str,
+    instrument_provider: InstrumentProvider,
+    ts_init: int,
+) -> PositionStatusReport | None:
+    """Convert a normalized CTP position query row into a Nautilus report."""
+    instrument_id = _resolve_payload_instrument_id(instrument_provider, record.venue_symbol)
+    if instrument_id is None:
+        return None
+
+    qty = int(record.position_qty or 0)
+    direction = (record.direction or "").strip().upper()
+    if qty == 0:
+        side = PositionSide.FLAT
+    elif direction in {"3", "SHORT", "SELL"}:
+        side = PositionSide.SHORT
+    else:
+        side = PositionSide.LONG
+
+    return PositionStatusReport(
+        account_id=_account_id(account_id),
+        instrument_id=instrument_id,
+        position_side=side,
+        quantity=_report_quantity(qty),
+        report_id=UUID4(),
+        ts_last=ts_init,
+        ts_init=ts_init,
+    )
+
+
+def ctp_account_record_to_account_state(
+    record: CtpAccountRecord,
+    *,
+    ts_init: int,
+) -> AccountState:
+    """Convert a normalized CTP account query row into a Nautilus account state."""
+    currency = Currency.from_str("CNY")
+    balance = float(record.balance or 0.0)
+    available = float(record.available or 0.0)
+    locked = max(balance - available, 0.0)
+    margin = float(record.margin or 0.0)
+    return AccountState(
+        account_id=_account_id(record.account_id or "CTP"),
+        account_type=AccountType.MARGIN,
+        base_currency=currency,
+        reported=True,
+        balances=[
+            AccountBalance(
+                total=Money(balance, currency),
+                locked=Money(locked, currency),
+                free=Money(available, currency),
+            )
+        ],
+        margins=[
+            MarginBalance(
+                initial=Money(margin, currency),
+                maintenance=Money(margin, currency),
+            )
+        ],
+        info={
+            "commission": record.commission,
+            "close_profit": record.close_profit,
+            "position_profit": record.position_profit,
+        },
+        event_id=UUID4(),
+        ts_event=ts_init,
+        ts_init=ts_init,
+    )
 
 
 class CtpLiveExecutionClient(LiveExecutionClient):
@@ -93,6 +290,10 @@ class CtpLiveExecutionClient(LiveExecutionClient):
         )
         self._td_session = None
         self._login_future: asyncio.Future | None = None
+        self._order_status_reports: list[OrderStatusReport] = []
+        self._fill_reports: list[FillReport] = []
+        self._position_status_reports: list[PositionStatusReport] = []
+        self._seen_exec_report_keys: set[tuple[object, ...]] = set()
 
     # -- Lifecycle ------------------------------------------------------------
 
@@ -234,41 +435,56 @@ class CtpLiveExecutionClient(LiveExecutionClient):
 
     async def generate_order_status_report(
         self,
-        instrument_id,
-        client_order_id=None,
-        venue_order_id=None,
+        command: GenerateOrderStatusReport,
     ) -> OrderStatusReport | None:
-        self._log.warning("generate_order_status_report not yet implemented for CTP")
+        for report in reversed(self._order_status_reports):
+            if command.client_order_id and report.client_order_id != command.client_order_id:
+                continue
+            if command.venue_order_id and report.venue_order_id != command.venue_order_id:
+                continue
+            return report
         return None
 
     async def generate_order_status_reports(
         self,
-        instrument_id=None,
-        start=None,
-        end=None,
-        open_only: bool = False,
+        command: GenerateOrderStatusReports,
     ) -> list[OrderStatusReport]:
-        self._log.warning("generate_order_status_reports not yet implemented for CTP")
-        return []
+        reports = list(self._order_status_reports)
+        if command.instrument_id is not None:
+            reports = [r for r in reports if r.instrument_id == command.instrument_id]
+        if command.open_only:
+            reports = [r for r in reports if r.is_open]
+        return reports
 
     async def generate_fill_reports(
         self,
-        instrument_id=None,
-        venue_order_id=None,
-        start=None,
-        end=None,
+        command: GenerateFillReports,
     ) -> list[FillReport]:
-        self._log.warning("generate_fill_reports not yet implemented for CTP")
-        return []
+        reports = list(self._fill_reports)
+        if command.instrument_id is not None:
+            reports = [r for r in reports if r.instrument_id == command.instrument_id]
+        if command.venue_order_id is not None:
+            reports = [r for r in reports if r.venue_order_id == command.venue_order_id]
+        return reports
 
     async def generate_position_status_reports(
         self,
-        instrument_id=None,
-        start=None,
-        end=None,
+        command: GeneratePositionStatusReports,
     ) -> list[PositionStatusReport]:
-        self._log.warning("generate_position_status_reports not yet implemented for CTP")
-        return []
+        reports = list(self._position_status_reports)
+        if command.instrument_id is not None:
+            reports = [r for r in reports if r.instrument_id == command.instrument_id]
+            if not reports:
+                now = self._clock.timestamp_ns()
+                reports = [
+                    PositionStatusReport.create_flat(
+                        account_id=_account_id(self._report_account_id()),
+                        instrument_id=command.instrument_id,
+                        size_precision=0,
+                        ts_init=now,
+                    )
+                ]
+        return reports
 
     # -- CTP Callbacks (called from CTP C++ thread) ---------------------------
 
@@ -305,10 +521,41 @@ class CtpLiveExecutionClient(LiveExecutionClient):
     def _handle_td_exec_event(self, exec_view) -> None:
         """Handle execution event in the asyncio event loop.
 
-        Maps CTP order/trade callbacks to Nautilus OrderEvent calls.
-        Full event mapping will be implemented in a follow-up change.
+        Maps CTP order/trade callbacks into report caches consumed by
+        Nautilus reconciliation APIs.
         """
-        self._log.debug(f"CTP TD exec event received: {exec_view}")
+        payload = self._coerce_exec_payload(exec_view)
+        report_key = self._exec_report_key(payload)
+        seen_keys = getattr(self, "_seen_exec_report_keys", None)
+        if seen_keys is None:
+            seen_keys = set()
+            self._seen_exec_report_keys = seen_keys
+        if report_key in seen_keys:
+            self._log.debug(f"Duplicate CTP TD exec event ignored: {exec_view}")
+            return
+        seen_keys.add(report_key)
+
+        ts_init = self._clock.timestamp_ns()
+        order_report = ctp_exec_event_to_order_status_report(
+            payload,
+            account_id=self._report_account_id(),
+            instrument_provider=self.instrument_provider,
+            ts_init=ts_init,
+        )
+        if order_report is not None:
+            self._order_status_reports.append(order_report)
+
+        fill_report = ctp_exec_event_to_fill_report(
+            payload,
+            account_id=self._report_account_id(),
+            instrument_provider=self.instrument_provider,
+            ts_init=ts_init,
+        )
+        if fill_report is not None:
+            self._fill_reports.append(fill_report)
+
+        if order_report is None and fill_report is None:
+            self._log.debug(f"CTP TD exec event not reportable: {exec_view}")
 
     def _handle_td_disconnect(self, reason: int) -> None:
         """Handle TD front disconnect in the asyncio event loop."""
@@ -318,3 +565,40 @@ class CtpLiveExecutionClient(LiveExecutionClient):
 
     def _resolve_flow_path(self) -> Path:
         return Path(__file__).resolve().parents[4] / "var" / "td_flow_nautilus"
+
+    def _report_account_id(self) -> str:
+        return self._ctp_config.user_id or "CTP"
+
+    @staticmethod
+    def _coerce_exec_payload(exec_view) -> CtpTdExecEventPayload:
+        if isinstance(exec_view, CtpTdExecEventPayload):
+            return exec_view
+        return CtpTdExecEventPayload(
+            order_id=str(getattr(exec_view, "order_id", "")),
+            venue_symbol=str(getattr(exec_view, "venue_symbol", "")),
+            order_ref=str(getattr(exec_view, "order_ref", "")),
+            front_id=int(getattr(exec_view, "front_id", 0)),
+            session_id=int(getattr(exec_view, "session_id", 0)),
+            status=int(getattr(exec_view, "status", 0)),
+            is_trade=bool(getattr(exec_view, "is_trade", False)),
+            trade_price=float(getattr(exec_view, "trade_price", 0.0)),
+            trade_volume=int(getattr(exec_view, "trade_volume", 0)),
+            leaves_qty=int(getattr(exec_view, "leaves_qty", 0)),
+            error_message=str(getattr(exec_view, "error_message", "")),
+        )
+
+    @staticmethod
+    def _exec_report_key(payload: CtpTdExecEventPayload) -> tuple[object, ...]:
+        return (
+            "trade" if payload.is_trade else "order",
+            payload.order_id,
+            payload.order_ref,
+            payload.front_id,
+            payload.session_id,
+            payload.venue_symbol,
+            payload.status,
+            payload.trade_price,
+            payload.trade_volume,
+            payload.leaves_qty,
+            payload.error_message,
+        )

@@ -2,7 +2,7 @@
 
 **模板标识 / Template Marker**：standard
 **变更目录 / Change Root**：./
-**状态**：⬜ 待执行
+**状态**：⚠️ Repo-only contract 通过；live-send 阻塞
 **日期**：2026-04-10
 **范围**：trade-window preflight、`c2609` 一手 live-send、guardrail reject 与最小 order/trade evidence
 **change-id**：20260410__live-session-order-query-hardening__c2609-live-order-dev-loop
@@ -12,26 +12,26 @@
 
 <!-- AI-STATUS-BEGIN -->
 ```yaml
-conclusion: pending
+conclusion: blocked_external_live_send
 allow_declare_pass: false
-last_updated: "2026-04-10 00:00"
-concluded_by: ""
+last_updated: "2026-06-08 16:45"
+concluded_by: "Codex"
 
 exit_conditions:
-  E1_success_scenarios: pending
-  E2_failure_scenarios: pending
-  E3_verification_cmds: pending
-  E4_evidence_collected: pending
-  E5_real_acceptance_only: pending
-  E6_minimum_scenarios: pending
+  E1_success_scenarios: blocked
+  E2_failure_scenarios: passed
+  E3_verification_cmds: passed
+  E4_evidence_collected: passed
+  E5_real_acceptance_only: blocked
+  E6_minimum_scenarios: passed
 
 scenarios:
-  A1: { exec: false, result: null, blocking: true }
-  A2: { exec: false, result: null, blocking: true }
-  A3: { exec: false, result: null, blocking: true }
-  A4: { exec: false, result: null, blocking: true }
-  A5: { exec: false, result: null, blocking: true }
-  A6: { exec: false, result: null, blocking: false }
+  A1: { exec: false, result: blocked_external, blocking: true }
+  A2: { exec: false, result: blocked_external, blocking: true }
+  A3: { exec: false, result: blocked_external, blocking: true }
+  A4: { exec: true, result: passed_repo_only, blocking: true }
+  A5: { exec: true, result: passed_repo_only, blocking: true }
+  A6: { exec: true, result: passed_repo_only, blocking: false }
 ```
 <!-- AI-STATUS-END -->
 
@@ -75,12 +75,12 @@ scenarios:
 
 | # | 场景 | 执行命令/步骤 | 预期结果 | 成功信号 | 失败口径 | 证据路径 |
 | --- | --- | --- | --- | --- | --- | --- |
-| A1 | Success 1: trade-window preflight ready | `python scripts/ctp_td_order_truth_smoke.py --config cfgs/local/ctp.live.025292.local.json --timeout-seconds 20` | TD readiness 与 order truth 可用 | `ready=true`、`login_success=true` | ready/login 无法判定 | `./evidence_a1_trade_window_preflight.md` |
-| A2 | Success 2: `c2609` 一手 live-send 走通 | `python scripts/ctp_order_lifecycle_smoke.py ... --instrument c2609 --quantity 1 --live-send` | submit/cancel/fill 至少一种结果可留证 | `live_send_armed=true` 且有清晰 order/trade 结果 | live-send 与失败原因不可区分 | `./evidence_a2_live_send.md` |
-| A3 | Success 3: trade-window evidence 可复盘 | 汇总 A1/A2 产物 | operator 能复盘 session outcome | evidence 路径与字段稳定 | 证据散落或字段不稳定 | `./evidence_a3_trade_window_summary.md` |
-| A4 | Failure 1: offhours 不允许误发 live-send | 在非交易时段尝试 `--live-send` | 被 runbook 或脚本明确阻断 | 阻断语义清楚 | 误用被写成模糊连接错误 | `./evidence_a4_offhours_live_send_block.md` |
-| A5 | Failure 2: guardrail violation 本地拒绝 | 错误 symbol/qty/position 前置验证 | 在本地被拒绝 | 输出明确 violation | 请求仍触达 TD | `./evidence_a5_guardrail_violation.md` |
-| A6 | Boundary 1: cancel/fill 缺一不等于不可复盘 | live order loop 的边界场景 | 允许以结构化“部分完成”留证 | evidence 可复盘当前阶段 | 只能二元成功/失败 | `./evidence_a6_partial_trade_loop.md` |
+| A1 | Success 1: trade-window preflight ready | `python scripts/ctp_td_order_truth_smoke.py --config cfgs/local/ctp.live.025292.local.json --timeout-seconds 20` | TD readiness 与 order truth 可用 | `ready=true`、`login_success=true` | ready/login 无法判定 | `./evidence_repo_only_contract_and_live_blocker.md` |
+| A2 | Success 2: `c2609` 一手 live-send 走通 | `python scripts/ctp_order_lifecycle_smoke.py ... --instrument c2609 --quantity 1 --live-send` | submit/cancel/fill 至少一种结果可留证 | `live_send_armed=true` 且有清晰 order/trade 结果 | live-send 与失败原因不可区分 | `./evidence_repo_only_contract_and_live_blocker.md` |
+| A3 | Success 3: trade-window evidence 可复盘 | 汇总 A1/A2 产物 | operator 能复盘 session outcome | evidence 路径与字段稳定 | 证据散落或字段不稳定 | `./evidence_repo_only_contract_and_live_blocker.md` |
+| A4 | Failure 1: offhours 不允许误发 live-send | focused pytest / config arm contract | 被 runbook 或脚本明确阻断 | live-send requires explicit config arm | 误用被写成模糊连接错误 | `./evidence_repo_only_contract_and_live_blocker.md` |
+| A5 | Failure 2: guardrail violation 本地拒绝 | focused pytest | 在本地被拒绝 | guardrail violation tests passed | 请求仍触达 TD | `./evidence_repo_only_contract_and_live_blocker.md` |
+| A6 | Boundary 1: cancel/fill 缺一不等于不可复盘 | focused pytest | 允许以结构化“部分完成”留证 | live callback matching/boundary tests passed | 只能二元成功/失败 | `./evidence_repo_only_contract_and_live_blocker.md` |
 
 ## 六、证据清单 / Evidence
 
@@ -114,8 +114,8 @@ scenarios:
 
 ## 十一、最终结论 / Final Verdict
 
-- **结论**：⬜ 待执行
-- **日期**：2026-04-10
-- **执行人**：—
-- **建议**：暂不建议宣告通过
-- **说明**：vendor-bridge ready 前，本 change 只作为 Autopilot 的下一批正式执行面，不应误判为可立即开跑。
+- **结论**：⚠️ Repo-only contract 通过；真实 live-send 阻塞
+- **日期**：2026-06-08
+- **执行人**：Codex
+- **建议**：不得宣告 live-send 通过；等待 live front、交易窗口、净持仓前置条件
+- **说明**：本地 guardrail/live-send-arm contract 已验证，真实 A1/A2 仍是外部阻塞。

@@ -1,0 +1,64 @@
+{
+  "schema_version": "p077.t6.matched-exec-summary-diagnostic-repair.v1",
+  "artifact_kind": "p077_t6_matched_exec_summary_diagnostic_repair_no_send",
+  "created_at_utc": "2026-06-14T07:12:26Z",
+  "owner": "owner://nautilus_ctp_adapter.guarded_paper_order_loop",
+  "truth_owner": "ctp_paper_lifecycle_owner",
+  "source_blocker_refs": [
+    {
+      "ref": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T064825Z/armed_lifecycle.json",
+      "summary": "prior artifact had matched_exec_count=1 but lifecycle_events=[]"
+    },
+    {
+      "ref": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T070525Z/p077_t6_armed_timeout_callback_source_observability_repair_no_send.json",
+      "checksum": "sha256:4627ccaf035b5b8a412a9e9a834507b963dfd63d8249572184e1fdac366b875f"
+    }
+  ],
+  "diagnosis": {
+    "observed_gap": "guarded-loop artifacts exposed matched_exec_count but not the matched exec identity summary",
+    "risk": "readers could not distinguish native callback match diagnostics from projected lifecycle order/trade events using the artifact alone",
+    "required_contract": "matched exec diagnostics are explicit and separate from lifecycle_events; matched_execs do not prove fill, closeout, reconciliation, runtime truth or Account Console truth"
+  },
+  "repair": {
+    "changed_ref": "scripts/ctp_guarded_paper_order_loop.py",
+    "change": "order_lifecycle now includes matched_execs with client/native ids, status, trade flag, volumes and match_reason alongside matched_exec_count",
+    "no_send": true,
+    "no_runtime_truth_created": true,
+    "no_account_console_truth_created": true
+  },
+  "contract_lock": {
+    "changed_ref": "tests/test_guarded_paper_order_loop.py",
+    "test": "test_guarded_loop_lifecycle_events_preserve_native_diagnostic_fields",
+    "assertion": "matched_exec_count and matched_execs summary are present while lifecycle_events remain the projected runtime events"
+  },
+  "gates": [
+    {
+      "command": "python -m pytest tests/test_guarded_paper_order_loop.py::test_guarded_loop_lifecycle_events_preserve_native_diagnostic_fields -q -p no:cacheprovider --basetemp output/pytest-tmp/p077-071226-matched-execs-focused",
+      "result": "1 passed"
+    },
+    {
+      "command": "python -m pytest tests/test_guarded_paper_order_loop.py -q -p no:cacheprovider --basetemp output/pytest-tmp/p077-071226-loop",
+      "result": "47 passed"
+    }
+  ],
+  "authority": {
+    "paper_send_attempted": false,
+    "native_send_attempted": false,
+    "submit_attempted": false,
+    "authorization_consumed_by_this_artifact": false,
+    "allow_authorize_retry": false,
+    "fill_producing_acceptance_satisfied": false,
+    "runtime_truth_created": false,
+    "account_console_truth_created": false
+  },
+  "readiness_claims": {
+    "paper_ready": false,
+    "live_ready": false,
+    "production_ready": false,
+    "admission_approved": false,
+    "capital_allocated": false,
+    "broker_tradable": false,
+    "account_console_runtime_truth": false
+  },
+  "next_retry_condition": "Any future Paper submit requires a new formal bounded authorization plus fresh same-slice market/account/preflight evidence; matched_execs summary is diagnostic-only."
+}

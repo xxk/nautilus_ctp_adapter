@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 import time
 
+from nautilus_ctp_adapter.native.pyo3_runtime import create_td_live_session
 from nautilus_ctp_adapter.runtime import (
     CtpRuntimeBridge,
     CtpRuntimeCommand,
@@ -19,13 +20,7 @@ from .normalization import NormalizedCtpInstrument, normalize_instrument_record
 
 
 def _create_td_live_session(flow_path: Path):
-    try:
-        from ctp_runtime._ctp_runtime import CtpTdLiveSession
-    except ImportError as exc:
-        raise RuntimeError(
-            "PyO3 TD bridge unavailable; run maturin develop or pip install -e . before TD instrument smoke"
-        ) from exc
-    return CtpTdLiveSession(str(flow_path))
+    return create_td_live_session(flow_path)
 
 
 @dataclass(slots=True)
@@ -108,6 +103,13 @@ class CtpInstrumentProvider:
         instrument_name: str,
         price_tick: float,
         volume_multiple: int,
+        product_id: str | None = None,
+        underlying_instr_id: str | None = None,
+        open_date: str | None = None,
+        expire_date: str | None = None,
+        create_date: str | None = None,
+        exchange_inst_id: str | None = None,
+        lot_size: int | None = None,
     ) -> None:
         self._runtime_bridge.push_event(
             CtpRuntimeEvent(
@@ -122,6 +124,13 @@ class CtpInstrumentProvider:
                     "instrument_name": instrument_name,
                     "price_tick": str(price_tick),
                     "volume_multiple": str(volume_multiple),
+                    "product_id": product_id or "",
+                    "underlying_instr_id": underlying_instr_id or "",
+                    "open_date": open_date or "",
+                    "expire_date": expire_date or "",
+                    "create_date": create_date or "",
+                    "exchange_inst_id": exchange_inst_id or "",
+                    "lot_size": "" if lot_size is None else str(lot_size),
                 },
             )
         )
@@ -241,6 +250,13 @@ class CtpInstrumentProvider:
             instrument_name=instrument.instrument_name,
             price_tick=instrument.tick_size,
             volume_multiple=instrument.volume_multiple,
+            product_id=instrument.product_id,
+            underlying_instr_id=instrument.underlying_instr_id,
+            open_date=instrument.open_date,
+            expire_date=instrument.expire_date,
+            create_date=instrument.create_date,
+            exchange_inst_id=instrument.exchange_inst_id,
+            lot_size=instrument.lot_size,
         )
         if is_last:
             self.complete_instrument_query(request_id=request_id)

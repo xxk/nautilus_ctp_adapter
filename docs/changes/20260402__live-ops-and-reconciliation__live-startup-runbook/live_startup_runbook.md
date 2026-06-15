@@ -74,6 +74,40 @@ python scripts/ctp_nautilus_live_smoke.py --config <path>
 4. 当前目标只在 Nautilus 主线内工作，不回退到托管 C# 主线
 5. 若要触达 execution，必须继承 Topic 4 冻结的 guardrails
 
+### 本机 260603 CSV front 覆盖
+
+当下面 3 个本机输入同时存在时，后续 live 登录验证默认直接使用它们，不再向操作者询问账号、front 或凭据：
+
+1. `C:\Users\Administrator\Desktop\TradingServer_260603.csv`
+2. `C:\Users\Administrator\Desktop\MarketDataServer_260603.csv`
+3. `cfgs/local/ctp.live.025292.local.json`
+
+使用规则：
+
+1. CSV 只作为 front 来源；凭据、BrokerID、UserID、ProductInfo、AppID、AuthCode、Password 与合约列表继续来自本地 live config。
+2. `TradingServer_260603.csv` 当前默认 TD front 为 `tcp://180.168.159.225:51205`。
+3. `MarketDataServer_260603.csv` 当前默认 MD front 为 `tcp://180.168.159.225:51213`。
+4. 不把凭据或生成后的 live config 写入受版本控制目录，不在聊天或文档中展开敏感字段。
+5. 运行前在仓库外生成临时 config，例如 `D:\Nautilus\_tmp\ctp_login_260603\<name>.json`，只覆盖 MD/TD front；运行结束后删除。
+6. Windows 控制台运行 TD login-only 诊断时设置 `PYTHONIOENCODING=utf-8`，避免 CTP 返回中文错误文本时触发本地编码异常。
+
+默认执行顺序：
+
+```powershell
+python scripts/check_rust_gate.py
+python scripts/ctp_md_login_smoke.py --config <temp-config> --timeout-seconds 20
+python scripts/ctp_nautilus_live_smoke.py --config <temp-config> --md-timeout-seconds 20 --td-timeout-seconds 20
+$env:PYTHONIOENCODING = "utf-8"
+python scripts/ctp_td_login_smoke.py --config <temp-config> --timeout-seconds 20
+```
+
+2026-06-03 本机结果口径：
+
+1. `check_rust_gate.py` 通过。
+2. 使用 CSV front 的 `ctp_md_login_smoke.py` 通过，MD 登录、订阅与首个 `rb2610` tick 均成功。
+3. 使用 CSV front 的 `ctp_nautilus_live_smoke.py` 到达真实 TD 请求路径，但 TD 登录回调返回 `login_error_id=3`，主线结果为 `td_login_failed`。
+4. 使用原本 local config TD front 单独跑 `ctp_td_login_smoke.py` 也返回同类 `login_error_id=3`，所以后续不要再把该结果优先归因为 CSV front 缺失或需要重新询问 front。
+
 ## 四、标准启动顺序
 
 ### Phase 1: 仓库门禁

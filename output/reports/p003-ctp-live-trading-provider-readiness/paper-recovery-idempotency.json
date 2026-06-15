@@ -1,0 +1,54 @@
+{
+  "accepted": true,
+  "baseline": "ctp-paper-recovery-idempotency-v1",
+  "account_profile": "openctp-paper",
+  "evidence_class": "paper-simulation",
+  "recovery": {
+    "run_id": "paper-recovery-acceptance",
+    "attempt": 1,
+    "disconnects": [
+      {
+        "channel": "md",
+        "reason": 4097,
+        "attempt": 1
+      },
+      {
+        "channel": "td",
+        "reason": 4098,
+        "attempt": 1
+      }
+    ],
+    "reconnects": [
+      {
+        "channel": "md",
+        "login_success": true,
+        "settlement_code": null,
+        "resubscribed_symbols": [
+          "rb2610"
+        ],
+        "guardrails_preserved": true
+      },
+      {
+        "channel": "td",
+        "login_success": true,
+        "settlement_code": 0,
+        "resubscribed_symbols": [],
+        "guardrails_preserved": true
+      }
+    ],
+    "disposition": "passed",
+    "idempotency": {
+      "accepted": true,
+      "disposition": "historical_residue_isolated",
+      "historical_count": 2,
+      "duplicate_input_count": 1,
+      "deduped_count": 1,
+      "emitted_current_report_count": 1
+    }
+  },
+  "issues": [],
+  "success": true,
+  "status": "passed",
+  "flow_mode": "repo-only",
+  "generated_at_epoch_ms": 1780905613139
+}

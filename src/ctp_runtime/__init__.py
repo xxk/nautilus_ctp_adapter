@@ -9,12 +9,10 @@ import sys
 
 
 if sys.platform == "win32":
-    from nautilus_ctp_adapter.native.loader import add_windows_dll_directories, find_native_pack_dir
+    from nautilus_ctp_adapter.native.loader import add_windows_dll_directories, candidate_native_paths
 
     _REPO_ROOT = Path(__file__).resolve().parents[2]
-    _NATIVE_PACK_DIR = find_native_pack_dir(_REPO_ROOT)
-    if _NATIVE_PACK_DIR is not None:
-        add_windows_dll_directories(_NATIVE_PACK_DIR)
+    add_windows_dll_directories(*candidate_native_paths(_REPO_ROOT))
 
 from ._ctp_runtime import (  # noqa: F401  (re-export)
     CtpMdSession,

@@ -1,0 +1,86 @@
+{
+  "schema_version": "p077.t6.decoded-insufficient-position-semantics-blocker.v1",
+  "artifact_kind": "p077_t6_decoded_insufficient_position_semantics_blocker_no_send",
+  "created_at_utc": "2026-06-14T03:33:09Z",
+  "owner": "owner://nautilus_ctp_adapter",
+  "truth_owner": "owner://nautilus_ctp_adapter/ctp-paper-19053",
+  "source_artifacts": [
+    {
+      "artifact": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T030139Z/p077_t6_authorized_retry_cancelled_insufficient_position_closeout.json",
+      "checksum": "sha256:8b4c38f4fc95f43ba9ee944766cee806c1cb9c4c2178b933debbb0296e834500",
+      "role": "decoded_broker_rejection_source"
+    },
+    {
+      "artifact": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T032739Z/p077_t6_native_offset_acceptance_guardrail_no_send.json",
+      "checksum": "sha256:3c1237d75667e9301c2ba7d682c552f791ba08e03851691662303c0194394a46",
+      "role": "native_offset_acceptance_guardrail"
+    }
+  ],
+  "observed_case": {
+    "account_alias": "19053",
+    "instrument": "rb2610",
+    "side": "SELL",
+    "position_effect": "CLOSETODAY",
+    "quantity": 1,
+    "limit_price": 3162,
+    "pre_snapshot_position": {
+      "direction": "LONG",
+      "position_qty": 5,
+      "td_position_qty": 5,
+      "yd_position_qty": 0
+    },
+    "lifecycle": {
+      "status": "53",
+      "disposition": "cancelled",
+      "fill_volume": 0,
+      "decoded_error_text": "持仓不足",
+      "submit_native_comb_offset": "3",
+      "callback_offset_flag": "1"
+    },
+    "post_snapshot_position": {
+      "direction": "LONG",
+      "position_qty": 5,
+      "td_position_qty": 5,
+      "yd_position_qty": 0
+    }
+  },
+  "code_change": {
+    "file": "D:/Nautilus/nautilus_ctp_adapter/scripts/ctp_guarded_paper_order_loop.py",
+    "function": "build_broker_rejection_semantics",
+    "added_payload_field": "broker_rejection_semantics",
+    "rule": "decoded 持仓不足 on a close-intent zero-fill rejection is a typed broker-or-adapter close-position semantics blocker only"
+  },
+  "contract_lock": {
+    "test_file": "D:/Nautilus/nautilus_ctp_adapter/tests/test_guarded_paper_order_loop.py",
+    "test": "test_decoded_insufficient_position_close_rejection_is_typed_blocker_only",
+    "expected_disposition": "decoded_broker_insufficient_position_close_rejection",
+    "expected_blocker_type": "broker-or-adapter-close-position-semantics",
+    "expected_acceptance_implication": "typed_blocker_only_not_fill_or_closeout_truth",
+    "expected_fill_producing_acceptance_satisfied": false,
+    "expected_requires_owner_resolution_before_retry": true,
+    "expected_writes_truth": false
+  },
+  "verification": {
+    "focused_gate": "python -m pytest tests/test_guarded_paper_order_loop.py -q -p no:cacheprovider",
+    "result": "39 passed"
+  },
+  "owner_boundary": {
+    "sent_order": false,
+    "native_send_attempted": false,
+    "submit_attempted": false,
+    "retry_authorized_by_this_artifact": false,
+    "fill_producing_acceptance_satisfied": false,
+    "runtime_truth_created": false,
+    "account_console_truth_created": false,
+    "paper_ready_claimed": false,
+    "live_ready_claimed": false,
+    "broker_tradable_claimed": false,
+    "capital_allocated_claimed": false
+  },
+  "typed_outcome": "blocked_decoded_broker_insufficient_position_semantics_no_send",
+  "remaining_blocker": {
+    "blocker_type": "broker-or-adapter-close-position-semantics",
+    "wait_only": false,
+    "retry_condition": "Owner must explain or repair why a fresh rb2610 LONG TD position snapshot was rejected as 持仓不足 for a guarded CLOSETODAY close attempt, without treating this blocker artifact as authorization or fill-producing acceptance."
+  }
+}

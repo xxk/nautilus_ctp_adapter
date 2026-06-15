@@ -62,10 +62,17 @@ struct NativeExec {
     std::int32_t trade_volume;
     const char* error_msg;
     std::int32_t leaves_qty;
+    const char* callback_source;
+    std::int32_t submit_request_offset_flag;
+    const char* submit_request_offset_source;
+    std::int32_t response_request_id;
+    std::int32_t response_is_last;
+    std::int32_t response_error_id;
 };
 
 struct NativePosition {
     const char* symbol;
+    const char* exchange_id;
     const char* broker_id;
     const char* investor_id;
     std::int32_t pos_direction;
@@ -139,6 +146,7 @@ std::int32_t repo_ctp_td_order_send(
     void* handle,
     const char* order_id,
     const char* symbol,
+    std::int32_t request_id,
     double price,
     std::int32_t qty,
     std::int32_t side,
