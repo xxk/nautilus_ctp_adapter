@@ -7,23 +7,66 @@ from typing import Iterable
 from .manifest import BOOTSTRAP_MANAGED_DLLS, REQUIRED_NATIVE_DLLS
 
 _DLL_DIRECTORY_HANDLES: list[object] = []
+CTP_RUNTIME_PACK_BIN_ENV = "NAUTILUS_CTP_RUNTIME_PACK_BIN"
+CTP_RUNTIME_PACK_STRICT_ENV = "NAUTILUS_CTP_RUNTIME_PACK_STRICT"
 
 
-def candidate_native_paths(base_dir: str | Path) -> list[Path]:
+def _as_bool(value: str | None) -> bool:
+    return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def explicit_runtime_pack_bin_from_env() -> Path | None:
+    value = os.environ.get(CTP_RUNTIME_PACK_BIN_ENV, "").strip()
+    if not value:
+        return None
+    return Path(value)
+
+
+def runtime_pack_strict_from_env() -> bool:
+    return _as_bool(os.environ.get(CTP_RUNTIME_PACK_STRICT_ENV))
+
+
+def candidate_native_paths(
+    base_dir: str | Path,
+    *,
+    runtime_pack_bin: str | Path | None = None,
+    strict_runtime_pack: bool | None = None,
+) -> list[Path]:
     """Return probable directories for CTP native DLL resolution."""
     root = Path(base_dir)
-    return [
+    explicit_runtime_pack = Path(runtime_pack_bin) if runtime_pack_bin else explicit_runtime_pack_bin_from_env()
+    strict = runtime_pack_strict_from_env() if strict_runtime_pack is None else strict_runtime_pack
+    repo_owned_native_paths = [
         root / "rust" / "target" / "debug",
         root / "rust" / "target" / "release",
+    ]
+    fallback_paths = [
         root / "native",
         root / "native" / "bin",
         root / "vendor" / "ctp",
         root / "vendor" / "ctp" / "bin",
     ]
+    if explicit_runtime_pack is None:
+        return repo_owned_native_paths + fallback_paths
+    if strict:
+        return [explicit_runtime_pack] + repo_owned_native_paths
+    return [explicit_runtime_pack] + repo_owned_native_paths + fallback_paths
 
 
-def candidate_native_dll_paths(base_dir: str | Path) -> list[Path]:
-    return [path / "ctp_native.dll" for path in candidate_native_paths(base_dir)]
+def candidate_native_dll_paths(
+    base_dir: str | Path,
+    *,
+    runtime_pack_bin: str | Path | None = None,
+    strict_runtime_pack: bool | None = None,
+) -> list[Path]:
+    return [
+        path / "ctp_native.dll"
+        for path in candidate_native_paths(
+            base_dir,
+            runtime_pack_bin=runtime_pack_bin,
+            strict_runtime_pack=strict_runtime_pack,
+        )
+    ]
 
 
 def candidate_managed_paths(base_dir: str | Path) -> list[Path]:
@@ -42,13 +85,33 @@ def first_existing_path(paths: Iterable[Path]) -> Path | None:
     return None
 
 
-def find_repo_owned_native_dll(base_dir: str | Path) -> Path | None:
-    return first_existing_path(candidate_native_dll_paths(base_dir))
+def find_repo_owned_native_dll(
+    base_dir: str | Path,
+    *,
+    runtime_pack_bin: str | Path | None = None,
+    strict_runtime_pack: bool | None = None,
+) -> Path | None:
+    return first_existing_path(
+        candidate_native_dll_paths(
+            base_dir,
+            runtime_pack_bin=runtime_pack_bin,
+            strict_runtime_pack=strict_runtime_pack,
+        )
+    )
 
 
-def find_native_pack_dir(base_dir: str | Path) -> Path | None:
+def find_native_pack_dir(
+    base_dir: str | Path,
+    *,
+    runtime_pack_bin: str | Path | None = None,
+    strict_runtime_pack: bool | None = None,
+) -> Path | None:
     runtime_dlls = tuple(name for name in REQUIRED_NATIVE_DLLS if name != "ctp_native.dll")
-    for path in candidate_native_paths(base_dir):
+    for path in candidate_native_paths(
+        base_dir,
+        runtime_pack_bin=runtime_pack_bin,
+        strict_runtime_pack=strict_runtime_pack,
+    ):
         if all((path / name).exists() for name in runtime_dlls):
             return path
     return None

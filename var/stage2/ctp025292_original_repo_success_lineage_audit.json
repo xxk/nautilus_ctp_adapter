@@ -1,0 +1,113 @@
+{
+  "baseline": "ctp025292-original-repo-success-lineage-audit-v1",
+  "route_scenario": "ctp025292_marketdata_sandbox_paper_simulated_001",
+  "runtime_pack_id": "ctp-live-025292-md",
+  "market_source": "CTP 025292 official market data only",
+  "market_data_account_id": "025292",
+  "broker_order_submission": false,
+  "trading_adapter": "disabled",
+  "original_root": "D:\\Nautilus\\nautilus_ctp_adapter",
+  "success": false,
+  "status": "blocked",
+  "blocker_id": "ctp025292_original_repo_success_lineage_unready",
+  "issues": [
+    "original_current_config_native_pack_dir_empty",
+    "original_vendor_manifest_points_openctp",
+    "original_vendor_required_dlls_known_openctp_tts",
+    "original_historical_success_runtime_hash_missing",
+    "operator_trusted_025292_candidate_not_unique"
+  ],
+  "current_config_summary": {
+    "artifact_ref": "D:\\Nautilus\\nautilus_ctp_adapter\\cfgs\\local\\ctp.live.025292.local.json",
+    "exists": true,
+    "sha256": "D39E0EEDF1A319E2345FC1034B1483F88CF4080CB95569D170351859EE610200",
+    "json_valid": true,
+    "user_id": "025292",
+    "broker_id": "0155",
+    "app_id_present": true,
+    "auth_code_present": true,
+    "password_present": true,
+    "fronts_present": {
+      "host": true,
+      "pricer": true,
+      "md_front": false,
+      "td_front": false
+    },
+    "native_pack_dir_present": true,
+    "native_pack_dir_non_empty": false,
+    "native_pack_dir_value_recorded": false,
+    "instruments": [
+      "rb2610"
+    ],
+    "redaction": {
+      "sensitive_keys_redacted": [
+        "app_id",
+        "appid",
+        "auth_code",
+        "authcode",
+        "password"
+      ],
+      "front_values_recorded": false
+    }
+  },
+  "current_vendor_runtime_summary": {
+    "bin_ref": "D:\\Nautilus\\nautilus_ctp_adapter\\vendor\\ctp\\bin",
+    "manifest_ref": "D:\\Nautilus\\nautilus_ctp_adapter\\vendor\\ctp\\bin\\_synced_from.txt",
+    "manifest_exists": true,
+    "manifest_sha256": "12FAC9D2C66F53656B3D23E8E849F2C63C9DDDBD62194E9D8161F491AC800BAF",
+    "manifest": {
+      "profile": "auto",
+      "pack_kind": "runtime",
+      "repo_native": "",
+      "repo_native_mode": "",
+      "ctp_api": "output\\openctp\\tts-sdk\\tts_6.6.9-win64-combined",
+      "managed": ""
+    },
+    "dlls": {
+      "thostmduserapi_se.dll": {
+        "exists": true,
+        "sha256": "66BACF7E33AD901534DA4B08662F08FC9F6169760B2AA0EEA85766C93FB6501E",
+        "length": 430592,
+        "known_openctp_tts": true
+      },
+      "thosttraderapi_se.dll": {
+        "exists": true,
+        "sha256": "543ECE8B55C6FBC671B251E8CC0EE909708EE0F3C5ADC4FD2FD542E3B4C8D4E1",
+        "length": 583680,
+        "known_openctp_tts": true
+      }
+    },
+    "all_required_dlls_present": true,
+    "all_required_dlls_known_openctp_tts": true
+  },
+  "historical_audit_summary": {
+    "historical_success_ref_count": 40,
+    "runtime_lineage_ref_count": 32,
+    "trusted_runtime_hash_ref_count": 0,
+    "historical_config_exists": false,
+    "issues": [
+      "historical_success_runtime_hash_missing",
+      "historical_success_config_missing"
+    ]
+  },
+  "runtime_pack_discovery_summary": {
+    "candidate_count": 8,
+    "trusted_candidate_count": 0,
+    "candidate_classifications": {
+      "candidate_untrusted": 5,
+      "known_openctp_tts_rejected": 3
+    }
+  },
+  "auto_trust_allowed": false,
+  "negative_assertions": {
+    "did_not_open_trading_channel": true,
+    "did_not_submit_broker_order": true,
+    "did_not_use_025292_as_trading_account": true,
+    "did_not_write_trust_marker": true,
+    "did_not_materialize_runtime_pack": true,
+    "did_not_write_account_console_source_package": true,
+    "did_not_generate_or_consume_paper_request": true,
+    "did_not_claim_market_data_ready": true
+  },
+  "next_action": "Provide or restore exactly one operator_trusted_025292 marker/source package bound to non-OpenCTP/TTS DLL hashes before materializing ctp-live-025292-md."
+}

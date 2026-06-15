@@ -21,8 +21,17 @@ from .config import CtpAdapterConfig
 from .instrument_provider import CtpInstrumentProviderLoadResult
 
 
-def _create_md_live_session(flow_path: Path):
-    return create_md_live_session(flow_path)
+def _create_md_live_session(
+    flow_path: Path,
+    runtime_pack_bin: str | Path | None = None,
+    *,
+    strict_runtime_pack: bool = False,
+):
+    return create_md_live_session(
+        flow_path,
+        runtime_pack_bin=runtime_pack_bin,
+        strict_runtime_pack=strict_runtime_pack,
+    )
 
 
 @dataclass(slots=True)
@@ -40,6 +49,10 @@ class CtpMdSmokeResult:
     login_success: bool
     login_error_id: int
     login_error_message: str
+    front_connected: bool = False
+    front_connected_count: int = 0
+    disconnect_count: int = 0
+    disconnect_reasons: tuple[int, ...] = ()
     first_tick_symbol: str | None = None
     first_tick_last: float | None = None
     first_tick_bid: float | None = None
@@ -397,8 +410,14 @@ class CtpDataClient:
 
         effective_flow_path = Path(flow_path) if flow_path else self._default_flow_path()
         effective_flow_path.mkdir(parents=True, exist_ok=True)
-        session = _create_md_live_session(effective_flow_path)
+        session = _create_md_live_session(
+            effective_flow_path,
+            runtime_pack_bin=self._config.native_pack_dir or None,
+            strict_runtime_pack=bool(self._config.native_pack_dir),
+        )
         state: dict[str, object] = {
+            "front_connected_count": 0,
+            "disconnect_reasons": [],
             "login_success": False,
             "login_error_id": -1,
             "login_error_message": "",
@@ -406,19 +425,11 @@ class CtpDataClient:
         }
 
         try:
+            session.set_front_connected_callback(lambda: self._on_md_front_connected(state))
             session.set_login_callback(lambda resp: self._on_md_login_callback(resp, state))
             session.set_tick_callback(lambda tick: self._on_md_tick_callback(tick, state))
             session.set_front_disconnected_callback(
-                lambda reason: self._emit_marketdata_event(
-                    CtpRuntimeEvent(
-                        kind=CtpRuntimeEventKind.DISCONNECTED,
-                        message=f"md_disconnected:{reason}",
-                        payload={
-                            "channel": "md",
-                            "reason": str(reason),
-                        },
-                    )
-                )
+                lambda reason: self._on_md_front_disconnected(reason, state)
             )
 
             init_code = session.init(self._config.md_front)
@@ -426,6 +437,8 @@ class CtpDataClient:
                 self._config.broker_id,
                 self._config.user_id,
                 self._config.password,
+                self._config.product_info,
+                *self._config.md_login_compatibility.as_login_args(),
             )
 
             deadline = time.time() + timeout_seconds
@@ -446,6 +459,10 @@ class CtpDataClient:
                 login_success=bool(state["login_success"]),
                 login_error_id=int(state["login_error_id"]),
                 login_error_message=str(state["login_error_message"]),
+                front_connected=int(state["front_connected_count"]) > 0,
+                front_connected_count=int(state["front_connected_count"]),
+                disconnect_count=len(state["disconnect_reasons"]),
+                disconnect_reasons=tuple(int(reason) for reason in state["disconnect_reasons"]),
                 first_tick_symbol=None if tick is None else tick["symbol"],
                 first_tick_last=None if tick is None else tick["last"],
                 first_tick_bid=None if tick is None else tick["bid"],
@@ -654,6 +671,35 @@ class CtpDataClient:
 
     def _default_flow_path(self) -> Path:
         return self._repository_root() / "var" / "md_flow_smoke"
+
+    def _on_md_front_connected(self, state: dict[str, object]) -> None:
+        state["front_connected_count"] = int(state["front_connected_count"]) + 1
+        self._emit_marketdata_event(
+            CtpRuntimeEvent(
+                kind=CtpRuntimeEventKind.CONNECTED,
+                message="md_front_connected",
+                payload={
+                    "channel": "md",
+                    "front_connected_count": str(state["front_connected_count"]),
+                },
+            )
+        )
+
+    def _on_md_front_disconnected(self, reason: int, state: dict[str, object]) -> None:
+        disconnect_reasons = state["disconnect_reasons"]
+        if not isinstance(disconnect_reasons, list):
+            raise TypeError("disconnect_reasons state must be a list")
+        disconnect_reasons.append(int(reason))
+        self._emit_marketdata_event(
+            CtpRuntimeEvent(
+                kind=CtpRuntimeEventKind.DISCONNECTED,
+                message=f"md_disconnected:{reason}",
+                payload={
+                    "channel": "md",
+                    "reason": str(reason),
+                },
+            )
+        )
 
     def _on_md_login_callback(self, response, state: dict[str, object]) -> None:
         state["login_success"] = response.success

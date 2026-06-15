@@ -1,0 +1,99 @@
+{
+  "baseline": "ctp025292-historical-runtime-lineage-audit-v1",
+  "route_scenario": "ctp025292_marketdata_sandbox_paper_simulated_001",
+  "runtime_pack_id": "ctp-live-025292-md",
+  "market_source": "CTP 025292 official market data only",
+  "market_data_account_id": "025292",
+  "broker_order_submission": false,
+  "trading_adapter": "disabled",
+  "historical_config_name": "ctp.live.025292.rb2610.10675.json",
+  "roots": [
+    "D:\\Nautilus\\nautilus_ctp_adapter\\docs\\changes\\20260403__td-order-truth-and-reconciliation__td-order-truth-baseline",
+    "D:\\Nautilus\\nautilus_ctp_adapter\\docs\\changes\\20260403__startup-truth-and-session-rebuild__td-session-truth-baseline",
+    "D:\\Nautilus\\nautilus_ctp_adapter\\docs\\changes\\20260403__td-position-account-truth-merge__merged-evidence-matrix"
+  ],
+  "missing_roots": [],
+  "scanned_file_count": 15,
+  "historical_success_ref_count": 6,
+  "runtime_lineage_ref_count": 0,
+  "trusted_runtime_hash_ref_count": 0,
+  "historical_config": {
+    "artifact_ref": "D:\\Nautilus\\nautilus_ctp_adapter\\cfgs\\local\\ctp.live.025292.rb2610.10675.json",
+    "exists": false
+  },
+  "success": false,
+  "status": "blocked",
+  "blocker_id": "ctp025292_historical_success_runtime_hash_missing",
+  "issues": [
+    "historical_success_runtime_hash_missing",
+    "historical_success_config_missing"
+  ],
+  "historical_success_refs": [
+    {
+      "artifact_ref": "D:\\Nautilus\\nautilus_ctp_adapter\\docs\\changes\\20260403__td-order-truth-and-reconciliation__td-order-truth-baseline\\evidence_20260402_td_order_truth.md",
+      "sha256": "2E138B8AF25F54B02FEA8142E86934BC55F02DE3A6F676854AC295CEA19CB85A",
+      "evidence_type": "historical_025292_success",
+      "matching_lines": [
+        "17: `ready=true`",
+        "18: `login_success=true`"
+      ]
+    },
+    {
+      "artifact_ref": "D:\\Nautilus\\nautilus_ctp_adapter\\docs\\changes\\20260403__td-order-truth-and-reconciliation__td-order-truth-baseline\\td_order_truth_20260402.log",
+      "sha256": "8EAFC93DA23C8D67DDD6FB0FF44FBEA36147E8CA00F88A88C3534D80DB9BEE37",
+      "evidence_type": "historical_025292_success",
+      "matching_lines": [
+        "1: {\"baseline\": \"td-order-truth-v1\", \"flow_path\": \"D:\\\\Nautilus\\\\nautilus_ctp_adapter\\\\var\\\\td_flow_smoke\", \"flow_mode\": \"default_shared_flow\", \"ready\": true, \"login_success\": true, \"settlement_code\": 0, \"disconnect_count\": 0, \"disconnect_reas",
+        "3: TD Auto-auth: 0155/025292",
+        "7: TD Auto-auth: 0155/025292"
+      ]
+    },
+    {
+      "artifact_ref": "D:\\Nautilus\\nautilus_ctp_adapter\\docs\\changes\\20260403__startup-truth-and-session-rebuild__td-session-truth-baseline\\evidence_20260403_td_startup_truth.md",
+      "sha256": "AE3E25B0F431C37B8D2C8730D1013A9FD9D85CACD8B786C3F896104050F3BBD7",
+      "evidence_type": "historical_025292_success",
+      "matching_lines": [
+        "18: `ready=true`",
+        "19: `login_success=true`"
+      ]
+    },
+    {
+      "artifact_ref": "D:\\Nautilus\\nautilus_ctp_adapter\\docs\\changes\\20260403__startup-truth-and-session-rebuild__td-session-truth-baseline\\plan.md",
+      "sha256": "A9C9AF1787A2286F3EDFBD2698A5B7CCA421B34DF5BB69E4DE8FE22AF0E36295",
+      "evidence_type": "historical_025292_success",
+      "matching_lines": [
+        "39: 2. 2026-04-03 实测 `flow_mode=default_shared_flow`、`ready=true`、`login_success=true`、`settlement_code=0`、`front_id=11`、`session_id=386081387`。"
+      ]
+    },
+    {
+      "artifact_ref": "D:\\Nautilus\\nautilus_ctp_adapter\\docs\\changes\\20260403__startup-truth-and-session-rebuild__td-session-truth-baseline\\td_startup_truth_20260403.log",
+      "sha256": "D4372074A5123D685C6DB9351027E2CABAE902E037F74C8ADF9D15FFB61D5304",
+      "evidence_type": "historical_025292_success",
+      "matching_lines": [
+        "1: {\"baseline\": \"td-startup-truth-v1\", \"flow_path\": \"D:\\\\Nautilus\\\\nautilus_ctp_adapter\\\\var\\\\td_flow_smoke\", \"flow_mode\": \"default_shared_flow\", \"ready\": true, \"login_success\": true, \"settlement_code\": 0, \"front_id\": 11, \"session_id\": 3860813",
+        "3: TD Auto-auth: 0155/025292"
+      ]
+    },
+    {
+      "artifact_ref": "D:\\Nautilus\\nautilus_ctp_adapter\\docs\\changes\\20260403__td-position-account-truth-merge__merged-evidence-matrix\\merged_evidence_matrix_20260402.log",
+      "sha256": "ADADC9B711295111861084AD87085F79E59C2B727DE29066079CEAE2B7BB3D36",
+      "evidence_type": "historical_025292_success",
+      "matching_lines": [
+        "1: {\"evidence_version\": \"td-merged-evidence-v1\", \"captured_at_utc\": \"2026-04-02T08:17:00Z\", \"account_id\": \"025292\", \"disposition\": \"manual_review_required\", \"position_count\": 73, \"observed_callback_count\": 9, \"historical_callback_count\": 9, \"c",
+        "3: TD Auto-auth: 0155/025292",
+        "7: TD Auto-auth: 0155/025292",
+        "10: TD Auto-auth: 0155/025292"
+      ]
+    }
+  ],
+  "runtime_lineage_refs": [],
+  "trusted_runtime_hash_refs": [],
+  "candidate_auto_trust_allowed": false,
+  "negative_assertions": {
+    "did_not_open_trading_channel": true,
+    "did_not_submit_broker_order": true,
+    "did_not_generate_or_consume_paper_request": true,
+    "did_not_claim_market_data_ready": true
+  },
+  "next_action": "Restore/provide trusted 025292 source-package/runtime manifest with DLL hashes, or write an operator-trusted marker for the correct 025292 DLL family before retrying MD smoke."
+}

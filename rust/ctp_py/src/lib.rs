@@ -225,6 +225,7 @@ struct MdLiveCallbackRegistry {
     active_handle: usize,
     login_callback: Option<Py<PyAny>>,
     tick_callback: Option<Py<PyAny>>,
+    connected_callback: Option<Py<PyAny>>,
     disconnect_callback: Option<Py<PyAny>>,
 }
 
@@ -268,6 +269,7 @@ fn reset_md_live_registry_for_handle(registry: &mut MdLiveCallbackRegistry, hand
     if registry.active_handle != 0 && registry.active_handle != handle {
         registry.login_callback = None;
         registry.tick_callback = None;
+        registry.connected_callback = None;
         registry.disconnect_callback = None;
     }
     registry.active_handle = handle;
@@ -291,6 +293,7 @@ fn clear_md_live_callbacks(handle: usize) {
             registry.active_handle = 0;
             registry.login_callback = None;
             registry.tick_callback = None;
+            registry.connected_callback = None;
             registry.disconnect_callback = None;
         }
     });
@@ -323,6 +326,15 @@ fn clone_tick_callback() -> Option<Py<PyAny>> {
     with_md_live_callbacks(|registry| {
         registry
             .tick_callback
+            .as_ref()
+            .map(|callback| Python::with_gil(|py| callback.clone_ref(py)))
+    })
+}
+
+fn clone_connected_callback() -> Option<Py<PyAny>> {
+    with_md_live_callbacks(|registry| {
+        registry
+            .connected_callback
             .as_ref()
             .map(|callback| Python::with_gil(|py| callback.clone_ref(py)))
     })
@@ -500,6 +512,18 @@ extern "C" fn md_tick_callback_trampoline(tick_ptr: *const NativeTick) {
             }
         };
         if let Err(err) = callback.bind(py).call1((payload,)) {
+            err.print(py);
+        }
+    });
+}
+
+extern "C" fn md_front_connected_callback_trampoline() {
+    let callback: Option<Py<PyAny>> = clone_connected_callback();
+    let Some(callback) = callback else {
+        return;
+    };
+    Python::with_gil(|py| {
+        if let Err(err) = callback.bind(py).call0() {
             err.print(py);
         }
     });
@@ -803,6 +827,29 @@ impl CtpMdLiveSession {
         Ok(())
     }
 
+    fn set_front_connected_callback(
+        &mut self,
+        py: Python<'_>,
+        callback: Py<PyAny>,
+    ) -> PyResult<()> {
+        if self.disposed {
+            return Err(PyRuntimeError::new_err("CtpMdLiveSession already disposed"));
+        }
+        if !callback.bind(py).is_callable() {
+            return Err(PyValueError::new_err("connected callback must be callable"));
+        }
+        let handle = self.handle;
+        with_md_live_callbacks(|registry| {
+            reset_md_live_registry_for_handle(registry, handle);
+            registry.connected_callback = Some(callback);
+        });
+        ffi::MdSetFrontConnectedCallback(
+            self.handle_ptr(),
+            Some(md_front_connected_callback_trampoline),
+        );
+        Ok(())
+    }
+
     fn set_front_disconnected_callback(
         &mut self,
         py: Python<'_>,
@@ -836,18 +883,45 @@ impl CtpMdLiveSession {
         Ok(ffi::MdInit(self.handle_ptr(), front_c.as_ptr()))
     }
 
-    fn login(&mut self, broker: &str, user: &str, password: &str) -> PyResult<i32> {
+    #[pyo3(signature = (broker, user, password, product_info=None, interface_product_info=None, protocol_info=None, mac_address=None, client_ip_address=None, login_remark=None))]
+    fn login(
+        &mut self,
+        broker: &str,
+        user: &str,
+        password: &str,
+        product_info: Option<&str>,
+        interface_product_info: Option<&str>,
+        protocol_info: Option<&str>,
+        mac_address: Option<&str>,
+        client_ip_address: Option<&str>,
+        login_remark: Option<&str>,
+    ) -> PyResult<i32> {
         if self.disposed {
             return Ok(INVALID_HANDLE);
         }
         let broker_c = to_cstring("broker", broker)?;
         let user_c = to_cstring("user", user)?;
         let password_c = to_cstring("password", password)?;
-        Ok(ffi::MdLogin(
+        let product_info_c = to_cstring("product_info", product_info.unwrap_or(""))?;
+        let interface_product_info_c = to_cstring(
+            "interface_product_info",
+            interface_product_info.unwrap_or(""),
+        )?;
+        let protocol_info_c = to_cstring("protocol_info", protocol_info.unwrap_or(""))?;
+        let mac_address_c = to_cstring("mac_address", mac_address.unwrap_or(""))?;
+        let client_ip_address_c = to_cstring("client_ip_address", client_ip_address.unwrap_or(""))?;
+        let login_remark_c = to_cstring("login_remark", login_remark.unwrap_or(""))?;
+        Ok(ffi::MdLoginWithCompatibility(
             self.handle_ptr(),
             broker_c.as_ptr(),
             user_c.as_ptr(),
             password_c.as_ptr(),
+            product_info_c.as_ptr(),
+            interface_product_info_c.as_ptr(),
+            protocol_info_c.as_ptr(),
+            mac_address_c.as_ptr(),
+            client_ip_address_c.as_ptr(),
+            login_remark_c.as_ptr(),
         ))
     }
 

@@ -118,6 +118,7 @@ pub struct NativeTradingAccount {
 }
 
 type MdOnLoginCallback = Option<extern "C" fn(*const NativeLoginResponse)>;
+type MdOnFrontConnectedCallback = Option<extern "C" fn()>;
 type MdOnFrontDisconnectedCallback = Option<extern "C" fn(i32)>;
 type MdOnTickCallback = Option<extern "C" fn(*const NativeTick)>;
 
@@ -135,6 +136,7 @@ struct MdSessionHandle {
     _front: Option<String>,
     login_callback: MdOnLoginCallback,
     tick_callback: MdOnTickCallback,
+    front_connected_callback: MdOnFrontConnectedCallback,
     front_disconnected_callback: MdOnFrontDisconnectedCallback,
 }
 
@@ -187,11 +189,34 @@ extern "C" {
         user_id: *const c_char,
         password: *const c_char,
     ) -> i32;
+    fn repo_ctp_md_login_with_product_info(
+        handle: *mut c_void,
+        broker_id: *const c_char,
+        user_id: *const c_char,
+        password: *const c_char,
+        product_info: *const c_char,
+    ) -> i32;
+    fn repo_ctp_md_login_with_compatibility(
+        handle: *mut c_void,
+        broker_id: *const c_char,
+        user_id: *const c_char,
+        password: *const c_char,
+        product_info: *const c_char,
+        interface_product_info: *const c_char,
+        protocol_info: *const c_char,
+        mac_address: *const c_char,
+        client_ip_address: *const c_char,
+        login_remark: *const c_char,
+    ) -> i32;
     fn repo_ctp_md_subscribe(handle: *mut c_void, symbols: *mut c_void, symbol_count: i32) -> i32;
     fn repo_ctp_md_unsubscribe(handle: *mut c_void, symbols: *mut c_void, symbol_count: i32)
         -> i32;
     fn repo_ctp_md_set_callback(handle: *mut c_void, callback: MdOnTickCallback);
     fn repo_ctp_md_set_login_callback(handle: *mut c_void, callback: MdOnLoginCallback);
+    fn repo_ctp_md_set_front_connected_callback(
+        handle: *mut c_void,
+        callback: MdOnFrontConnectedCallback,
+    );
     fn repo_ctp_md_set_front_disconnected_callback(
         handle: *mut c_void,
         callback: MdOnFrontDisconnectedCallback,
@@ -317,6 +342,50 @@ pub extern "C" fn MdLogin(
     unsafe { repo_ctp_md_login(handle, broker_id, user_id, password) }
 }
 
+#[cfg(ctp_vendor_bridge)]
+#[no_mangle]
+pub extern "C" fn MdLoginWithProductInfo(
+    handle: *mut c_void,
+    broker_id: *const c_char,
+    user_id: *const c_char,
+    password: *const c_char,
+    product_info: *const c_char,
+) -> i32 {
+    unsafe {
+        repo_ctp_md_login_with_product_info(handle, broker_id, user_id, password, product_info)
+    }
+}
+
+#[cfg(ctp_vendor_bridge)]
+#[no_mangle]
+pub extern "C" fn MdLoginWithCompatibility(
+    handle: *mut c_void,
+    broker_id: *const c_char,
+    user_id: *const c_char,
+    password: *const c_char,
+    product_info: *const c_char,
+    interface_product_info: *const c_char,
+    protocol_info: *const c_char,
+    mac_address: *const c_char,
+    client_ip_address: *const c_char,
+    login_remark: *const c_char,
+) -> i32 {
+    unsafe {
+        repo_ctp_md_login_with_compatibility(
+            handle,
+            broker_id,
+            user_id,
+            password,
+            product_info,
+            interface_product_info,
+            protocol_info,
+            mac_address,
+            client_ip_address,
+            login_remark,
+        )
+    }
+}
+
 #[cfg(not(ctp_vendor_bridge))]
 #[no_mangle]
 pub extern "C" fn MdLogin(
@@ -333,6 +402,35 @@ pub extern "C" fn MdLogin(
         callback(&response);
     }
     NOT_IMPLEMENTED_CODE
+}
+
+#[cfg(not(ctp_vendor_bridge))]
+#[no_mangle]
+pub extern "C" fn MdLoginWithProductInfo(
+    handle: *mut c_void,
+    broker_id: *const c_char,
+    user_id: *const c_char,
+    password: *const c_char,
+    _product_info: *const c_char,
+) -> i32 {
+    MdLogin(handle, broker_id, user_id, password)
+}
+
+#[cfg(not(ctp_vendor_bridge))]
+#[no_mangle]
+pub extern "C" fn MdLoginWithCompatibility(
+    handle: *mut c_void,
+    broker_id: *const c_char,
+    user_id: *const c_char,
+    password: *const c_char,
+    _product_info: *const c_char,
+    _interface_product_info: *const c_char,
+    _protocol_info: *const c_char,
+    _mac_address: *const c_char,
+    _client_ip_address: *const c_char,
+    _login_remark: *const c_char,
+) -> i32 {
+    MdLogin(handle, broker_id, user_id, password)
 }
 
 #[cfg(ctp_vendor_bridge)]
@@ -402,6 +500,26 @@ pub extern "C" fn MdSetLoginCallback(handle: *mut c_void, callback: MdOnLoginCal
 pub extern "C" fn MdSetLoginCallback(handle: *mut c_void, callback: MdOnLoginCallback) {
     if let Some(state) = unsafe { handle.cast::<MdSessionHandle>().as_mut() } {
         state.login_callback = callback;
+    }
+}
+
+#[cfg(ctp_vendor_bridge)]
+#[no_mangle]
+pub extern "C" fn MdSetFrontConnectedCallback(
+    handle: *mut c_void,
+    callback: MdOnFrontConnectedCallback,
+) {
+    unsafe { repo_ctp_md_set_front_connected_callback(handle, callback) };
+}
+
+#[cfg(not(ctp_vendor_bridge))]
+#[no_mangle]
+pub extern "C" fn MdSetFrontConnectedCallback(
+    handle: *mut c_void,
+    callback: MdOnFrontConnectedCallback,
+) {
+    if let Some(state) = unsafe { handle.cast::<MdSessionHandle>().as_mut() } {
+        state.front_connected_callback = callback;
     }
 }
 
@@ -951,6 +1069,7 @@ mod tests {
         let handle = MdCreate(null());
         assert!(!handle.is_null());
         MdSetLoginCallback(handle, Some(capture_md_login));
+        MdSetFrontConnectedCallback(handle, None);
         assert_eq!(MdInit(handle, null()), NOT_IMPLEMENTED_CODE);
         assert_eq!(
             MdSubscribe(handle, std::ptr::null_mut(), 0),

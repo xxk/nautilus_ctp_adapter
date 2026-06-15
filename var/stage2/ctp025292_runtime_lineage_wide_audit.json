@@ -1,0 +1,44 @@
+{
+  "baseline": "ctp025292-runtime-lineage-wide-audit-v1",
+  "route_scenario": "ctp025292_marketdata_sandbox_paper_simulated_001",
+  "runtime_pack_id": "ctp-live-025292-md",
+  "market_source": "CTP 025292 official market data only",
+  "market_data_account_id": "025292",
+  "broker_order_submission": false,
+  "trading_adapter": "disabled",
+  "success": false,
+  "status": "blocked",
+  "blocker_id": "ctp025292_wide_runtime_lineage_unready",
+  "issues": [
+    "production_operator_trusted_marker_missing",
+    "materialized_ctp_live_025292_runtime_pack_missing",
+    "account_console_ctp025292_source_package_missing"
+  ],
+  "roots": [
+    "D:\\Nautilus",
+    "D:\\wt"
+  ],
+  "missing_roots": [],
+  "marker_count": 0,
+  "valid_marker_count": 0,
+  "skipped_test_marker_count": 32,
+  "source_package_count": 0,
+  "valid_source_package_count": 0,
+  "skipped_test_source_package_count": 55,
+  "runtime_pack_manifest_count": 0,
+  "valid_runtime_pack_count": 0,
+  "skipped_manifest_count": 87,
+  "markers": [],
+  "source_packages": [],
+  "runtime_packs": [],
+  "negative_assertions": {
+    "did_not_open_trading_channel": true,
+    "did_not_submit_broker_order": true,
+    "did_not_use_025292_as_trading_account": true,
+    "did_not_materialize_runtime_pack": true,
+    "did_not_write_account_console_source_package": true,
+    "did_not_generate_or_consume_paper_request": true,
+    "did_not_claim_market_data_ready": true
+  },
+  "next_action": "Create or restore production runtime lineage: exactly one operator_trusted_025292 marker, materialized ctp-live-025292-md runtime pack, and Account Console ctp-live-025292/source-package.json."
+}

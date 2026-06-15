@@ -106,6 +106,7 @@ struct NativeTradingAccount {
 };
 
 using MdOnLoginCallback = void (*)(const NativeLoginResponse* response);
+using MdOnFrontConnectedCallback = void (*)();
 using MdOnFrontDisconnectedCallback = void (*)(std::int32_t reason);
 using MdOnTickCallback = void (*)(const NativeTick* tick);
 
@@ -120,10 +121,28 @@ void* repo_ctp_md_create(const char* flow_path);
 void repo_ctp_md_dispose(void* handle);
 std::int32_t repo_ctp_md_init(void* handle, const char* front);
 std::int32_t repo_ctp_md_login(void* handle, const char* broker_id, const char* user_id, const char* password);
+std::int32_t repo_ctp_md_login_with_product_info(
+    void* handle,
+    const char* broker_id,
+    const char* user_id,
+    const char* password,
+    const char* product_info);
+std::int32_t repo_ctp_md_login_with_compatibility(
+    void* handle,
+    const char* broker_id,
+    const char* user_id,
+    const char* password,
+    const char* product_info,
+    const char* interface_product_info,
+    const char* protocol_info,
+    const char* mac_address,
+    const char* client_ip_address,
+    const char* login_remark);
 std::int32_t repo_ctp_md_subscribe(void* handle, void* symbols, std::int32_t symbol_count);
 std::int32_t repo_ctp_md_unsubscribe(void* handle, void* symbols, std::int32_t symbol_count);
 void repo_ctp_md_set_callback(void* handle, MdOnTickCallback callback);
 void repo_ctp_md_set_login_callback(void* handle, MdOnLoginCallback callback);
+void repo_ctp_md_set_front_connected_callback(void* handle, MdOnFrontConnectedCallback callback);
 void repo_ctp_md_set_front_disconnected_callback(void* handle, MdOnFrontDisconnectedCallback callback);
 
 void* repo_ctp_td_create(const char* flow_path);

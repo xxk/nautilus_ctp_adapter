@@ -63,6 +63,7 @@ from nautilus_ctp_adapter.adapters.ctp import (
     normalize_product_kind,
     normalize_symbol,
 )
+from nautilus_ctp_adapter.adapters.ctp.config import CtpMdLoginCompatibility
 from nautilus_ctp_adapter.adapters.ctp.data_client import (
     CtpMdBootstrapState,
     CtpLiveDataBootstrapResult,
@@ -523,6 +524,36 @@ def test_ctp_config_accepts_myvnpy_connect_ctp_shape() -> None:
     assert config.product_info == "iQuant"
     assert config.md_front == "tcp://106.75.173.28:51213"
     assert config.td_front == "tcp://106.75.173.28:51205"
+    assert config.validate() == []
+
+
+def test_ctp_config_loads_optional_md_login_compatibility_fields() -> None:
+    config = CtpAdapterConfig.from_dict(
+        {
+            "UserID": "025292",
+            "BrokerID": "0155",
+            "Password": "secret",
+            "Pricer": "tcp://106.75.173.28:51213",
+            "Host": "tcp://106.75.173.28:51205",
+            "ProductInfo": "iQuant",
+            "Instruments": ["ag2612"],
+            "MdLoginCompatibility": {
+                "InterfaceProductInfo": "trusted-interface",
+                "ProtocolInfo": "trusted-protocol",
+                "MacAddress": "trusted-mac",
+                "ClientIPAddress": "trusted-client-ip",
+                "LoginRemark": "trusted-login-remark",
+            },
+        }
+    )
+
+    assert config.md_login_compatibility == CtpMdLoginCompatibility(
+        interface_product_info="trusted-interface",
+        protocol_info="trusted-protocol",
+        mac_address="trusted-mac",
+        client_ip_address="trusted-client-ip",
+        login_remark="trusted-login-remark",
+    )
     assert config.validate() == []
 
 
@@ -993,6 +1024,7 @@ def test_native_manifest_tracks_repo_owned_abi_and_pack_layout() -> None:
     assert "MdCreate" in export_symbols
     assert "TdOrderSend" in export_symbols
     assert "MdSetLoginCallback" in manifest["repo_owned_exports"]
+    assert "MdSetFrontConnectedCallback" in manifest["repo_owned_exports"]
     assert OPTIONAL_COMPAT_DLLS == ("thostmduserapi.dll", "thosttraderapi.dll")
 
 
@@ -5616,6 +5648,7 @@ def test_repo_owned_native_export_manifest_covers_python_ctypes_entrypoints() ->
         "MdSubscribe",
         "MdSetCallback",
         "MdSetLoginCallback",
+        "MdSetFrontConnectedCallback",
         "MdSetFrontDisconnectedCallback",
         "TdCreate",
         "TdDispose",
@@ -14621,9 +14654,13 @@ def test_run_live_md_smoke_uses_pyo3_md_live_session_mainline(
         def __init__(self, flow_path: str) -> None:
             records["flow_path"] = Path(flow_path)
             records["session_factory_used"] = True
+            self._connected_callback = None
             self._login_callback = None
             self._tick_callback = None
             self._disconnect_callback = None
+
+        def set_front_connected_callback(self, callback) -> None:
+            self._connected_callback = callback
 
         def set_login_callback(self, callback) -> None:
             self._login_callback = callback
@@ -14636,10 +14673,33 @@ def test_run_live_md_smoke_uses_pyo3_md_live_session_mainline(
 
         def init(self, front: str) -> int:
             records["front"] = front
+            assert self._connected_callback is not None
+            self._connected_callback()
             return 0
 
-        def login(self, broker: str, user: str, password: str) -> int:
-            records["login_args"] = (broker, user, password)
+        def login(
+            self,
+            broker: str,
+            user: str,
+            password: str,
+            product_info: str = "",
+            interface_product_info: str = "",
+            protocol_info: str = "",
+            mac_address: str = "",
+            client_ip_address: str = "",
+            login_remark: str = "",
+        ) -> int:
+            records["login_args"] = (
+                broker,
+                user,
+                password,
+                product_info,
+                interface_product_info,
+                protocol_info,
+                mac_address,
+                client_ip_address,
+                login_remark,
+            )
 
             class LoginResponse:
                 success = True
@@ -14678,7 +14738,10 @@ def test_run_live_md_smoke_uses_pyo3_md_live_session_mainline(
     monkeypatch.setattr(
         data_client_module,
         "_create_md_live_session",
-        lambda flow_path: FakeMdLiveSession(str(flow_path)),
+        lambda flow_path, **kwargs: (
+            records.__setitem__("runtime_pack_kwargs", kwargs),
+            FakeMdLiveSession(str(flow_path)),
+        )[1],
     )
 
     config = CtpAdapterConfig.from_dict(
@@ -14688,6 +14751,14 @@ def test_run_live_md_smoke_uses_pyo3_md_live_session_mainline(
             "Password": "secret",
             "Pricer": "tcp://106.75.173.28:51213",
             "Host": "tcp://106.75.173.28:51205",
+            "ProductInfo": "iQuant",
+            "MdLoginCompatibility": {
+                "InterfaceProductInfo": "trusted-interface",
+                "ProtocolInfo": "trusted-protocol",
+                "MacAddress": "trusted-mac",
+                "ClientIPAddress": "trusted-client-ip",
+                "LoginRemark": "trusted-login-remark",
+            },
             "Instruments": ["rb2610"],
         }
     )
@@ -14697,17 +14768,36 @@ def test_run_live_md_smoke_uses_pyo3_md_live_session_mainline(
     events = data_client.runtime_bridge.drain_events()
 
     assert records["session_factory_used"] is True  # [CONTRACT-LOCK: run_live_md_smoke must construct the PyO3 MD live session mainline instead of ctypes CtpMdApi]
+    assert records["runtime_pack_kwargs"] == {
+        "runtime_pack_bin": None,
+        "strict_runtime_pack": False,
+    }  # [CONTRACT-LOCK: default MD smoke must preserve the existing repo-owned runtime resolution when no route-bound runtime pack is configured]
+    assert records["login_args"] == (
+        "0155",
+        "025292",
+        "secret",
+        "iQuant",
+        "trusted-interface",
+        "trusted-protocol",
+        "trusted-mac",
+        "trusted-client-ip",
+        "trusted-login-remark",
+    )  # [CONTRACT-LOCK: MD live login must propagate ProductInfo/UserProductInfo and optional trusted MD compatibility fields from local config when present]
     assert records["symbols"] == ["rb2610"]
     assert records["disposed"] is True
     assert result.init_code == 0
     assert result.login_request_code == 0
     assert result.subscribe_code == 0
     assert result.login_success is True
+    assert result.front_connected is True
+    assert result.front_connected_count == 1
+    assert result.disconnect_count == 0
     assert result.first_tick_symbol == "rb2610"
     assert [event.kind for event in events] == [
+        CtpRuntimeEventKind.CONNECTED,
         CtpRuntimeEventKind.LOGIN_SUCCEEDED,
         CtpRuntimeEventKind.TICK,
-    ]  # [CONTRACT-LOCK: PyO3 MD mainline must still feed the same runtime bridge event kinds as the old ctypes smoke path]
+    ]  # [CONTRACT-LOCK: PyO3 MD mainline must expose read-only front-connected lifecycle evidence before login/tick]
 
 
 def test_run_live_md_smoke_fails_fast_when_pyo3_md_bridge_unavailable(monkeypatch) -> None:
@@ -14716,7 +14806,7 @@ def test_run_live_md_smoke_fails_fast_when_pyo3_md_bridge_unavailable(monkeypatc
     monkeypatch.setattr(
         data_client_module,
         "_create_md_live_session",
-        lambda flow_path: (_ for _ in ()).throw(RuntimeError("PyO3 MD bridge unavailable")),
+        lambda flow_path, **kwargs: (_ for _ in ()).throw(RuntimeError("PyO3 MD bridge unavailable")),
     )
 
     config = CtpAdapterConfig.from_dict(

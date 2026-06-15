@@ -1,0 +1,5 @@
+profile=ctp-live-025292-md
+runtime_pack_id=ctp-live-025292-md
+loader_isolation=fresh_worker_process_per_runtime_pack
+thostmduserapi_se.dll.sha256=04D800C743E4286AC1D83EB0BF3C9BD67F5323858C1E861CD27937CD47F6A13E
+thosttraderapi_se.dll.sha256=61FB700B8727065154BC661EE512619C9A55B78E4552783658BC05CEBE79A778

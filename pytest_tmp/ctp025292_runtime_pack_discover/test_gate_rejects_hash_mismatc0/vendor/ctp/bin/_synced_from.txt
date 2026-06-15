@@ -1,0 +1,5 @@
+profile=ctp-live-025292-md
+pack_kind=runtime
+runtime_pack_id=ctp-live-025292-md
+ctp_api=D:/trusted/ctp025292/runtime-pack
+managed=

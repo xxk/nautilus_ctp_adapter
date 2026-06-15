@@ -89,6 +89,44 @@ class CtpExecutionGuardrails:
 
 
 @dataclass(slots=True)
+class CtpMdLoginCompatibility:
+    interface_product_info: str = ""
+    protocol_info: str = ""
+    mac_address: str = ""
+    client_ip_address: str = ""
+    login_remark: str = ""
+
+    @classmethod
+    def from_dict(cls, values: dict[str, Any] | None) -> "CtpMdLoginCompatibility":
+        payload = values or {}
+
+        def _first(*keys: str, default: Any = "") -> Any:
+            for key in keys:
+                if key in payload and payload[key] is not None:
+                    return payload[key]
+            return default
+
+        return cls(
+            interface_product_info=str(
+                _first("interface_product_info", "InterfaceProductInfo")
+            ),
+            protocol_info=str(_first("protocol_info", "ProtocolInfo")),
+            mac_address=str(_first("mac_address", "MacAddress")),
+            client_ip_address=str(_first("client_ip_address", "ClientIPAddress")),
+            login_remark=str(_first("login_remark", "LoginRemark")),
+        )
+
+    def as_login_args(self) -> tuple[str, str, str, str, str]:
+        return (
+            self.interface_product_info,
+            self.protocol_info,
+            self.mac_address,
+            self.client_ip_address,
+            self.login_remark,
+        )
+
+
+@dataclass(slots=True)
 class CtpAdapterConfig:
     broker_id: str = ""
     user_id: str = ""
@@ -106,6 +144,9 @@ class CtpAdapterConfig:
     instruments: list[str] = field(default_factory=list)
     allow_empty_broker_id: bool = False
     execution_guardrails: CtpExecutionGuardrails = field(default_factory=CtpExecutionGuardrails)
+    md_login_compatibility: CtpMdLoginCompatibility = field(
+        default_factory=CtpMdLoginCompatibility
+    )
 
     @classmethod
     def from_dict(cls, values: dict[str, Any]) -> "CtpAdapterConfig":
@@ -129,6 +170,26 @@ class CtpAdapterConfig:
         execution_guardrails = CtpExecutionGuardrails.from_dict(
             _first("execution_guardrails", "ExecutionGuardrails", default={})
         )
+        md_login_compatibility_payload = dict(
+            _first("md_login_compatibility", "MdLoginCompatibility", default={}) or {}
+        )
+        for key in (
+            "interface_product_info",
+            "InterfaceProductInfo",
+            "protocol_info",
+            "ProtocolInfo",
+            "mac_address",
+            "MacAddress",
+            "client_ip_address",
+            "ClientIPAddress",
+            "login_remark",
+            "LoginRemark",
+        ):
+            if key in values and values[key] is not None:
+                md_login_compatibility_payload[key] = values[key]
+        md_login_compatibility = CtpMdLoginCompatibility.from_dict(
+            md_login_compatibility_payload
+        )
 
         return cls(
             broker_id=str(_first("broker_id", "BrokerID", "经纪商代码")),
@@ -149,6 +210,7 @@ class CtpAdapterConfig:
             instruments=[str(item) for item in instruments],
             allow_empty_broker_id=_as_bool(_first("allow_empty_broker_id", "AllowEmptyBrokerID")),
             execution_guardrails=execution_guardrails,
+            md_login_compatibility=md_login_compatibility,
         )
 
     @classmethod
@@ -185,6 +247,13 @@ class CtpAdapterConfig:
             managed_assembly_dir=_env("MANAGED_ASSEMBLY_DIR"),
             instruments=instruments,
             allow_empty_broker_id=_as_bool(_env("ALLOW_EMPTY_BROKER_ID", "")),
+            md_login_compatibility=CtpMdLoginCompatibility(
+                interface_product_info=_env("MD_INTERFACE_PRODUCT_INFO"),
+                protocol_info=_env("MD_PROTOCOL_INFO"),
+                mac_address=_env("MD_MAC_ADDRESS"),
+                client_ip_address=_env("MD_CLIENT_IP_ADDRESS"),
+                login_remark=_env("MD_LOGIN_REMARK"),
+            ),
             execution_guardrails=CtpExecutionGuardrails(
                 enabled=_as_bool(_env("EXECUTION_GUARDRAILS_ENABLED", "")),
                 allowed_instruments=guardrail_instruments,

@@ -57,6 +57,7 @@ class _NativeLoginResponse(ctypes.Structure):
 
 
 MdOnLoginCallback = ctypes.CFUNCTYPE(None, ctypes.POINTER(_NativeLoginResponse))
+MdOnFrontConnectedCallback = ctypes.CFUNCTYPE(None)
 MdOnFrontDisconnectedCallback = ctypes.CFUNCTYPE(None, ctypes.c_int)
 MdOnTickCallback = ctypes.CFUNCTYPE(None, ctypes.POINTER(_NativeTick))
 
@@ -103,6 +104,52 @@ class CtpMdApi:
                 broker_id.encode("utf-8"),
                 user_id.encode("utf-8"),
                 password.encode("utf-8"),
+            )
+        )
+
+    def login_with_product_info(
+        self,
+        handle: int,
+        broker_id: str,
+        user_id: str,
+        password: str,
+        product_info: str,
+    ) -> int:
+        return int(
+            self._dll.MdLoginWithProductInfo(
+                ctypes.c_void_p(handle),
+                broker_id.encode("utf-8"),
+                user_id.encode("utf-8"),
+                password.encode("utf-8"),
+                product_info.encode("utf-8"),
+            )
+        )
+
+    def login_with_compatibility(
+        self,
+        handle: int,
+        broker_id: str,
+        user_id: str,
+        password: str,
+        product_info: str,
+        interface_product_info: str = "",
+        protocol_info: str = "",
+        mac_address: str = "",
+        client_ip_address: str = "",
+        login_remark: str = "",
+    ) -> int:
+        return int(
+            self._dll.MdLoginWithCompatibility(
+                ctypes.c_void_p(handle),
+                broker_id.encode("utf-8"),
+                user_id.encode("utf-8"),
+                password.encode("utf-8"),
+                product_info.encode("utf-8"),
+                interface_product_info.encode("utf-8"),
+                protocol_info.encode("utf-8"),
+                mac_address.encode("utf-8"),
+                client_ip_address.encode("utf-8"),
+                login_remark.encode("utf-8"),
             )
         )
 
@@ -166,6 +213,12 @@ class CtpMdApi:
         self._dll.MdSetCallback(ctypes.c_void_p(handle), callback_ref)
         return callback_ref
 
+    def set_front_connected_callback(self, handle: int, callback: Callable[[], None]) -> object:
+        callback_ref = MdOnFrontConnectedCallback(callback)
+        self._callback_refs.append(callback_ref)
+        self._dll.MdSetFrontConnectedCallback(ctypes.c_void_p(handle), callback_ref)
+        return callback_ref
+
     def set_front_disconnected_callback(self, handle: int, callback: Callable[[int], None]) -> object:
         callback_ref = MdOnFrontDisconnectedCallback(lambda reason: callback(int(reason)))
         self._callback_refs.append(callback_ref)
@@ -180,8 +233,30 @@ class CtpMdApi:
         self._dll.MdInit.restype = ctypes.c_int
         self._dll.MdLogin.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p]
         self._dll.MdLogin.restype = ctypes.c_int
+        self._dll.MdLoginWithProductInfo.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+        ]
+        self._dll.MdLoginWithProductInfo.restype = ctypes.c_int
+        self._dll.MdLoginWithCompatibility.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+        ]
+        self._dll.MdLoginWithCompatibility.restype = ctypes.c_int
         self._dll.MdSubscribe.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int]
         self._dll.MdSubscribe.restype = ctypes.c_int
         self._dll.MdSetCallback.argtypes = [ctypes.c_void_p, MdOnTickCallback]
         self._dll.MdSetLoginCallback.argtypes = [ctypes.c_void_p, MdOnLoginCallback]
+        self._dll.MdSetFrontConnectedCallback.argtypes = [ctypes.c_void_p, MdOnFrontConnectedCallback]
         self._dll.MdSetFrontDisconnectedCallback.argtypes = [ctypes.c_void_p, MdOnFrontDisconnectedCallback]
