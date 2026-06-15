@@ -1,0 +1,71 @@
+{
+  "schema_version": "p077.paper_lifecycle.owner_repair.v1",
+  "artifact_id": "p077_t6_source_exhaustion_semantic_guardrail_repair_no_send",
+  "created_at": "2026-06-14T09:00:58.207Z",
+  "owner_repo": "D:/Nautilus/nautilus_ctp_adapter",
+  "selected_lane": "P077-T6-REAL-PAPER-NODE-CAPABILITY-RUNWAY",
+  "classification": "owner_side_semantic_guardrail_repair",
+  "paper_send_armed": false,
+  "paper_order_sent": false,
+  "native_submit_attempted": false,
+  "retry_authorized": false,
+  "live_route_allowed": false,
+  "account_console_mutated": false,
+  "consumes_prior_artifact": {
+    "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T085428Z/p077_t6_post_e65_owner_source_exhaustion_typed_blocker_no_send.json",
+    "sha256": "86d1f3795865cbd012abe44952a1ea1d7cac201b623dc376474ea72720737c15"
+  },
+  "repair": {
+    "summary": "Added explicit source_exhaustion_semantics to the guarded Paper order loop payload so future source-bearing close-rejection artifacts programmatically record which local owner source classes were evaluated and why they remain insufficient to close broker/front semantics.",
+    "changed_files": [
+      {
+        "path": "scripts/ctp_guarded_paper_order_loop.py",
+        "sha256": "0439aaef2966ee1e1f47e83161bace59f7aac43a173bc1639b301d7af36cb4f5"
+      },
+      {
+        "path": "tests/test_guarded_paper_order_loop.py",
+        "sha256": "98e1dd3c0b75d2e8fb52d1d3942e1dc7494650ff80b64460d3bb2c47a7610db9"
+      }
+    ],
+    "new_payload_field": "source_exhaustion_semantics",
+    "locked_disposition": "local_owner_sources_exhausted_primary_rule_or_stronger_repair_required",
+    "locked_blocker_type": "primary-broker-front-close-rejection-rule-source-or-stronger-adapter-native-semantic-repair-missing"
+  },
+  "semantic_contract": {
+    "local_source_classes_evaluated": [
+      "owner_code",
+      "focused_tests",
+      "prior_typed_artifacts",
+      "local_vendor_constants",
+      "native_response_identity_fields"
+    ],
+    "missing_source_class": "primary_or_official_broker_front_close_rejection_rule_source",
+    "adapter_native_repair_beyond_local_diagnostics_present": false,
+    "local_diagnostics_sufficient_to_close": false,
+    "fill_producing_acceptance_satisfied": false,
+    "requires_owner_resolution_before_retry": true,
+    "writes_truth": false
+  },
+  "gates": [
+    {
+      "cwd": "D:/Nautilus/nautilus_ctp_adapter",
+      "command": "python -m pytest tests/test_guarded_paper_order_loop.py -q -p no:cacheprovider --basetemp output/pytest-tmp/p077-090058-source-exhaustion",
+      "result": "49 passed"
+    }
+  ],
+  "next_required_evidence": [
+    "primary_broker_front_close_rejection_rule_source",
+    "adapter_native_repair_beyond_local_diagnostics",
+    "new_formal_retry_authorization_before_any_future_send"
+  ],
+  "negative_assertions": {
+    "paper_ready": false,
+    "live_ready": false,
+    "production_ready": false,
+    "admitted": false,
+    "capital_allocated": false,
+    "broker_tradable": false,
+    "account_console_runtime_truth": false,
+    "loop_complete": false
+  }
+}

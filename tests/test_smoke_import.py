@@ -1,5 +1,6 @@
 import json
 import os
+import inspect
 from pathlib import Path
 import subprocess
 import sys
@@ -1884,6 +1885,7 @@ def test_position_query_smoke_collects_runtime_positions_with_fake_native(monkey
             self._position_callback(
                 NativePositionView(
                     symbol="c2609",
+                    exchange_id="DCE",
                     broker_id="0155",
                     investor_id="025292",
                     pos_direction=2,
@@ -1931,12 +1933,14 @@ def test_position_query_smoke_collects_runtime_positions_with_fake_native(monkey
     assert result.positions == (
         CtpPositionRecord(
             venue_symbol="c2609",
-            exchange_id=None,
+            exchange_id="DCE",
             direction="LONG",
             position_qty=3,
             yd_position_qty=1,
             td_position_qty=2,
             position_cost=61234.5,
+            hedge_flag="1",
+            date_type="1",
         ),
     )
     assert [command.kind for command in commands][-1] is CtpRuntimeCommandKind.QUERY_POSITIONS
@@ -5338,6 +5342,114 @@ def test_check_rust_gate_syncs_vendor_runtime_dlls_to_cargo_target(tmp_path: Pat
         for filename, payload in runtime_payloads.items():
             assert (target_dir / filename).read_bytes() == payload
     assert "INFO rust-gate: runtime-dll-synced=" in result.stdout
+
+
+def test_check_rust_gate_syncs_repo_native_dll_to_cargo_test_deps(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[1]
+    script = root / "scripts" / "check_rust_gate.py"
+    fake_root = _prepare_fake_rust_gate_root(tmp_path)
+    fake_runtime_bin = fake_root / "vendor" / "ctp" / "bin"
+    fake_runtime_bin.mkdir(parents=True)
+    for filename in ("thostmduserapi_se.dll", "thosttraderapi_se.dll"):
+        (fake_runtime_bin / filename).write_bytes(b"fresh-runtime")
+
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake_target_dir = tmp_path / "rust-target"
+    (fake_target_dir / "debug" / "deps").mkdir(parents=True)
+    (fake_target_dir / "debug" / "deps" / "ctp_native.dll").write_bytes(
+        b"stale-vendor-native"
+    )
+    metadata_json = json.dumps(
+        {
+            "workspace_members": [
+                "ctp_runtime_core 0.1.0 (path+file:///D:/Nautilus/nautilus_ctp_adapter/rust/ctp_runtime_core)"
+            ],
+            "target_directory": fake_target_dir.as_posix(),
+            "version": 1,
+        }
+    )
+    _write_fake_cargo(fake_bin, fake_target_dir, metadata_json)
+    env = os.environ.copy()
+    env["PATH"] = str(fake_bin)
+    env["NAUTILUS_CTP_ADAPTER_ROOT_OVERRIDE"] = str(fake_root)
+
+    result = subprocess.run(
+        [sys.executable, str(script)],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+        env=env,
+    )
+
+    assert result.returncode == 0
+    assert (
+        fake_target_dir / "debug" / "deps" / "ctp_native.dll"
+    ).read_bytes() == b"fake-dll"
+    assert "INFO rust-gate: repo-native-dll-synced=" in result.stdout
+
+
+def test_check_rust_gate_prefers_synced_manifest_sdk_before_vendor_sdk(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[1]
+    script = root / "scripts" / "check_rust_gate.py"
+    fake_root = _prepare_fake_rust_gate_root(tmp_path)
+    fake_runtime_bin = fake_root / "vendor" / "ctp" / "bin"
+    fake_runtime_bin.mkdir(parents=True)
+    for filename in ("thostmduserapi_se.dll", "thosttraderapi_se.dll"):
+        (fake_runtime_bin / filename).write_bytes(b"fresh-runtime")
+    fake_vendor_sdk = fake_root / "vendor" / "ctp" / "sdk"
+    fake_vendor_sdk.mkdir(parents=True)
+    for file_name in (
+        "ThostFtdcMdApi.h",
+        "ThostFtdcTraderApi.h",
+        "ThostFtdcUserApiStruct.h",
+        "thostmduserapi_se.lib",
+        "thosttraderapi_se.lib",
+    ):
+        (fake_vendor_sdk / file_name).write_text("vendor-sdk\n", encoding="utf-8")
+    synced_sdk = _prepare_fake_ctp_sdk(tmp_path)
+    (fake_runtime_bin / "_synced_from.txt").write_text(
+        f"profile=auto\npack_kind=runtime\nctp_api={synced_sdk}\n",
+        encoding="utf-8",
+    )
+
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake_target_dir = tmp_path / "rust-target"
+    metadata_json = json.dumps(
+        {
+            "workspace_members": [
+                "ctp_runtime_core 0.1.0 (path+file:///D:/Nautilus/nautilus_ctp_adapter/rust/ctp_runtime_core)"
+            ],
+            "target_directory": fake_target_dir.as_posix(),
+            "version": 1,
+        }
+    )
+    _write_fake_cargo(fake_bin, fake_target_dir, metadata_json)
+    env = os.environ.copy()
+    env["PATH"] = str(fake_bin)
+    env["NAUTILUS_CTP_ADAPTER_ROOT_OVERRIDE"] = str(fake_root)
+    env.pop("CTP_VENDOR_SDK_ROOT", None)
+    env.pop("CTP_SDK_ROOT", None)
+
+    result = subprocess.run(
+        [sys.executable, str(script)],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+        env=env,
+    )
+
+    assert result.returncode == 0
+    assert f"INFO rust-gate: sdk-probe synced_manifest_sdk={synced_sdk}" in result.stdout
+    assert f"PASS rust-gate: ctp_vendor_bridge-ready sdk_dir={synced_sdk}" in result.stdout
+    assert f"PASS rust-gate: ctp_vendor_bridge-ready sdk_dir={fake_vendor_sdk}" not in result.stdout
 
 
 def test_check_rust_gate_reports_vendor_bridge_ready_when_sdk_is_present(tmp_path: Path) -> None:
@@ -14482,6 +14594,14 @@ def test_pyo3_internal_td_live_session_exposes_td_callback_contract() -> None:
     assert hasattr(td_live_session, "set_instrument_callback")  # [CONTRACT-LOCK: instrument query mainline depends on TD live sessions exposing set_instrument_callback at runtime]
     assert hasattr(td_live_session, "set_position_callback")  # [CONTRACT-LOCK: position query mainline depends on TD live sessions exposing set_position_callback at runtime]
     assert hasattr(td_live_session, "set_account_callback")  # [CONTRACT-LOCK: account query mainline depends on TD live sessions exposing set_account_callback at runtime]
+
+
+def test_pyo3_internal_td_live_session_order_send_accepts_request_id() -> None:
+    import ctp_runtime._ctp_runtime as native_runtime
+
+    signature = inspect.signature(native_runtime.CtpTdLiveSession.order_send)
+
+    assert "request_id" in signature.parameters  # [CONTRACT-LOCK: execution_client passes submit_request_id through PyO3 TD order_send for CTP nRequestID lifecycle correlation]
 
 
 def test_run_live_md_smoke_uses_pyo3_md_live_session_mainline(

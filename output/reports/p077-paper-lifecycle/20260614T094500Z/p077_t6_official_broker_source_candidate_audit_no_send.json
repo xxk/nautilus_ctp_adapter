@@ -1,0 +1,76 @@
+{
+  "artifact_id": "p077-t6-official-and-broker-source-candidate-audit-no-send",
+  "created_at": "2026-06-14T09:45:00.165Z",
+  "owner_repo": "D:/Nautilus/nautilus_ctp_adapter",
+  "selected_lane": "P077-T6 owner-side CTP source candidate audit",
+  "consumed_prior_artifact": {
+    "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T093332Z/p077_t6_source_closure_authority_payload_contract_no_send.json",
+    "sha256": "aac28315a438b8cd691084234c9c4d8c035ab90a49816dbc715652df74a695b0"
+  },
+  "external_source_candidates": [
+    {
+      "class": "cffex_trader_api_pdf_candidate",
+      "url": "https://www.cffex.com.cn/u/cms/www/201812/06163529dh4x.pdf",
+      "observed_value": "Official exchange-hosted CTP-style trader API PDF includes OnRspOrderInsert callback/API context.",
+      "sufficient_to_close": false,
+      "insufficiency_reason": "Does not explain observed broker/front response offset 1 after submitted CLOSETODAY offset 3 for source-bearing insufficient-position close rejection."
+    },
+    {
+      "class": "futures_broker_ctp_error_help_candidate",
+      "url": "https://m.sywgqh.com.cn/h5/aboutus/public_info/detail_fee/124258.html",
+      "observed_value": "Broker help page explains common CTP close/close-today insufficient-position errors as potentially caused by already-filled or pending close orders requiring cancellation before retry.",
+      "sufficient_to_close": false,
+      "insufficiency_reason": "Explains common error category, but not the API response-offset semantics or submit-boundary versus callback diagnostic authority."
+    },
+    {
+      "class": "ctp_api_documentation_mirror",
+      "url": "https://documentation.help/CTP-API-cn/_CTHOSTFTDCTRADERAPI.html",
+      "observed_value": "Mirror documents CThostFtdcTraderSpi callbacks including trade API callback context.",
+      "sufficient_to_close": false,
+      "insufficiency_reason": "Callback shape context only; not a primary/official broker-front close rejection rule for the observed offset mismatch."
+    }
+  ],
+  "changed_refs": [
+    {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/scripts/ctp_guarded_paper_order_loop.py",
+      "sha256": "370b9d7c3fe2c58c2ad84a53647a02d8184fdbf1f17260f66f165ab3efbc7c45",
+      "change": "Adds official/exchange and broker help source candidate classes to source_exhaustion_semantics while preserving insufficient-to-close semantics."
+    },
+    {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/tests/test_guarded_paper_order_loop.py",
+      "sha256": "1378beed90d87bf0f8a9c4c81d16b88e83a8b4446778e706eb7def42ce1e81cc",
+      "change": "Updates focused contract expectations for the expanded source candidate audit list."
+    }
+  ],
+  "gate_evidence": [
+    {
+      "command": "python -m pytest tests/test_guarded_paper_order_loop.py -q -p no:cacheprovider --basetemp output/pytest-tmp/p077-094500-source-candidate-audit-final",
+      "result": "passed",
+      "summary": "53 passed in 1.07s"
+    }
+  ],
+  "payload_contract": {
+    "external_source_candidate_classes_evaluated": [
+      "ctp_api_documentation_mirror",
+      "ctp_client_development_guide_primary_candidate",
+      "cffex_trader_api_pdf_candidate",
+      "futures_broker_ctp_error_help_candidate"
+    ],
+    "external_source_candidates_sufficient_to_close": false,
+    "partial_source_context_authorizes_retry": false,
+    "source_closure_requirement": "source_candidate_context_must_explain_observed_response_offset_or_adapter_native_semantics"
+  },
+  "send_authority": {
+    "real_paper_or_native_send_performed": false,
+    "live_send_performed": false,
+    "retry_authorized": false,
+    "broker_tradable_claim": false,
+    "paper_ready_claim": false,
+    "account_console_runtime_truth_claim": false
+  },
+  "active_blocker": {
+    "blocker_type": "broker-or-adapter-close-position-semantics",
+    "retry_condition": "Primary/official broker-front close-rejection rule source explaining observed response offset, or stronger adapter/native semantic repair, plus new formal bounded Paper authorization and fresh same-slice evidence.",
+    "allow_authorize_retry": false
+  }
+}

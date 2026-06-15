@@ -28,7 +28,9 @@ impl CtpQueryRuntime {
         if let Some(request_id) = &command.request_id {
             self.pending_instrument_requests.insert(request_id.clone());
             self.completed_instrument_requests.remove(request_id);
-            self.instrument_records.entry(request_id.clone()).or_default();
+            self.instrument_records
+                .entry(request_id.clone())
+                .or_default();
         }
     }
 
@@ -67,7 +69,8 @@ impl CtpQueryRuntime {
             }
             CtpEventKind::InstrumentEnd => {
                 self.pending_instrument_requests.remove(request_id);
-                self.completed_instrument_requests.insert(request_id.clone());
+                self.completed_instrument_requests
+                    .insert(request_id.clone());
             }
             _ => {}
         }

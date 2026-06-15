@@ -1,0 +1,85 @@
+{
+  "schema_version": "p077.t6.source_closure_authority_guardrail_repair.v1",
+  "artifact_kind": "p077_t6_source_closure_authority_guardrail_repair_no_send",
+  "created_at_utc": "2026-06-14T09:27:28.625Z",
+  "selected_lane": "P077-T6",
+  "owner_repo": "D:/Nautilus/nautilus_ctp_adapter",
+  "truth_owner": "ctp_paper_lifecycle_owner",
+  "consumes": [
+    {
+      "name": "E70_external_source_candidate_closure_guardrail_repair",
+      "artifact": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T092028Z/p077_t6_external_source_candidate_closure_guardrail_repair_no_send.json",
+      "sha256": "sha256:3b41dfc14eece82dca812c53e5ea8ae3e1123f4a6d1beda153aab9bae153790b"
+    }
+  ],
+  "repair_scope": {
+    "type": "guarded_loop_authority_payload_repair",
+    "description": "Future guarded-loop payloads now carry source_closure_authority_guardrail beside source_exhaustion_semantics so partial external source context cannot be interpreted as retry authorization or semantic closure.",
+    "changed_refs": [
+      {
+        "path": "scripts/ctp_guarded_paper_order_loop.py",
+        "sha256": "sha256:4772ca14cc92c4f78f53cf838d2e1432b6c341910b39440f7e6d8901308cef5e"
+      },
+      {
+        "path": "tests/test_guarded_paper_order_loop.py",
+        "sha256": "sha256:05839daebafd72003dba2eeb1925ba6f1dbe20ff8110bbd40a4eb28da257bfcd"
+      }
+    ]
+  },
+  "new_payload_contract": {
+    "field": "source_closure_authority_guardrail",
+    "disposition_when_blocked": "blocks_retry_authorization_from_partial_source_context",
+    "retry_authorization_allowed_by_source_context": false,
+    "semantic_closure_allowed_by_source_context": false,
+    "requires_new_formal_authorization_before_send": true,
+    "next_required_evidence": [
+      "primary_or_official_broker_front_close_rejection_rule_source_that_explains_observed_response_offset",
+      "adapter_native_semantic_repair_beyond_local_diagnostics",
+      "new_formal_retry_authorization_before_any_future_send"
+    ],
+    "forbidden_inference": "partial external source context cannot become retry, fill, closeout, runtime or Account Console truth"
+  },
+  "focused_gate": {
+    "command": "python -m pytest tests/test_guarded_paper_order_loop.py -q -p no:cacheprovider --basetemp output/pytest-tmp/p077-092728-source-closure-authority-final",
+    "result": "52 passed"
+  },
+  "typed_outcome": {
+    "status": "passed_no_send_source_closure_authority_guardrail_repair_still_blocked",
+    "blocker_type": "primary-broker-front-close-rejection-rule-source-or-stronger-adapter-native-semantic-repair-missing",
+    "retry_authorization_allowed_by_source_context": false,
+    "semantic_closure_allowed_by_source_context": false,
+    "next_required_evidence": [
+      "primary_or_official_broker_front_close_rejection_rule_source_that_explains_observed_response_offset",
+      "or adapter_native_semantic_repair_beyond_local_diagnostics",
+      "plus separate formal bounded Paper authorization before any future send"
+    ]
+  },
+  "authority": {
+    "paper_send_attempted": false,
+    "native_send_attempted": false,
+    "submit_attempted": false,
+    "retry_authorized_by_this_artifact": false,
+    "formal_authorization_created": false,
+    "post_snapshot_created": false,
+    "reconciliation_created": false,
+    "runtime_truth_created": false,
+    "account_console_truth_created": false
+  },
+  "readiness_claims": {
+    "paper_ready": false,
+    "live_ready": false,
+    "production_ready": false,
+    "admission_approved": false,
+    "capital_allocated": false,
+    "broker_tradable": false,
+    "account_console_runtime_truth": false
+  },
+  "forbidden_truth_sources_rejected": [
+    "partial external source context as retry authorization",
+    "partial external source context as broker semantic closure",
+    "terminal stdout as lifecycle truth",
+    "UI or screenshot as order truth",
+    "chat authorization as result truth",
+    "second runtime or second ledger truth"
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "schema_version": "p077.t6.native-offset-source-trace.v1",
+  "artifact_kind": "p077_t6_native_offset_source_trace_no_send",
+  "created_at_utc": "2026-06-14T03:23:09Z",
+  "owner": "owner://nautilus_ctp_adapter",
+  "truth_owner": "owner://nautilus_ctp_adapter/ctp-paper-19053",
+  "source_blocker": {
+    "artifact": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T030139Z/p077_t6_authorized_retry_cancelled_insufficient_position_closeout.json",
+    "checksum": "sha256:8b4c38f4fc95f43ba9ee944766cee806c1cb9c4c2178b933debbb0296e834500",
+    "requested_position_effect": "CLOSETODAY",
+    "decoded_error_message": "持仓不足",
+    "observed_callback_offset_flag": "1"
+  },
+  "source_trace": {
+    "submit_native_offset": {
+      "file": "D:/Nautilus/nautilus_ctp_adapter/rust/ctp_runtime_core/native/ctp_vendor_bridge.cpp",
+      "symbol": "ctp_td_order_send",
+      "source_field": "comb_offset",
+      "target_field": "CThostFtdcInputOrderField.CombOffsetFlag[0]",
+      "line_evidence": "order.CombOffsetFlag[0] = offset_text.empty() ? THOST_FTDC_OF_Open : offset_text[0]"
+    },
+    "order_callback_offset": {
+      "file": "D:/Nautilus/nautilus_ctp_adapter/rust/ctp_runtime_core/native/ctp_vendor_bridge.cpp",
+      "symbol": "TdSpiImpl::OnRtnOrder",
+      "source_field": "CThostFtdcOrderField.CombOffsetFlag[0]",
+      "target_field": "NativeExec.offset_flag",
+      "line_evidence": "normalize_enum_value(order->CombOffsetFlag[0])"
+    },
+    "trade_callback_offset": {
+      "file": "D:/Nautilus/nautilus_ctp_adapter/rust/ctp_runtime_core/native/ctp_vendor_bridge.cpp",
+      "symbol": "TdSpiImpl::OnRtnTrade",
+      "source_field": "CThostFtdcTradeField.OffsetFlag",
+      "target_field": "NativeExec.offset_flag",
+      "line_evidence": "normalize_enum_value(trade->OffsetFlag)"
+    },
+    "python_projection": {
+      "file": "D:/Nautilus/nautilus_ctp_adapter/src/nautilus_ctp_adapter/native/td_ctypes.py",
+      "symbol": "CtpTdApi.set_exec_callback",
+      "source_field": "_NativeExec.offset_flag",
+      "target_field": "NativeExecView.offset_flag",
+      "line_evidence": "offset_flag=int(exec_view.offset_flag)"
+    },
+    "guarded_lifecycle_projection": {
+      "file": "D:/Nautilus/nautilus_ctp_adapter/scripts/ctp_guarded_paper_order_loop.py",
+      "symbol": "run_guarded_paper_order",
+      "source_field": "event.payload.offset_flag",
+      "target_field": "order_lifecycle.lifecycle_events[].offset_flag",
+      "line_evidence": "\"offset_flag\": event.payload.get(\"offset_flag\", \"\")"
+    }
+  },
+  "finding": {
+    "summary": "The current adapter source path does not synthesize callback offset_flag in the guarded Python layer. On order callbacks it is projected from CTP order CombOffsetFlag[0]; on trade callbacks it is projected from CTP trade OffsetFlag.",
+    "interpretation_boundary": "A future artifact showing submit native_comb_offset=3 and order callback offset_flag=1 should be treated as a CTP order callback field mismatch or broker/account semantic issue, not as UI/account-console/runtime truth and not as fill-producing acceptance.",
+    "remaining_unknown": "The source trace does not prove why the broker returned CombOffsetFlag[0]=1 for the cancelled order; that still requires a fresh owner artifact with native_offset_semantics or a typed broker/exchange semantic rule."
+  },
+  "owner_boundary": {
+    "sent_order": false,
+    "native_send_attempted": false,
+    "submit_attempted": false,
+    "retry_authorized_by_this_artifact": false,
+    "fill_producing_acceptance_satisfied": false,
+    "runtime_truth_created": false,
+    "account_console_truth_created": false,
+    "paper_ready_claimed": false,
+    "live_ready_claimed": false,
+    "broker_tradable_claimed": false
+  },
+  "typed_outcome": "passed_no_send_native_offset_source_trace_still_blocked",
+  "remaining_blocker": {
+    "blocker_type": "broker-or-adapter-close-position-semantics",
+    "wait_only": false,
+    "retry_condition": "Capture a fresh guarded lifecycle artifact with submit native_comb_offset and callback offset_flag in the same evidence package, or land a typed broker/exchange position-detail rule explaining the cancelled CLOSETODAY insufficient-position result."
+  }
+}

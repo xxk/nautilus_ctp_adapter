@@ -31,6 +31,8 @@ class CtpPositionRecord:
     yd_position_qty: int | None
     td_position_qty: int | None
     position_cost: float | None
+    hedge_flag: str | None = None
+    date_type: str | None = None
 
 
 @dataclass(slots=True)
@@ -112,6 +114,8 @@ class CtpQueryRuntime:
                     event.exchange_id,
                     event.payload.get("exchange_id"),
                     event.payload.get("direction"),
+                    event.payload.get("hedge_flag"),
+                    event.payload.get("date_type"),
                     event.payload.get("position_qty"),
                     event.payload.get("yd_position_qty"),
                     event.payload.get("td_position_qty"),
@@ -124,6 +128,8 @@ class CtpQueryRuntime:
                         venue_symbol=event.venue_symbol or event.payload.get("venue_symbol") or "",
                         exchange_id=event.exchange_id or event.payload.get("exchange_id"),
                         direction=event.payload.get("direction"),
+                        hedge_flag=event.payload.get("hedge_flag"),
+                        date_type=event.payload.get("date_type"),
                         position_qty=_parse_int(event.payload.get("position_qty")),
                         yd_position_qty=_parse_int(event.payload.get("yd_position_qty")),
                         td_position_qty=_parse_int(event.payload.get("td_position_qty")),

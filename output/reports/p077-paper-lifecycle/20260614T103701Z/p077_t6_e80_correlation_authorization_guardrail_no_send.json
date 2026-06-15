@@ -1,0 +1,73 @@
+{
+  "schema_version": "p077.t6.e80_correlation_authorization_guardrail.v1",
+  "generated_at_utc": "2026-06-14T10:37:01Z",
+  "owner_repo": "D:/Nautilus/nautilus_ctp_adapter",
+  "owner_lane": "ctp_adapter_p077_t6_e80_correlation_authorization_guardrail",
+  "basis_artifact": {
+    "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T102230Z/p077_t6_submit_response_identity_correlation_boundary_repair_no_send.json",
+    "sha256": "61fce6cc33a62c4b7e0a9717ea7aae33d26b5f2995aa67804e16422de01fdd5f"
+  },
+  "action_scope": {
+    "paper_send_executed": false,
+    "native_send_executed": false,
+    "live_send_executed": false,
+    "retry_authorized": false,
+    "formal_authorization_created": false,
+    "account_console_mutation": false,
+    "runtime_truth_created": false,
+    "ledger_truth_created": false,
+    "second_runtime_created": false,
+    "second_ledger_truth_created": false
+  },
+  "repair_summary": {
+    "problem": "E80 introduced submit-response identity correlation as a stronger adapter/native repair candidate, but source-exhaustion and authorization guardrail state needed to consume that candidate explicitly without converting it into retry authority.",
+    "owner_fix": [
+      "build_source_exhaustion_semantics now maps stronger_adapter_native_semantic_repair_candidate=true to adapter_native_repair_beyond_local_diagnostics_present=true",
+      "source exhaustion disposition becomes adapter_native_repair_observed_formal_authorization_required",
+      "source closure authority guardrail now blocks retry after adapter/native repair until formal authorization and fresh same-slice evidence exist"
+    ],
+    "semantic_boundary": "submit_response_identity_correlation_is_owner_repair_evidence_not_retry_authority"
+  },
+  "contract_assertions": {
+    "adapter_native_repair_beyond_local_diagnostics_present": true,
+    "retry_authorization_allowed_by_source_context": false,
+    "semantic_closure_allowed_by_source_context": false,
+    "requires_new_formal_authorization_before_send": true,
+    "fill_producing_acceptance_satisfied": false,
+    "runtime_truth_created": false,
+    "account_console_truth_created": false,
+    "next_required_evidence": [
+      "new_formal_retry_authorization_before_any_future_send",
+      "fresh_same_slice_market_account_preflight_before_any_future_send"
+    ]
+  },
+  "changed_files_in_owner_slice": [
+    {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/scripts/ctp_guarded_paper_order_loop.py",
+      "sha256": "eb8c953e0fe9c51ef80d5692e9fff2a52e220669b1bcc187fb647fada5ce0b2a"
+    },
+    {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/tests/test_guarded_paper_order_loop.py",
+      "sha256": "bcb99b73dca04baf2f40d6babcaead6209884849a53597ef1eac85663661fc51"
+    }
+  ],
+  "gates": [
+    {
+      "cwd": "D:/Nautilus/nautilus_ctp_adapter",
+      "command": "python -m pytest tests/test_guarded_paper_order_loop.py -q -p no:cacheprovider --basetemp output/pytest-tmp/p077-103701-e80-authorization-guardrail",
+      "result": "passed",
+      "summary": "56 passed in 1.09s"
+    }
+  ],
+  "blocker": {
+    "status": "active",
+    "type": "formal-bounded-paper-authorization-missing-after-adapter-native-repair",
+    "reason": "E80 submit-response identity correlation is now explicitly consumed as owner repair evidence, but no fresh formal bounded Paper authorization and no fresh same-slice market/account/preflight evidence exist for a future send.",
+    "retry_conditions": [
+      "new_formal_retry_authorization_before_any_future_send",
+      "fresh_same_slice_market_account_preflight_before_any_future_send",
+      "post_send_lifecycle_snapshot_reconcile_if_future_send_occurs"
+    ]
+  },
+  "acceptance_implication": "blocked_no_send_authorization_guardrail_repair_only_not_paper_ready_not_retry_not_fill_or_closeout_truth"
+}

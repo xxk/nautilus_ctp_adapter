@@ -1,0 +1,54 @@
+{
+  "schema": "p077.t6.ctp-paper-exposure-reduction-candidate-preflight.v1",
+  "artifact_kind": "p077_t6_ctp_paper_exposure_reduction_candidate_preflight",
+  "created_at_local": "2026-06-14T07:10:38+08:00",
+  "owner": "owner://nautilus_ctp_adapter.guarded_paper_order_loop",
+  "source_blocker": {
+    "artifact": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T070007/p077_t6_controlled_retry_preflight_blocker.json",
+    "sha256": "26b8edd710bebefeadc0321174b8102381f66bb82a99d8b952b978319174e642",
+    "blocker_reason": "max_net_position_exceeded"
+  },
+  "pre_snapshot": {
+    "artifact": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T070007/retry_preflight_pre_snapshot.json",
+    "sha256": "9acf1e9b8833707cfa726c014cef59af69eba4c8e7d7b524b46ca0189b3f1fc3",
+    "run_id": "paper-readonly-1781391688684",
+    "rb2610_long_qty": 5,
+    "rb2610_td_qty": 5,
+    "rb2610_yd_qty": 0
+  },
+  "candidate_dry_run": {
+    "artifact": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T071038/exposure_reduction_candidate_dry_run.json",
+    "sha256": "90ad3fa0e6d25b2c550aaf607bb8148adccb6744e8e896ff129215ee81d9d70c",
+    "status": "passed",
+    "action_mode": "dry_run",
+    "paper_send_armed": false,
+    "submit_attempted": false,
+    "close_intent_disposition": "close_intent_ready",
+    "selected_bucket": "today",
+    "submit_intent": {
+      "instrument": "rb2610",
+      "side": "SELL",
+      "quantity": 1,
+      "position_effect": "CLOSETODAY",
+      "limit_price": 3158.0,
+      "client_order_id": "p077-t6-rb2610-close1-candidate-071038"
+    },
+    "risk_preflight_disposition": "risk_preflight_passed",
+    "projected_net_position": 4,
+    "max_net_position": 5,
+    "native_send_allowed_by_dry_run_contract": true
+  },
+  "authority": {
+    "is_action_capable": false,
+    "retry_authorized_by_this_artifact": false,
+    "paper_ready_claim": false,
+    "live_ready_claim": false,
+    "account_console_runtime_truth_claim": false
+  },
+  "typed_outcome": {
+    "status": "candidate_preflight_passed_no_send",
+    "blocker_type": null,
+    "next_required_acceptance": "A separate owner-accepted exposure-reduction send lane or an updated risk-bounded retry target is required before any paper_send action.",
+    "recommended_next_heartbeat": "Record the exposure-reduction candidate in P077/P002 evidence and choose either a no-send closeout artifact lane or a separately accepted paper_send lane."
+  }
+}

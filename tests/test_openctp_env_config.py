@@ -70,6 +70,7 @@ def test_openctp_env_payload_keeps_live_send_disarmed(tmp_path: Path) -> None:
     assert payload["BrokerID"] == "9999"
     assert payload["AllowEmptyBrokerID"] is False
     assert payload["ExecutionGuardrails"]["AllowLiveOrderSmoke"] is False
+    assert payload["ExecutionGuardrails"]["AllowExposureReductionOrderSmoke"] is False
 
 
 def test_openctp_env_bundle_overlays_profile_directory(tmp_path: Path) -> None:
@@ -188,6 +189,23 @@ def test_paper_preflight_can_allow_armed_order_smoke_when_explicit() -> None:
 
     assert "execution_guardrails.allow_live_order_smoke_must_be_false" not in paper_config_issues(
         config, allow_live_order_smoke=True
+    )
+
+
+def test_paper_preflight_rejects_exposure_reduction_smoke_without_explicit_lane() -> None:
+    payload = _paper_payload()
+    guardrails = dict(payload["ExecutionGuardrails"])  # type: ignore[arg-type]
+    guardrails["AllowExposureReductionOrderSmoke"] = True
+    payload["ExecutionGuardrails"] = guardrails
+    config = CtpAdapterConfig.from_dict(payload)
+
+    assert (
+        "execution_guardrails.allow_exposure_reduction_order_smoke_must_be_false"
+        in paper_config_issues(config)
+    )
+    assert (
+        "execution_guardrails.allow_exposure_reduction_order_smoke_must_be_false"
+        not in paper_config_issues(config, allow_exposure_reduction_order_smoke=True)
     )
 
 

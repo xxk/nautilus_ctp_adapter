@@ -129,8 +129,64 @@ def sync_vendor_runtime_dlls_to_target_dirs(
     return copied
 
 
+def sync_repo_native_dll_to_test_dirs(build_target_dir: Path) -> list[Path]:
+    """Keep Cargo test executables bound to the freshly built repo-native DLL."""
+    if sys.platform != "win32":
+        return []
+    source = build_target_dir / "debug" / expected_dynamic_library_name()
+    if not source.exists():
+        return []
+    copied: list[Path] = []
+    for target_dir in (build_target_dir / "debug" / "deps",):
+        target_dir.mkdir(parents=True, exist_ok=True)
+        target = target_dir / source.name
+        if target.exists():
+            try:
+                if (
+                    target.stat().st_size == source.stat().st_size
+                    and target.read_bytes() == source.read_bytes()
+                ):
+                    continue
+            except OSError:
+                pass
+        shutil.copy2(source, target)
+        copied.append(target)
+    return copied
+
+
+def _manifest_value_path(root: Path, raw_path: str) -> Path:
+    candidate = Path(raw_path)
+    if not candidate.is_absolute():
+        candidate = root / candidate
+    return candidate
+
+
+def sdk_candidates_from_synced_manifest(root: Path) -> list[Path]:
+    candidates: list[Path] = []
+    manifest = read_synced_manifest(root)
+    for raw_path in manifest.values():
+        if not raw_path:
+            continue
+        candidate = _manifest_value_path(root, raw_path.strip())
+        if candidate.exists():
+            candidates.append(candidate)
+    return candidates
+
+
+def synced_manifest_sdk_dir(root: Path) -> Path | None:
+    for candidate in sdk_candidates_from_synced_manifest(root):
+        resolved = resolve_sdk_dir(candidate)
+        if resolved is not None:
+            return resolved
+    return None
+
+
 def build_command_env(root: Path) -> dict[str, str]:
     env = os.environ.copy()
+    if not any(env.get(key, "").strip() for key in SDK_ENV_KEYS):
+        sdk_dir = synced_manifest_sdk_dir(root)
+        if sdk_dir is not None:
+            env["CTP_VENDOR_SDK_ROOT"] = str(sdk_dir)
     runtime_bin = vendor_runtime_bin(root)
     if runtime_bin is None:
         return env
@@ -248,7 +304,7 @@ def external_root_from_synced_manifest(root: Path) -> Path | None:
     for raw_path in manifest.values():
         if not raw_path:
             continue
-        candidate = Path(raw_path)
+        candidate = _manifest_value_path(root, raw_path.strip())
         if not candidate.exists():
             continue
         for ancestor in [candidate, *candidate.parents]:
@@ -266,12 +322,14 @@ def locate_sdk_dir(root: Path) -> Path | None:
 
     candidates.extend(sdk_scan_roots_from_env())
 
-    candidates.append(root / "vendor" / "ctp" / "sdk")
+    candidates.extend(sdk_candidates_from_synced_manifest(root))
 
     external_root = external_root_from_synced_manifest(root)
     if external_root is not None:
         candidates.append(external_root)
         candidates.append(external_root / "3rdLib" / "CTP")
+
+    candidates.append(root / "vendor" / "ctp" / "sdk")
 
     for candidate in unique_paths(candidates):
         resolved = resolve_sdk_dir(candidate)
@@ -292,6 +350,12 @@ def print_vendor_bridge_inputs(root: Path, sdk_dir: Path | None) -> None:
     for env_key in SDK_ENV_KEYS:
         raw_value = os.environ.get(env_key, "").strip()
         print(f"INFO rust-gate: sdk-probe {env_key}={raw_value or '<unset>'}")
+
+    synced_sdk = synced_manifest_sdk_dir(root)
+    print(
+        "INFO rust-gate: sdk-probe "
+        f"synced_manifest_sdk={synced_sdk if synced_sdk is not None else '<not-detected>'}"
+    )
 
     scan_roots = sdk_scan_roots_from_env()
     raw_scan_roots = os.environ.get(SDK_SCAN_ROOTS_ENV, "").strip()
@@ -471,6 +535,10 @@ def main() -> int:
     if synced_runtime_dlls:
         for copied_path in synced_runtime_dlls:
             print(f"INFO rust-gate: runtime-dll-synced={copied_path}")
+    synced_repo_native_dlls = sync_repo_native_dll_to_test_dirs(build_target_dir)
+    if synced_repo_native_dlls:
+        for copied_path in synced_repo_native_dlls:
+            print(f"INFO rust-gate: repo-native-dll-synced={copied_path}")
 
     # ── cargo test ────────────────────────────────────────────────────────
     test_command = [cargo, "test", "--manifest-path", str(manifest)]

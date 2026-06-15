@@ -1,0 +1,113 @@
+{
+  "artifact_id": "p077_t6_native_position_exchange_fresh_readonly_no_send",
+  "generated_at_utc": "2026-06-14T04:04:10Z",
+  "lane": "P077 timed paper loop T6",
+  "owner_repo": "D:/Nautilus/nautilus_ctp_adapter",
+  "owner_lane": "broker-or-adapter-close-position-semantics",
+  "mode": "owner_side_fresh_readonly_no_send",
+  "paper_send_armed": false,
+  "native_order_send_attempted": false,
+  "paper_account_authorization_context": {
+    "paper_account_authorization_received": true,
+    "formal_one_shot_authorized_retry_consumed": true,
+    "allow_authorize_retry": false,
+    "reason": "This heartbeat only rebuilds/deploys the read-only native position ExchangeID repair and captures a fresh snapshot."
+  },
+  "global_analysis": {
+    "p078_adr0044_a0_a3_foundation": "closed_verified_not_reopened",
+    "p077_timed_paper_loop": "T6_active_blocked_on_broker_or_adapter_close_position_semantics",
+    "adr0045_account_console": "deferred_until_ledger_read_model_fixtures_exist_no_ui_runtime_truth_claimed",
+    "sibling_handoff_ready": "nautilus_ctp_adapter_owner_side_repair_continues",
+    "dirty_worktrees": "pre_existing_dirty_worktrees_observed_do_not_revert_unrelated_changes"
+  },
+  "inputs": {
+    "prior_repair_artifact": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T035240Z/p077_t6_native_position_exchange_snapshot_repair_no_send.json",
+    "prior_repair_checksum": "sha256:6a19379ebef9f41ebf2c9c0b5c8a1de278ee8e7ed19cd79ae2fb0847f59165df",
+    "deployed_pyo3_extension": "D:/Nautilus/nautilus_ctp_adapter/src/ctp_runtime/_ctp_runtime.cp312-win_amd64.pyd",
+    "deployed_pyo3_extension_checksum": "sha256:ff4bac87f602ef65f5e4a3236b1f0078a5d607ed57b66ef5e360de10f3445dc6"
+  },
+  "source_snapshot": {
+    "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T040410Z/native_position_exchange_fresh_snapshot.json",
+    "checksum": "sha256:7849469c2d9abf350ed8dec3b17fd818b811eaa4025d8000c41bb93e32df92d2",
+    "run_id": "paper-readonly-1781409924806",
+    "session_label": "p077-t6-native-position-exchange-fresh-readonly",
+    "account_profile": "openctp-tts-7x24-simulation",
+    "account_id_fingerprint": "eabddb2a8122",
+    "position_count": 5,
+    "rb2610_position": {
+      "venue_symbol": "rb2610",
+      "exchange_id": "SHFE",
+      "direction": "LONG",
+      "hedge_flag": "1",
+      "date_type": "1",
+      "position_qty": 5,
+      "yd_position_qty": 0,
+      "td_position_qty": 5,
+      "position_cost": 157840.0
+    },
+    "instrument_record": {
+      "venue_symbol": "rb2610",
+      "display_symbol": "rb2610.SHFE",
+      "exchange_id": "SHFE",
+      "price_tick": 1.0,
+      "volume_multiple": 10,
+      "completeness_status": "partial"
+    },
+    "order_trade_observation": {
+      "observed_order_event_count": 0,
+      "observed_trade_event_count": 0,
+      "current_session_order_count": 0,
+      "current_session_trade_count": 0,
+      "evidence_only_codes": [
+        "no_order_events_observed",
+        "no_trade_events_observed"
+      ]
+    }
+  },
+  "verification": {
+    "commands": [
+      {
+        "command": "$env:CTP_VENDOR_SDK_ROOT=(Resolve-Path output/openctp/tts-sdk/tts_6.6.9-win64-combined).Path; python scripts/check_rust_gate.py",
+        "result": "passed",
+        "notes": "vendor bridge ready, cargo check/build/test passed"
+      },
+      {
+        "command": "Copy-Item rust/target/debug/_ctp_runtime.dll src/ctp_runtime/_ctp_runtime.cp312-win_amd64.pyd -Force",
+        "result": "deployed",
+        "deployed_checksum": "sha256:ff4bac87f602ef65f5e4a3236b1f0078a5d607ed57b66ef5e360de10f3445dc6"
+      },
+      {
+        "command": "python -m pytest tests/test_smoke_import.py::test_pyo3_bridge_module_is_importable tests/test_smoke_import.py::test_pyo3_internal_td_live_session_symbol_is_available tests/test_smoke_import.py::test_pyo3_internal_td_live_session_exposes_td_callback_contract tests/test_smoke_import.py::test_position_query_smoke_collects_runtime_positions_with_fake_native -q -p no:cacheprovider --basetemp output/pytest-tmp/p077-040410",
+        "result": "4 passed"
+      },
+      {
+        "command": "python inline import check for ctp_runtime._ctp_runtime._NativePositionView.exchange_id",
+        "result": "has_exchange_id=True"
+      },
+      {
+        "command": "python scripts/ctp_paper_readonly_snapshot.py --connect-paper --config cfgs/local/ctp.openctp.tts.7x24.local.json --timeout-seconds 25 --process-timeout-seconds 45 --completion-grace-seconds 1 --observation-grace-seconds 1 --session-label p077-t6-native-position-exchange-fresh-readonly --flow-path output/reports/p077-paper-lifecycle/20260614T040410Z/native_position_exchange_fresh.flow.json --output-json output/reports/p077-paper-lifecycle/20260614T040410Z/native_position_exchange_fresh_snapshot.json",
+        "result": "passed",
+        "send_attempted": false
+      }
+    ]
+  },
+  "acceptance_implication": {
+    "native_position_exchange_observed": true,
+    "diagnostic_owner_detail_only_not_fill_or_closeout_truth": true,
+    "fill_producing_acceptance_satisfied": false,
+    "runtime_truth_created": false,
+    "account_console_truth_created": false,
+    "paper_ready_claimed": false,
+    "broker_tradable_claimed": false
+  },
+  "blocker_after_fresh_snapshot": {
+    "type": "broker-or-adapter-close-position-semantics",
+    "status": "active",
+    "reason": "Fresh read-only position detail now includes native rb2610 exchange_id=SHFE with TD 5/date_type 1/hedge_flag 1, but this does not explain the prior decoded broker close rejection or authorize another send.",
+    "retry_conditions": [
+      "Analyze owner-side close-position semantics with native exchange_id, date_type, hedge_flag and TD/YD buckets present.",
+      "If proposing another Paper send, first create a new formal acceptance/authorization artifact with fresh market and snapshot evidence.",
+      "Do not treat this diagnostic snapshot as fill, closeout, Paper readiness, broker tradability or Account Console runtime truth."
+    ]
+  }
+}

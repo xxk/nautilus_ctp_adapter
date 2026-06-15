@@ -54,7 +54,9 @@ impl NativeRuntime {
     }
 
     pub fn drain_submitted_commands(&mut self, limit: Option<usize>) -> Vec<CtpCommand> {
-        let remaining = limit.unwrap_or(self.commands.len()).min(self.commands.len());
+        let remaining = limit
+            .unwrap_or(self.commands.len())
+            .min(self.commands.len());
         let mut drained = Vec::with_capacity(remaining);
         for _ in 0..remaining {
             if let Some(command) = self.commands.pop_front() {

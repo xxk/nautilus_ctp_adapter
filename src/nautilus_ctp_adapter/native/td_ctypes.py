@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Callable
 
 from .loader import add_windows_dll_directories, find_native_pack_dir, find_repo_owned_native_dll
+from .text import decode_ctp_text_ptr
 
 
 @dataclass(slots=True)
@@ -58,6 +59,12 @@ class NativeExecView:
     trade_volume: int
     error_msg: str
     leaves_qty: int
+    callback_source: str = ""
+    submit_request_offset_flag: int = -1
+    submit_request_offset_source: str = ""
+    response_request_id: int = -1
+    response_is_last: bool = False
+    response_error_id: int = 0
 
 
 @dataclass(slots=True)
@@ -77,6 +84,7 @@ class NativePositionView:
     use_margin: float
     position_profit: float
     ts_epoch_us: int
+    exchange_id: str = ""
 
 
 @dataclass(slots=True)
@@ -147,12 +155,19 @@ class _NativeExec(ctypes.Structure):
         ("trade_volume", ctypes.c_int),
         ("error_msg", ctypes.c_void_p),
         ("leaves_qty", ctypes.c_int),
+        ("callback_source", ctypes.c_void_p),
+        ("submit_request_offset_flag", ctypes.c_int),
+        ("submit_request_offset_source", ctypes.c_void_p),
+        ("response_request_id", ctypes.c_int),
+        ("response_is_last", ctypes.c_int),
+        ("response_error_id", ctypes.c_int),
     ]
 
 
 class _NativePosition(ctypes.Structure):
     _fields_ = [
         ("symbol", ctypes.c_void_p),
+        ("exchange_id", ctypes.c_void_p),
         ("broker_id", ctypes.c_void_p),
         ("investor_id", ctypes.c_void_p),
         ("pos_direction", ctypes.c_int),
@@ -197,9 +212,7 @@ TdOnAccountCallback = ctypes.CFUNCTYPE(None, ctypes.POINTER(_NativeTradingAccoun
 
 
 def _decode_ptr_text(ptr: int | None) -> str:
-    if not ptr:
-        return ""
-    return ctypes.string_at(ptr).decode("utf-8", errors="ignore")
+    return decode_ctp_text_ptr(ptr)
 
 
 class CtpTdApi:
@@ -262,6 +275,7 @@ class CtpTdApi:
         *,
         order_id: str,
         symbol: str,
+        request_id: int,
         price: float,
         qty: int,
         side: int,
@@ -280,6 +294,7 @@ class CtpTdApi:
                 ctypes.c_void_p(handle),
                 order_id.encode("utf-8"),
                 symbol.encode("utf-8"),
+                ctypes.c_int(request_id),
                 ctypes.c_double(price),
                 ctypes.c_int(qty),
                 ctypes.c_int(side),
@@ -424,6 +439,14 @@ class CtpTdApi:
                     trade_volume=int(exec_view.trade_volume),
                     error_msg=_decode_ptr_text(exec_view.error_msg),
                     leaves_qty=int(exec_view.leaves_qty),
+                    callback_source=_decode_ptr_text(exec_view.callback_source),
+                    submit_request_offset_flag=int(exec_view.submit_request_offset_flag),
+                    submit_request_offset_source=_decode_ptr_text(
+                        exec_view.submit_request_offset_source
+                    ),
+                    response_request_id=int(exec_view.response_request_id),
+                    response_is_last=bool(exec_view.response_is_last),
+                    response_error_id=int(exec_view.response_error_id),
                 )
             )
 
@@ -442,6 +465,7 @@ class CtpTdApi:
             callback(
                 NativePositionView(
                     symbol=_decode_ptr_text(pos.symbol),
+                    exchange_id=_decode_ptr_text(pos.exchange_id),
                     broker_id=_decode_ptr_text(pos.broker_id),
                     investor_id=_decode_ptr_text(pos.investor_id),
                     pos_direction=int(pos.pos_direction),
@@ -510,6 +534,7 @@ class CtpTdApi:
             ctypes.c_void_p,
             ctypes.c_char_p,
             ctypes.c_char_p,
+            ctypes.c_int,
             ctypes.c_double,
             ctypes.c_int,
             ctypes.c_int,

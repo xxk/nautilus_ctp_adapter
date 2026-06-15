@@ -1,0 +1,119 @@
+{
+  "schema": "p077.t6.onrsp-order-insert-field-provenance-no-send.v1",
+  "artifact_id": "p077_t6_onrsp_order_insert_field_provenance_no_send",
+  "created_at": "2026-06-14T08:19:27Z",
+  "owner_repo": "D:/Nautilus/nautilus_ctp_adapter",
+  "selected_lane": "ctp_owner_onrsp_order_insert_field_provenance_no_send",
+  "action_mode": "no_send_source_audit",
+  "authorization": {
+    "formal_authorization_present": false,
+    "active_bounded_authorization": false,
+    "previous_authorization_consumed": {
+      "artifact": "D:/Nautilus/nautilus_strategies/docs/changes/20260614__paper__p077-safer-retry-lane/evidence/20260614T080427Z_formal_bounded_paper_close_authorization.json",
+      "checksum": "sha256:46047d3a44532cffaa97a3dc5e942f69e59220e02a6764620116a37be8635413",
+      "consumed_by": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T080757Z/p077_t6_e56_authorized_close_slice_insufficient_position_closeout.json",
+      "remaining_authorized_slices": 0
+    },
+    "paper_send_armed": false,
+    "native_send_attempted": false,
+    "submit_attempted": false,
+    "paper_only": true,
+    "live_forbidden": true
+  },
+  "source_artifacts": {
+    "latest_source_bearing_closeout": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T080757Z/p077_t6_e56_authorized_close_slice_insufficient_position_closeout.json",
+      "checksum": "sha256:2082ad92ee674460e99ca35d5fdf18ec6424e903e10ff3eaf97800ba10a9e0ff"
+    },
+    "armed_lifecycle": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T080757Z/armed_guarded_close_lifecycle.json",
+      "checksum": "sha256:3a2bca6a34ad024f8c04a13266da75c7f85239c122b91cb33fd8a015a4eecba7"
+    },
+    "position_date_hedge_vendor_constant_rule": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T081257Z/p077_t6_position_date_hedge_vendor_constant_rule_no_send.json",
+      "checksum": "sha256:bd119e93f950d7d4b070a12f39623dd4ed7d0ecd784ad4e1dfb6b5991400a175"
+    }
+  },
+  "source_code_refs": {
+    "native_bridge": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/rust/ctp_runtime_core/native/ctp_vendor_bridge.cpp",
+      "checksum": "sha256:dd281d142f6032bb729dc564506c87bfaa32634b22330a6dfca36ca11fd822d8",
+      "line_refs": {
+        "submit_offset_remembered_before_req_order_insert": [1317, 1339],
+        "onrsp_order_insert_resolves_remembered_submit_offset": [731, 747],
+        "onrsp_order_insert_callback_offset_field": [770, 770],
+        "onrsp_order_insert_submit_offset_field": [777, 779]
+      }
+    },
+    "guarded_loop_semantics": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/scripts/ctp_guarded_paper_order_loop.py",
+      "checksum": "sha256:82fb5e266f1a38a4254574ad318fe4c9243629c9cc86625a66479130de89ca93",
+      "line_refs": {
+        "native_offset_semantics": [684, 785],
+        "close_offset_owner_rule_semantics": [1143, 1222]
+      }
+    }
+  },
+  "observed_e57_fields": {
+    "callback_source": "OnRspOrderInsert",
+    "decoded_error_text": "持仓不足",
+    "status": "53",
+    "fill_volume": 0,
+    "position_effect": "CLOSETODAY",
+    "submit_request_offset_flag": "3",
+    "submit_request_offset_source": "repo_ctp_td_order_send.CThostFtdcInputOrderField.CombOffsetFlag[0]",
+    "callback_offset_flag": "1",
+    "callback_offset_source_field": "CThostFtdcInputOrderField.CombOffsetFlag[0]",
+    "native_offset_disposition": "order_insert_response_offset_differs_from_submit_native_comb_offset"
+  },
+  "field_provenance": {
+    "submit_boundary_offset_flag": {
+      "value": "3",
+      "source": "repo_ctp_td_order_send remembers order.CombOffsetFlag[0] immediately before ReqOrderInsert",
+      "authority": "submit_request_provenance",
+      "writes_submit_truth": true
+    },
+    "onrsp_order_insert_callback_offset_flag": {
+      "value": "1",
+      "source": "TdSpiImpl::OnRspOrderInsert input_order->CombOffsetFlag[0]",
+      "authority": "front_response_field_diagnostic",
+      "writes_submit_truth": false
+    },
+    "callback_error_text": {
+      "value": "持仓不足",
+      "source": "TdSpiImpl::OnRspOrderInsert rsp_info->ErrorMsg",
+      "authority": "front_response_rejection_text",
+      "writes_fill_or_closeout_truth": false
+    }
+  },
+  "semantic_interpretation": {
+    "submit_boundary_matches_command_payload": true,
+    "onrsp_offset_differs_from_remembered_submit_offset": true,
+    "onrsp_offset_is_not_submit_boundary_truth": true,
+    "callback_offset_rewrites_submit_truth": false,
+    "auto_downgrade_to_generic_close_allowed": false,
+    "local_bridge_submit_offset_provenance_gap_ruled_out": true,
+    "remaining_gap": "broker_or_front_response_semantics_for_OnRspOrderInsert_insufficient_position_close_rejection",
+    "fill_producing_acceptance_satisfied": false,
+    "acceptance_implication": "typed_blocker_only_not_fill_or_closeout_truth"
+  },
+  "typed_blocker": {
+    "active": true,
+    "blocker_type": "broker-or-front-onrsp-order-insert-close-rejection-semantics",
+    "reason": "The owner bridge preserves remembered submit offset 3 before ReqOrderInsert and separately reports OnRspOrderInsert input_order->CombOffsetFlag[0] as response diagnostic offset 1. The remaining blocker is independent broker/front response semantics for the insufficient-position rejection, not local submit provenance or constant mapping.",
+    "retry_condition": "Do not submit again until the CTP owner records independent broker/front rule evidence for this response shape or lands an adapter/native repair beyond field provenance, then P077 records a new formal bounded Paper authorization and the owner collects fresh same-slice market/account/preflight evidence."
+  },
+  "truth_boundaries": {
+    "paper_ready": false,
+    "live_ready": false,
+    "production_ready": false,
+    "capital_allocated": false,
+    "broker_tradable": false,
+    "runtime_truth_created": false,
+    "account_console_runtime_truth": false,
+    "ui_truth_created": false,
+    "china_s2_pass": false,
+    "hft_s3_pass": false,
+    "loop_complete": false
+  }
+}

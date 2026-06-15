@@ -1,0 +1,86 @@
+{
+  "baseline": "ctp-guarded-paper-order-loop-v1",
+  "account_profile": "openctp-tts-7x24-simulation",
+  "evidence_class": "openctp-tts-7x24-simulation",
+  "success": false,
+  "status": "blocked",
+  "failure_reason": "close_intent_rejected",
+  "blocker_type": "paper-safety",
+  "action_mode": "dry_run",
+  "paper_send_armed": false,
+  "pre_snapshot": {
+    "accepted": true,
+    "issues": []
+  },
+  "close_intent": {
+    "accepted": false,
+    "disposition": "close_intent_failed",
+    "candidate": {
+      "venue_symbol": "rb2610",
+      "exchange_id": "SHFE",
+      "direction": "LONG",
+      "position_qty": 5,
+      "td_position_qty": 5,
+      "yd_position_qty": 0,
+      "closable_quantity": 5
+    },
+    "selected_bucket": null,
+    "submit_intent": null,
+    "issues": [
+      "insufficient_close_yesterday_position"
+    ]
+  },
+  "order_boundary": {
+    "accepted": true,
+    "disposition": "order_boundary_passed",
+    "issues": [],
+    "instrument": {
+      "venue_symbol": "rb2610",
+      "exchange_id": "SHFE",
+      "price_tick": 1.0,
+      "volume_multiple": 10,
+      "detail_fields": {
+        "instrument_name": "rb2610",
+        "open_date": "20251016",
+        "expire_date": "20261015",
+        "start_deliv_date": null,
+        "end_deliv_date": null,
+        "is_trading": null,
+        "long_margin_ratio": null,
+        "short_margin_ratio": null,
+        "max_market_order_volume": null,
+        "min_market_order_volume": null,
+        "max_limit_order_volume": null,
+        "min_limit_order_volume": null,
+        "product_id": "rb",
+        "underlying_instr_id": "rb",
+        "delivery_year": 2026,
+        "delivery_month": 10
+      }
+    },
+    "limit_boundary": {
+      "source": "not_available",
+      "status": "unknown"
+    }
+  },
+  "risk_preflight": null,
+  "intent_contract": {
+    "instrument": "rb2610",
+    "side": "SELL",
+    "quantity": 1,
+    "limit_price": 3162.0,
+    "position_effect": "CLOSEYESTERDAY",
+    "order_type": "LIMIT",
+    "time_in_force": "GFD",
+    "price_mode": "snapshot_close",
+    "client_order_id": "p077-t6-rb2610-close-yesterday-matrix-015708"
+  },
+  "order_contract": null,
+  "mapped_submit": null,
+  "order_lifecycle": null,
+  "post_snapshot": null,
+  "reconciliation": null,
+  "issues": [
+    "insufficient_close_yesterday_position"
+  ]
+}

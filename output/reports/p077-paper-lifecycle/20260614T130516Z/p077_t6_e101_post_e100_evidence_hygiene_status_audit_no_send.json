@@ -1,0 +1,198 @@
+{
+  "schema": "p077.t6.ctp-owner-post-e100-evidence-hygiene-status-audit.v1",
+  "artifact_id": "E101_ctp_owner_post_e100_evidence_hygiene_status_audit_no_send",
+  "created_at": "2026-06-14T13:14:17.759Z",
+  "owner_repo": "D:/Nautilus/nautilus_ctp_adapter",
+  "selected_lane": "p077_t6_ctp_owner_post_e100_no_send_audit",
+  "action_mode": "no_send_evidence_hygiene_status_audit",
+  "paper_send_attempted": false,
+  "native_send_attempted": false,
+  "live_send_attempted": false,
+  "runtime_mutation_attempted": false,
+  "source_artifacts": {
+    "fresh_market.json": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T130516Z/fresh_market.json",
+      "checksum": "sha256:670277842dc7fc3c780f37e9b6ad8d58e64c60c87f940a77bdd4ace72e12e4ac"
+    },
+    "pre_snapshot.json": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T130516Z/pre_snapshot.json",
+      "checksum": "sha256:ffa41b643bfcc48e0642a5108b197c7c8b66f675f7242766119ae3f285a1f867"
+    },
+    "dry_run.json": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T130516Z/dry_run.json",
+      "checksum": "sha256:b19fbba6b82ca1f6632afbeecef79749340e2160d005562e215cbc9a628655a3"
+    },
+    "armed_send.json": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T130516Z/armed_send.json",
+      "checksum": "sha256:2ae42860826e8f40629656580cd2482654830bb2b91a6bc171758ff4c506356a"
+    },
+    "post_snapshot.json": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T130516Z/post_snapshot.json",
+      "checksum": "sha256:6b8dacd4b4bcdbd9ab1b6b1fe9979b1f1f8efb6271b465ca0a708277ef814df5"
+    },
+    "reconciliation.json": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T130516Z/reconciliation.json",
+      "checksum": "sha256:1b9dfc420be3246332990c1da253fc6d41a3083c44531dbcc368941f0d283b0e"
+    },
+    "p077_t6_e100_bounded_paper_close_yesterday_filled_reconciled.json": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T130516Z/p077_t6_e100_bounded_paper_close_yesterday_filled_reconciled.json",
+      "checksum": "sha256:698340f03f5eb6ca03aa3006d295024850bf2a53a5687dee1178df421c635dbc"
+    }
+  },
+  "e100_summary_gap": {
+    "detected": true,
+    "description": "E100 aggregate fresh_market summary omitted scalar market fields, while the raw fresh_market owner artifact contains the authority fields. E101 binds those raw fields without rewriting E100.",
+    "e100_summary_values": {
+      "freshness_basis": null,
+      "freshness_age_seconds": null,
+      "bid_price": null,
+      "ask_price": null,
+      "last_price": null
+    }
+  },
+  "fresh_same_slice_market_authority": {
+    "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T130516Z/fresh_market.json",
+    "checksum": "sha256:670277842dc7fc3c780f37e9b6ad8d58e64c60c87f940a77bdd4ace72e12e4ac",
+    "schema_version": "p077-ctp-market-freshness-owner-artifact-v1",
+    "status": "passed",
+    "freshness_basis": "received_at",
+    "freshness_threshold_seconds": 120,
+    "collected_at_utc": "2026-06-14T13:06:03Z",
+    "first_tick_received_at_utc": "2026-06-14T13:06:03Z",
+    "first_tick_received_age_seconds": 0.028,
+    "first_tick_utc": "2026-06-11T21:40:15Z",
+    "first_tick_age_seconds": 228347.645,
+    "first_tick_symbol": "rb2610",
+    "first_tick_bid": 3158.0,
+    "first_tick_ask": 3159.0,
+    "first_tick_last": 3158.0,
+    "warnings": [
+      "first_tick_exchange_timestamp_stale"
+    ],
+    "accepted": true
+  },
+  "account_position_authority": {
+    "pre_snapshot": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T130516Z/pre_snapshot.json",
+      "checksum": "sha256:ffa41b643bfcc48e0642a5108b197c7c8b66f675f7242766119ae3f285a1f867",
+      "run_id": "paper-readonly-1781442362281",
+      "status": "passed",
+      "rb2610_long_position_qty": 4,
+      "rb2610_yd_position_qty": 5,
+      "rb2610_td_position_qty": 0
+    },
+    "post_snapshot": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T130516Z/post_snapshot.json",
+      "checksum": "sha256:6b8dacd4b4bcdbd9ab1b6b1fe9979b1f1f8efb6271b465ca0a708277ef814df5",
+      "run_id": "paper-readonly-1781442496428",
+      "status": "passed",
+      "rb2610_long_position_qty": 3,
+      "rb2610_yd_position_qty": 5,
+      "rb2610_td_position_qty": 0
+    }
+  },
+  "guarded_lifecycle_authority": {
+    "armed_send_path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T130516Z/armed_send.json",
+    "armed_send_checksum": "sha256:2ae42860826e8f40629656580cd2482654830bb2b91a6bc171758ff4c506356a",
+    "status": "passed",
+    "action_mode": "paper_send",
+    "paper_send_armed": true,
+    "intent_contract": {
+      "instrument": "rb2610",
+      "side": "SELL",
+      "quantity": 1,
+      "limit_price": 3158.0,
+      "position_effect": "CLOSEYESTERDAY",
+      "order_type": "LIMIT",
+      "time_in_force": "GFD",
+      "price_mode": "snapshot_close",
+      "client_order_id": "p077-e99-rb2610-closey-001"
+    },
+    "risk_preflight_accepted": true,
+    "verified_exposure_reduction": true,
+    "lifecycle_verdict": {
+      "accepted": true,
+      "disposition": "filled",
+      "matched_event_count": 4,
+      "unique_fill_count": 1,
+      "duplicate_fill_count": 0,
+      "fill_volume": 1,
+      "leaves_qty": 0,
+      "native_status_diagnostics": {
+        "observed_statuses": [
+          "0",
+          "3",
+          "97"
+        ],
+        "ctp_status_meanings": {
+          "0": "unmapped_status",
+          "3": "unmapped_status",
+          "97": "unmapped_status"
+        },
+        "disposition": "ctp_status_observed_not_cancelled",
+        "semantic_reason": "undetermined_from_status_only",
+        "error_text_seen": true,
+        "error_text_contains_replacement_char": false,
+        "broker_semantic_reason_inferred": false
+      },
+      "issues": []
+    },
+    "submit_native_comb_offset": "4",
+    "callback_offset_authority": "order_status_diagnostic",
+    "callback_offset_rewrites_submit_truth": false
+  },
+  "reconciliation_authority": {
+    "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T130516Z/reconciliation.json",
+    "checksum": "sha256:1b9dfc420be3246332990c1da253fc6d41a3083c44531dbcc368941f0d283b0e",
+    "accepted": true,
+    "disposition": "filled_reconciled",
+    "position_count_before": 5,
+    "position_count_after": 5,
+    "position_count_delta": 0,
+    "target_position_key": {
+      "venue_symbol": "rb2610",
+      "direction": "LONG"
+    },
+    "target_position_delta": -1,
+    "expected_position_delta": -1,
+    "requires_followup": false,
+    "issues": []
+  },
+  "authorization_status": {
+    "consumed_authorization": {
+      "source": "D:/Nautilus/nautilus_strategies/docs/changes/20260614__paper__p077-safer-retry-lane/evidence/20260614T130116Z_formal_bounded_paper_close_yesterday_authorization_after_e98.json",
+      "checksum": "sha256:b3a0dcdca2272098d0a0ef98cfcf60cb630e6cd652f80dc20820f79fce1ff5be",
+      "paper_only": true,
+      "live_order_authorized": false,
+      "one_shot_authorization_consumed": true,
+      "active_bounded_authorization_remaining": false,
+      "submit_budget": {
+        "paper_native_submit_budget": 1,
+        "paper_native_submit_count": 1,
+        "unlimited_retries_allowed": false
+      }
+    },
+    "active_bounded_authorization_remaining": false,
+    "allow_authorize_retry": false,
+    "new_authorization_created_by_this_artifact": false
+  },
+  "owner_audit_result": {
+    "accepted": true,
+    "disposition": "post_e100_evidence_hygiene_audit_passed_no_send",
+    "e100_slice_remains_filled_reconciled": true,
+    "e100_raw_market_authority_bound_by_e101": true,
+    "followup_required_before_any_future_send": "new formal bounded authorization plus fresh same-slice market/account/preflight evidence",
+    "issues": []
+  },
+  "forbidden_claims": {
+    "paper_ready_claimed": false,
+    "live_ready_claimed": false,
+    "broker_tradable_claimed": false,
+    "production_ready_claimed": false,
+    "capital_allocated_claimed": false,
+    "account_console_runtime_truth_created": false,
+    "ledger_truth_created": false,
+    "second_runtime_created": false,
+    "loop_complete_claimed": false
+  }
+}

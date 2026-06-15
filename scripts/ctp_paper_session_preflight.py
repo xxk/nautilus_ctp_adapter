@@ -44,6 +44,7 @@ def paper_config_issues(
     config: CtpAdapterConfig,
     *,
     allow_live_order_smoke: bool = False,
+    allow_exposure_reduction_order_smoke: bool = False,
 ) -> list[str]:
     issues = list(config.validate())
     if config.broker_id != "9999":
@@ -54,6 +55,13 @@ def paper_config_issues(
         issues.append("paper_profile.td_front")
     if config.execution_guardrails.allow_live_order_smoke and not allow_live_order_smoke:
         issues.append("execution_guardrails.allow_live_order_smoke_must_be_false")
+    if (
+        config.execution_guardrails.allow_exposure_reduction_order_smoke
+        and not allow_exposure_reduction_order_smoke
+    ):
+        issues.append(
+            "execution_guardrails.allow_exposure_reduction_order_smoke_must_be_false"
+        )
     return issues
 
 
@@ -76,6 +84,9 @@ def redacted_config_summary(config: CtpAdapterConfig) -> dict[str, Any]:
             "max_submit_per_minute": config.execution_guardrails.max_submit_per_minute,
             "price_mode": config.execution_guardrails.price_mode,
             "allow_live_order_smoke": config.execution_guardrails.allow_live_order_smoke,
+            "allow_exposure_reduction_order_smoke": (
+                config.execution_guardrails.allow_exposure_reduction_order_smoke
+            ),
         },
     }
 

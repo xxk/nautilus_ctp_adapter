@@ -14,6 +14,7 @@ use ctp_native::ffi::{
     self, NativeExec, NativeInstrument, NativeLoginResponse, NativePosition, NativeTick,
     NativeTradingAccount,
 };
+use encoding_rs::GB18030;
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyAny;
@@ -136,12 +137,26 @@ struct NativeExecViewPy {
     error_msg: String,
     #[pyo3(get)]
     leaves_qty: i32,
+    #[pyo3(get)]
+    callback_source: String,
+    #[pyo3(get)]
+    submit_request_offset_flag: i32,
+    #[pyo3(get)]
+    submit_request_offset_source: String,
+    #[pyo3(get)]
+    response_request_id: i32,
+    #[pyo3(get)]
+    response_is_last: bool,
+    #[pyo3(get)]
+    response_error_id: i32,
 }
 
 #[pyclass(module = "ctp_runtime._ctp_runtime", name = "_NativePositionView")]
 struct NativePositionViewPy {
     #[pyo3(get)]
     symbol: String,
+    #[pyo3(get)]
+    exchange_id: String,
     #[pyo3(get)]
     broker_id: String,
     #[pyo3(get)]
@@ -172,7 +187,10 @@ struct NativePositionViewPy {
     ts_epoch_us: i64,
 }
 
-#[pyclass(module = "ctp_runtime._ctp_runtime", name = "_NativeTradingAccountView")]
+#[pyclass(
+    module = "ctp_runtime._ctp_runtime",
+    name = "_NativeTradingAccountView"
+)]
 struct NativeTradingAccountViewPy {
     #[pyo3(get)]
     broker_id: String,
@@ -377,13 +395,49 @@ fn decode_ptr_text(ptr: *const c_char) -> String {
     if ptr.is_null() {
         return String::new();
     }
-    unsafe { CStr::from_ptr(ptr) }
-        .to_string_lossy()
-        .into_owned()
+    let bytes = unsafe { CStr::from_ptr(ptr) }.to_bytes();
+    if let Ok(value) = std::str::from_utf8(bytes) {
+        return value.to_owned();
+    }
+    let (decoded, _, had_errors) = GB18030.decode(bytes);
+    if !had_errors {
+        return decoded.into_owned();
+    }
+    String::from_utf8_lossy(bytes).into_owned()
 }
 
 fn to_cstring(label: &str, value: &str) -> PyResult<CString> {
-    CString::new(value).map_err(|_| PyValueError::new_err(format!("{label} must not contain NUL bytes")))
+    CString::new(value)
+        .map_err(|_| PyValueError::new_err(format!("{label} must not contain NUL bytes")))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::decode_ptr_text;
+    use std::ffi::CString;
+    use std::ptr;
+
+    #[test]
+    fn decode_ptr_text_accepts_null_pointer() {
+        assert_eq!(decode_ptr_text(ptr::null()), "");
+    }
+
+    #[test]
+    fn decode_ptr_text_preserves_utf8() {
+        let value = CString::new("rb2610 order accepted").expect("valid c string");
+
+        assert_eq!(decode_ptr_text(value.as_ptr()), "rb2610 order accepted");
+    }
+
+    #[test]
+    fn decode_ptr_text_falls_back_to_gb18030() {
+        let value = CString::new(vec![
+            0xb1, 0xa8, 0xb5, 0xa5, 0xd2, 0xd1, 0xbe, 0xdc, 0xbe, 0xf8,
+        ])
+        .expect("valid c string");
+
+        assert_eq!(decode_ptr_text(value.as_ptr()), "报单已拒绝");
+    }
 }
 
 extern "C" fn md_login_callback_trampoline(resp_ptr: *const NativeLoginResponse) {
@@ -535,6 +589,12 @@ extern "C" fn td_exec_callback_trampoline(exec_ptr: *const NativeExec) {
             trade_volume: exec_view.trade_volume,
             error_msg: decode_ptr_text(exec_view.error_msg),
             leaves_qty: exec_view.leaves_qty,
+            callback_source: decode_ptr_text(exec_view.callback_source),
+            submit_request_offset_flag: exec_view.submit_request_offset_flag,
+            submit_request_offset_source: decode_ptr_text(exec_view.submit_request_offset_source),
+            response_request_id: exec_view.response_request_id,
+            response_is_last: exec_view.response_is_last != 0,
+            response_error_id: exec_view.response_error_id,
         };
         let payload = match Py::new(py, payload) {
             Ok(value) => value,
@@ -549,7 +609,11 @@ extern "C" fn td_exec_callback_trampoline(exec_ptr: *const NativeExec) {
     });
 }
 
-extern "C" fn td_instrument_callback_trampoline(inst_ptr: *const NativeInstrument, req_id: i32, is_last: i32) {
+extern "C" fn td_instrument_callback_trampoline(
+    inst_ptr: *const NativeInstrument,
+    req_id: i32,
+    is_last: i32,
+) {
     if inst_ptr.is_null() {
         return;
     }
@@ -590,7 +654,11 @@ extern "C" fn td_instrument_callback_trampoline(inst_ptr: *const NativeInstrumen
     });
 }
 
-extern "C" fn td_position_callback_trampoline(position_ptr: *const NativePosition, req_id: i32, is_last: i32) {
+extern "C" fn td_position_callback_trampoline(
+    position_ptr: *const NativePosition,
+    req_id: i32,
+    is_last: i32,
+) {
     let callback: Option<Py<PyAny>> = clone_td_position_callback();
     let Some(callback) = callback else {
         return;
@@ -602,6 +670,7 @@ extern "C" fn td_position_callback_trampoline(position_ptr: *const NativePositio
             let position = unsafe { &*position_ptr };
             let payload = NativePositionViewPy {
                 symbol: decode_ptr_text(position.symbol),
+                exchange_id: decode_ptr_text(position.exchange_id),
                 broker_id: decode_ptr_text(position.broker_id),
                 investor_id: decode_ptr_text(position.investor_id),
                 pos_direction: position.pos_direction,
@@ -673,7 +742,11 @@ extern "C" fn td_account_callback_trampoline(account_ptr: *const NativeTradingAc
 // Internal MD live session (C2 mainline)
 // ──────────────────────────────────────────────
 
-#[pyclass(module = "ctp_runtime._ctp_runtime", name = "CtpMdLiveSession", unsendable)]
+#[pyclass(
+    module = "ctp_runtime._ctp_runtime",
+    name = "CtpMdLiveSession",
+    unsendable
+)]
 pub struct CtpMdLiveSession {
     flow_path: String,
     handle: usize,
@@ -739,7 +812,9 @@ impl CtpMdLiveSession {
             return Err(PyRuntimeError::new_err("CtpMdLiveSession already disposed"));
         }
         if !callback.bind(py).is_callable() {
-            return Err(PyValueError::new_err("disconnect callback must be callable"));
+            return Err(PyValueError::new_err(
+                "disconnect callback must be callable",
+            ));
         }
         let handle = self.handle;
         with_md_live_callbacks(|registry| {
@@ -838,7 +913,11 @@ impl Drop for CtpMdLiveSession {
 // Internal TD live session (C3 mainline)
 // ──────────────────────────────────────────────
 
-#[pyclass(module = "ctp_runtime._ctp_runtime", name = "CtpTdLiveSession", unsendable)]
+#[pyclass(
+    module = "ctp_runtime._ctp_runtime",
+    name = "CtpTdLiveSession",
+    unsendable
+)]
 pub struct CtpTdLiveSession {
     flow_path: String,
     handle: usize,
@@ -888,7 +967,9 @@ impl CtpTdLiveSession {
             return Err(PyRuntimeError::new_err("CtpTdLiveSession already disposed"));
         }
         if !callback.bind(py).is_callable() {
-            return Err(PyValueError::new_err("disconnect callback must be callable"));
+            return Err(PyValueError::new_err(
+                "disconnect callback must be callable",
+            ));
         }
         let handle = self.handle;
         with_td_live_callbacks(|registry| {
@@ -923,7 +1004,9 @@ impl CtpTdLiveSession {
             return Err(PyRuntimeError::new_err("CtpTdLiveSession already disposed"));
         }
         if !callback.bind(py).is_callable() {
-            return Err(PyValueError::new_err("instrument callback must be callable"));
+            return Err(PyValueError::new_err(
+                "instrument callback must be callable",
+            ));
         }
         let handle = self.handle;
         with_td_live_callbacks(|registry| {
@@ -1038,6 +1121,7 @@ impl CtpTdLiveSession {
         &mut self,
         order_id: &str,
         symbol: &str,
+        request_id: i32,
         price: f64,
         qty: i32,
         side: i32,
@@ -1062,6 +1146,7 @@ impl CtpTdLiveSession {
             self.handle_ptr(),
             order_id_c.as_ptr(),
             symbol_c.as_ptr(),
+            request_id,
             price,
             qty,
             side,

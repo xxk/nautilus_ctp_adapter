@@ -1,8 +1,8 @@
 #![allow(non_snake_case)]
 
-use std::ffi::{c_char, c_void};
 #[cfg(not(ctp_vendor_bridge))]
 use std::ffi::CStr;
+use std::ffi::{c_char, c_void};
 
 const NOT_IMPLEMENTED_CODE: i32 = -9000;
 const INVALID_HANDLE_CODE: i32 = -9001;
@@ -72,11 +72,18 @@ pub struct NativeExec {
     pub trade_volume: i32,
     pub error_msg: *const c_char,
     pub leaves_qty: i32,
+    pub callback_source: *const c_char,
+    pub submit_request_offset_flag: i32,
+    pub submit_request_offset_source: *const c_char,
+    pub response_request_id: i32,
+    pub response_is_last: i32,
+    pub response_error_id: i32,
 }
 
 #[repr(C)]
 pub struct NativePosition {
     pub symbol: *const c_char,
+    pub exchange_id: *const c_char,
     pub broker_id: *const c_char,
     pub investor_id: *const c_char,
     pub pos_direction: i32,
@@ -181,7 +188,8 @@ extern "C" {
         password: *const c_char,
     ) -> i32;
     fn repo_ctp_md_subscribe(handle: *mut c_void, symbols: *mut c_void, symbol_count: i32) -> i32;
-    fn repo_ctp_md_unsubscribe(handle: *mut c_void, symbols: *mut c_void, symbol_count: i32) -> i32;
+    fn repo_ctp_md_unsubscribe(handle: *mut c_void, symbols: *mut c_void, symbol_count: i32)
+        -> i32;
     fn repo_ctp_md_set_callback(handle: *mut c_void, callback: MdOnTickCallback);
     fn repo_ctp_md_set_login_callback(handle: *mut c_void, callback: MdOnLoginCallback);
     fn repo_ctp_md_set_front_disconnected_callback(
@@ -221,6 +229,7 @@ extern "C" {
         handle: *mut c_void,
         order_id: *const c_char,
         symbol: *const c_char,
+        request_id: i32,
         price: f64,
         qty: i32,
         side: i32,
@@ -347,7 +356,11 @@ pub extern "C" fn MdSubscribe(
 
 #[cfg(ctp_vendor_bridge)]
 #[no_mangle]
-pub extern "C" fn MdUnsubscribe(handle: *mut c_void, symbols: *mut c_void, symbol_count: i32) -> i32 {
+pub extern "C" fn MdUnsubscribe(
+    handle: *mut c_void,
+    symbols: *mut c_void,
+    symbol_count: i32,
+) -> i32 {
     unsafe { repo_ctp_md_unsubscribe(handle, symbols, symbol_count) }
 }
 
@@ -536,6 +549,7 @@ pub extern "C" fn TdOrderSend(
     handle: *mut c_void,
     order_id: *const c_char,
     symbol: *const c_char,
+    request_id: i32,
     price: f64,
     qty: i32,
     side: i32,
@@ -551,9 +565,22 @@ pub extern "C" fn TdOrderSend(
 ) -> i32 {
     unsafe {
         repo_ctp_td_order_send(
-            handle, order_id, symbol, price, qty, side, order_type,
-            comb_offset, comb_hedge, time_condition, volume_condition,
-            contingent_condition, stop_price, force_close_reason, min_volume,
+            handle,
+            order_id,
+            symbol,
+            request_id,
+            price,
+            qty,
+            side,
+            order_type,
+            comb_offset,
+            comb_hedge,
+            time_condition,
+            volume_condition,
+            contingent_condition,
+            stop_price,
+            force_close_reason,
+            min_volume,
         )
     }
 }
@@ -564,6 +591,7 @@ pub extern "C" fn TdOrderSend(
     handle: *mut c_void,
     _order_id: *const c_char,
     _symbol: *const c_char,
+    _request_id: i32,
     _price: f64,
     _qty: i32,
     _side: i32,
@@ -599,9 +627,16 @@ pub extern "C" fn TdOrderAction(
 ) -> i32 {
     unsafe {
         repo_ctp_td_order_action(
-            handle, broker_id, investor_id, instrument_id,
-            order_ref, front_id, session_id, exchange_id,
-            order_sys_id, action_flag,
+            handle,
+            broker_id,
+            investor_id,
+            instrument_id,
+            order_ref,
+            front_id,
+            session_id,
+            exchange_id,
+            order_sys_id,
+            action_flag,
         )
     }
 }
@@ -772,9 +807,9 @@ pub extern "C" fn TdSetAccountCallback(handle: *mut c_void, callback: TdOnAccoun
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::ptr::null;
     #[cfg(not(ctp_vendor_bridge))]
     use std::ffi::CStr;
+    use std::ptr::null;
     #[cfg(not(ctp_vendor_bridge))]
     use std::sync::{Mutex, OnceLock};
 
@@ -810,7 +845,9 @@ mod tests {
                 .to_string_lossy()
                 .into_owned()
         };
-        *md_login_capture().lock().expect("md login capture poisoned") = Some(LoginSnapshot {
+        *md_login_capture()
+            .lock()
+            .expect("md login capture poisoned") = Some(LoginSnapshot {
             error_id: response.ErrorId,
             error_message: message,
             front_id: response.FrontId,
@@ -829,7 +866,9 @@ mod tests {
                 .to_string_lossy()
                 .into_owned()
         };
-        *td_login_capture().lock().expect("td login capture poisoned") = Some(LoginSnapshot {
+        *td_login_capture()
+            .lock()
+            .expect("td login capture poisoned") = Some(LoginSnapshot {
             error_id: response.ErrorId,
             error_message: message,
             front_id: response.FrontId,
@@ -841,34 +880,67 @@ mod tests {
     #[test]
     fn invalid_handle_contract_is_frozen() {
         assert_eq!(MdInit(std::ptr::null_mut(), null()), INVALID_HANDLE_CODE);
-        assert_eq!(MdSubscribe(std::ptr::null_mut(), std::ptr::null_mut(), 0), INVALID_HANDLE_CODE);
-        assert_eq!(MdUnsubscribe(std::ptr::null_mut(), std::ptr::null_mut(), 0), INVALID_HANDLE_CODE);
+        assert_eq!(
+            MdSubscribe(std::ptr::null_mut(), std::ptr::null_mut(), 0),
+            INVALID_HANDLE_CODE
+        );
+        assert_eq!(
+            MdUnsubscribe(std::ptr::null_mut(), std::ptr::null_mut(), 0),
+            INVALID_HANDLE_CODE
+        );
         assert_eq!(TdInit(std::ptr::null_mut(), null()), INVALID_HANDLE_CODE);
-        assert_eq!(TdAuthenticate(std::ptr::null_mut(), null(), null(), null()), INVALID_HANDLE_CODE);
-        assert_eq!(TdConfirmSettlement(std::ptr::null_mut()), INVALID_HANDLE_CODE);
-        assert_eq!(TdQryInstrument(std::ptr::null_mut(), null()), INVALID_HANDLE_CODE);
+        assert_eq!(
+            TdAuthenticate(std::ptr::null_mut(), null(), null(), null()),
+            INVALID_HANDLE_CODE
+        );
+        assert_eq!(
+            TdConfirmSettlement(std::ptr::null_mut()),
+            INVALID_HANDLE_CODE
+        );
+        assert_eq!(
+            TdQryInstrument(std::ptr::null_mut(), null()),
+            INVALID_HANDLE_CODE
+        );
         assert_eq!(TdQryPosition(std::ptr::null_mut()), INVALID_HANDLE_CODE);
         assert_eq!(TdQryAccount(std::ptr::null_mut()), INVALID_HANDLE_CODE);
-        assert_eq!(TdQryInstrumentStatus(std::ptr::null_mut()), INVALID_HANDLE_CODE);
-        assert_eq!(TdOrderSend(
-            std::ptr::null_mut(),
-            null(),
-            null(),
-            0.0,
-            0,
-            0,
-            0,
-            null(),
-            null(),
-            0,
-            0,
-            0,
-            0.0,
-            0,
-            0,
-        ), INVALID_HANDLE_CODE);
         assert_eq!(
-            TdOrderAction(std::ptr::null_mut(), null(), null(), null(), null(), 0, 0, null(), null(), 0),
+            TdQryInstrumentStatus(std::ptr::null_mut()),
+            INVALID_HANDLE_CODE
+        );
+        assert_eq!(
+            TdOrderSend(
+                std::ptr::null_mut(),
+                null(),
+                null(),
+                0,
+                0.0,
+                0,
+                0,
+                0,
+                null(),
+                null(),
+                0,
+                0,
+                0,
+                0.0,
+                0,
+                0,
+            ),
+            INVALID_HANDLE_CODE
+        );
+        assert_eq!(
+            TdOrderAction(
+                std::ptr::null_mut(),
+                null(),
+                null(),
+                null(),
+                null(),
+                0,
+                0,
+                null(),
+                null(),
+                0
+            ),
             INVALID_HANDLE_CODE
         );
     }
@@ -880,9 +952,18 @@ mod tests {
         assert!(!handle.is_null());
         MdSetLoginCallback(handle, Some(capture_md_login));
         assert_eq!(MdInit(handle, null()), NOT_IMPLEMENTED_CODE);
-        assert_eq!(MdSubscribe(handle, std::ptr::null_mut(), 0), NOT_IMPLEMENTED_CODE);
-        assert_eq!(MdUnsubscribe(handle, std::ptr::null_mut(), 0), NOT_IMPLEMENTED_CODE);
-        assert_eq!(MdLogin(handle, null(), null(), null()), NOT_IMPLEMENTED_CODE);
+        assert_eq!(
+            MdSubscribe(handle, std::ptr::null_mut(), 0),
+            NOT_IMPLEMENTED_CODE
+        );
+        assert_eq!(
+            MdUnsubscribe(handle, std::ptr::null_mut(), 0),
+            NOT_IMPLEMENTED_CODE
+        );
+        assert_eq!(
+            MdLogin(handle, null(), null(), null()),
+            NOT_IMPLEMENTED_CODE
+        );
 
         let response = md_login_capture()
             .lock()
@@ -893,7 +974,9 @@ mod tests {
             response,
             LoginSnapshot {
                 error_id: NOT_IMPLEMENTED_CODE,
-                error_message: "repo-owned ctp_native scaffold only; live vendor bridge not implemented".to_string(),
+                error_message:
+                    "repo-owned ctp_native scaffold only; live vendor bridge not implemented"
+                        .to_string(),
                 front_id: 0,
                 session_id: 0,
                 max_order_ref: 0,
@@ -909,13 +992,19 @@ mod tests {
         assert!(!handle.is_null());
         TdSetLoginCallback(handle, Some(capture_td_login));
         assert_eq!(TdInit(handle, null()), NOT_IMPLEMENTED_CODE);
-        assert_eq!(TdAuthenticate(handle, null(), null(), null()), NOT_IMPLEMENTED_CODE);
+        assert_eq!(
+            TdAuthenticate(handle, null(), null(), null()),
+            NOT_IMPLEMENTED_CODE
+        );
         assert_eq!(TdConfirmSettlement(handle), NOT_IMPLEMENTED_CODE);
         assert_eq!(TdQryInstrument(handle, null()), NOT_IMPLEMENTED_CODE);
         assert_eq!(TdQryPosition(handle), NOT_IMPLEMENTED_CODE);
         assert_eq!(TdQryAccount(handle), NOT_IMPLEMENTED_CODE);
         assert_eq!(TdQryInstrumentStatus(handle), NOT_IMPLEMENTED_CODE);
-        assert_eq!(TdLogin(handle, null(), null(), null()), NOT_IMPLEMENTED_CODE);
+        assert_eq!(
+            TdLogin(handle, null(), null(), null()),
+            NOT_IMPLEMENTED_CODE
+        );
 
         let response = td_login_capture()
             .lock()
@@ -926,7 +1015,9 @@ mod tests {
             response,
             LoginSnapshot {
                 error_id: NOT_IMPLEMENTED_CODE,
-                error_message: "repo-owned ctp_native scaffold only; live vendor bridge not implemented".to_string(),
+                error_message:
+                    "repo-owned ctp_native scaffold only; live vendor bridge not implemented"
+                        .to_string(),
                 front_id: 0,
                 session_id: 0,
                 max_order_ref: 0,

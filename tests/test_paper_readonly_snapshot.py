@@ -5,6 +5,7 @@ from pathlib import Path
 
 from nautilus_ctp_adapter.adapters.ctp.config import CtpAdapterConfig
 
+import scripts.ctp_paper_readonly_snapshot as snapshot_script
 from scripts.ctp_paper_readonly_snapshot import (
     build_instrument_detail_payload,
     build_connected_snapshot_with_watchdog,
@@ -13,6 +14,7 @@ from scripts.ctp_paper_readonly_snapshot import (
     classify_positions_disposition,
     instrument_contract_issues,
     instrument_detail_contract_issues,
+    paper_readonly_snapshot_config_issues,
     position_contract_issues,
     redacted_account_identity,
     snapshot_schema_metadata,
@@ -100,6 +102,58 @@ def test_config_only_snapshot_is_redacted_and_request_only(tmp_path: Path) -> No
     assert "secret" not in serialized
 
 
+def test_readonly_snapshot_allows_exposure_reduction_smoke_flag_without_live_send() -> None:
+    config = CtpAdapterConfig.from_dict(
+        {
+            "BrokerID": "9999",
+            "UserID": "PAPER_USER_TEST",
+            "Password": "secret",
+            "Pricer": "tcp://trading.openctp.cn:30011",
+            "Host": "tcp://trading.openctp.cn:30001",
+            "Instruments": ["TEST"],
+            "ExecutionGuardrails": {
+                "Enabled": True,
+                "AllowedInstruments": ["TEST"],
+                "MaxOrderQty": 1,
+                "MaxNetPosition": 5,
+                "MaxSubmitPerMinute": 10,
+                "PriceMode": "best_level_1",
+                "AllowLiveOrderSmoke": False,
+                "AllowExposureReductionOrderSmoke": True,
+            },
+        }
+    )
+
+    assert paper_readonly_snapshot_config_issues(config) == []
+
+
+def test_readonly_snapshot_still_rejects_general_live_order_smoke() -> None:
+    config = CtpAdapterConfig.from_dict(
+        {
+            "BrokerID": "9999",
+            "UserID": "PAPER_USER_TEST",
+            "Password": "secret",
+            "Pricer": "tcp://trading.openctp.cn:30011",
+            "Host": "tcp://trading.openctp.cn:30001",
+            "Instruments": ["TEST"],
+            "ExecutionGuardrails": {
+                "Enabled": True,
+                "AllowedInstruments": ["TEST"],
+                "MaxOrderQty": 1,
+                "MaxNetPosition": 5,
+                "MaxSubmitPerMinute": 10,
+                "PriceMode": "best_level_1",
+                "AllowLiveOrderSmoke": True,
+                "AllowExposureReductionOrderSmoke": True,
+            },
+        }
+    )
+
+    assert "execution_guardrails.allow_live_order_smoke_must_be_false" in (
+        paper_readonly_snapshot_config_issues(config)
+    )
+
+
 def test_connected_snapshot_watchdog_returns_typed_timeout_blocker(tmp_path: Path) -> None:
     config = _paper_config()
     payload = build_connected_snapshot_with_watchdog(
@@ -120,6 +174,105 @@ def test_connected_snapshot_watchdog_returns_typed_timeout_blocker(tmp_path: Pat
     assert payload["failure_reason"] == "connect_process_timeout"
     assert payload["snapshot_complete"] is False
     assert payload["schema"]["account_profile"] == "openctp-tts-7x24-simulation"
+
+
+def test_connected_snapshot_watchdog_uses_timed_queue_get_after_process_exit(
+    monkeypatch, tmp_path: Path
+) -> None:
+    class FakeQueue:
+        def get(self, *, timeout: float) -> dict:
+            assert timeout > 0
+            return {
+                "kind": "payload",
+                "payload": {
+                    "success": True,
+                    "status": "passed",
+                    "sentinel": "queue-get",
+                },
+            }
+
+    class FakeProcess:
+        exitcode = 0
+
+        def __init__(self, **kwargs) -> None:
+            self.kwargs = kwargs
+
+        def start(self) -> None:
+            return None
+
+        def join(self, timeout=None) -> None:
+            return None
+
+        def is_alive(self) -> bool:
+            return False
+
+    class FakeContext:
+        def Queue(self, maxsize: int) -> FakeQueue:
+            assert maxsize == 1
+            return FakeQueue()
+
+        def Process(self, *, target, args) -> FakeProcess:
+            return FakeProcess(target=target, args=args)
+
+    monkeypatch.setattr(snapshot_script.mp, "get_context", lambda method: FakeContext())
+
+    payload = build_connected_snapshot_with_watchdog(
+        config=_paper_config(),
+        config_path=tmp_path / "paper.json",
+        run_id="run-queue-get",
+        flow_path=tmp_path / "flow",
+        session_label="paper-queue-get",
+        timeout_seconds=20,
+        completion_grace_seconds=1,
+        observation_grace_seconds=1,
+        process_timeout_seconds=5,
+    )
+
+    assert payload["success"] is True
+    assert payload["sentinel"] == "queue-get"
+
+
+def test_connected_snapshot_no_payload_blocker_includes_process_exitcode(monkeypatch, tmp_path: Path) -> None:
+    class FakeQueue:
+        def get(self, *, timeout: float) -> dict:
+            raise snapshot_script.queue_mod.Empty
+
+    class FakeProcess:
+        exitcode = 17
+
+        def start(self) -> None:
+            return None
+
+        def join(self, timeout=None) -> None:
+            return None
+
+        def is_alive(self) -> bool:
+            return False
+
+    class FakeContext:
+        def Queue(self, maxsize: int) -> FakeQueue:
+            return FakeQueue()
+
+        def Process(self, *, target, args) -> FakeProcess:
+            return FakeProcess()
+
+    monkeypatch.setattr(snapshot_script.mp, "get_context", lambda method: FakeContext())
+
+    payload = build_connected_snapshot_with_watchdog(
+        config=_paper_config(),
+        config_path=tmp_path / "paper.json",
+        run_id="run-no-payload",
+        flow_path=tmp_path / "flow",
+        session_label="paper-no-payload",
+        timeout_seconds=20,
+        completion_grace_seconds=1,
+        observation_grace_seconds=1,
+        process_timeout_seconds=5,
+    )
+
+    assert payload["success"] is False
+    assert payload["failure_reason"] == "connect_process_no_payload"
+    assert payload["process_exitcode"] == 17
 
 
 def test_instrument_correctness_requires_provider_cache_fields() -> None:

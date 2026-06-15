@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import multiprocessing as mp
+import queue as queue_mod
 import sys
 import time
 from pathlib import Path
@@ -50,6 +51,10 @@ C1_DETAIL_FIELD_NAMES = (
     "delivery_year",
     "delivery_month",
 )
+
+
+def paper_readonly_snapshot_config_issues(config: CtpAdapterConfig) -> list[str]:
+    return paper_config_issues(config, allow_exposure_reduction_order_smoke=True)
 
 
 def _fingerprint(value: str | None) -> str:
@@ -277,7 +282,7 @@ def build_config_only_snapshot(
     flow_path: Path | None,
     session_label: str,
 ) -> dict[str, Any]:
-    issues = paper_config_issues(config)
+    issues = paper_readonly_snapshot_config_issues(config)
     payload: dict[str, Any] = {
         "baseline": BASELINE,
         "success": not issues,
@@ -453,6 +458,8 @@ def build_connected_snapshot(
                 "venue_symbol": position.venue_symbol,
                 "exchange_id": position.exchange_id,
                 "direction": position.direction,
+                "hedge_flag": position.hedge_flag,
+                "date_type": position.date_type,
                 "position_qty": position.position_qty,
                 "yd_position_qty": position.yd_position_qty,
                 "td_position_qty": position.td_position_qty,
@@ -524,6 +531,7 @@ def build_connect_process_blocker_snapshot(
     failure_reason: str,
     error_stage: str = "paper_connect",
     error_type: str | None = None,
+    process_exitcode: int | None = None,
 ) -> dict[str, Any]:
     payload = build_config_only_snapshot(
         config=config,
@@ -542,6 +550,7 @@ def build_connect_process_blocker_snapshot(
             "connect_requested": True,
             "snapshot_complete": False,
             "process_timeout_seconds": process_timeout_seconds,
+            "process_exitcode": process_exitcode,
             "error_stage": error_stage,
             "error_type": error_type,
             "issues": [failure_reason],
@@ -602,11 +611,11 @@ def build_connected_snapshot_with_watchdog(
     process_timeout_seconds: float,
 ) -> dict[str, Any]:
     ctx = mp.get_context("spawn")
-    queue = ctx.Queue(maxsize=1)
+    result_queue = ctx.Queue(maxsize=1)
     process = ctx.Process(
         target=_connected_snapshot_worker,
         args=(
-            queue,
+            result_queue,
             config,
             config_path,
             run_id,
@@ -630,10 +639,15 @@ def build_connected_snapshot_with_watchdog(
             session_label=session_label,
             process_timeout_seconds=process_timeout_seconds,
             failure_reason="connect_process_timeout",
+            process_exitcode=process.exitcode,
         )
 
-    if not queue.empty():
-        result = queue.get()
+    try:
+        result = result_queue.get(timeout=2.0)
+    except queue_mod.Empty:
+        result = None
+
+    if result is not None:
         if result.get("kind") == "payload":
             return result["payload"]
         return build_connect_process_blocker_snapshot(
@@ -645,6 +659,7 @@ def build_connected_snapshot_with_watchdog(
             process_timeout_seconds=process_timeout_seconds,
             failure_reason="connect_process_exception",
             error_type=result.get("error_type"),
+            process_exitcode=process.exitcode,
         )
 
     return build_connect_process_blocker_snapshot(
@@ -655,6 +670,7 @@ def build_connected_snapshot_with_watchdog(
         session_label=session_label,
         process_timeout_seconds=process_timeout_seconds,
         failure_reason="connect_process_no_payload",
+        process_exitcode=process.exitcode,
     )
 
 

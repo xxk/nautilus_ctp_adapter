@@ -1,0 +1,105 @@
+{
+  "schema": "p077_t6_fresh_preflight_callback_source_pending_no_send.v1",
+  "created_at": "2026-06-14T04:40:57.295Z",
+  "owner_repo": "D:/Nautilus/nautilus_ctp_adapter",
+  "selected_lane": "ctp_adapter_owner_side_fresh_preflight_no_send",
+  "route_id": "ctp-paper-19053",
+  "account_alias": "19053",
+  "instrument": "rb2610",
+  "no_send": true,
+  "order_actions": 0,
+  "formal_authority": {
+    "allow_authorize_retry": false,
+    "paper_send_attempted": false,
+    "native_send_attempted": false,
+    "submit_attempted": false,
+    "retry_authorized_by_this_artifact": false
+  },
+  "fresh_market": {
+    "artifact": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T043740Z/fresh_market.json",
+    "sha256": "5e55b495b0054d048bf38b9ab5f919cc9736b6e7f68bafb4a9d08c0f2dc8e6ac",
+    "status": "passed",
+    "freshness_basis": "received_at",
+    "first_tick_symbol": "rb2610",
+    "bid": 3162.0,
+    "ask": 3163.0,
+    "last": 3163.0,
+    "received_at_utc": "2026-06-14T04:38:27Z",
+    "warnings": [
+      "first_tick_exchange_timestamp_stale"
+    ]
+  },
+  "pre_snapshot": {
+    "artifact": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T043740Z/pre_snapshot.json",
+    "sha256": "82cf5135f3dd440618025585ced33f4e3438944e5aba3011ab081aac1507a9e7",
+    "status": "passed",
+    "run_id": "paper-readonly-1781412091304",
+    "action_mode": "paper_connect",
+    "position_count": 5,
+    "rb2610_long_qty": 5,
+    "rb2610_td_qty": 5,
+    "rb2610_yd_qty": 0,
+    "rb2610_exchange_id": "SHFE",
+    "rb2610_date_type": "1",
+    "rb2610_hedge_flag": "1",
+    "observed_order_event_count": 0,
+    "observed_trade_event_count": 0
+  },
+  "guarded_dry_run": {
+    "artifact": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T043740Z/dry_run_preflight.json",
+    "sha256": "baacbb84993231e35e3b9b55f81def19395e4eee1e070d6df2253a5d09b2b70f",
+    "status": "passed",
+    "action_mode": "dry_run",
+    "paper_send_armed": false,
+    "native_send_allowed": true,
+    "selected_bucket": "today",
+    "side": "SELL",
+    "position_effect": "CLOSETODAY",
+    "quantity": 1,
+    "limit_price": 3162.0,
+    "projected_net_position": 4,
+    "native_comb_offset": "3",
+    "lifecycle_disposition": "dry_run_preflight",
+    "callback_source_observability": {
+      "accepted": true,
+      "disposition": "callback_source_not_required_for_non_rejection",
+      "callback_sources": [],
+      "zero_fill_rejection": false,
+      "acceptance_implication": "diagnostic_only_not_fill_or_closeout_truth",
+      "fill_producing_acceptance_satisfied": false,
+      "requires_owner_resolution_before_retry": false,
+      "writes_truth": false
+    },
+    "native_offset_semantics": {
+      "position_effect": "CLOSETODAY",
+      "submit_native_comb_offset": "3",
+      "callback_offset_flags": [],
+      "callback_matches_submit_native_comb_offset": null,
+      "disposition": "insufficient_native_offset_observation",
+      "acceptance_implication": "diagnostic_only_not_fill_or_closeout_truth",
+      "fill_producing_acceptance_satisfied": false,
+      "requires_owner_resolution_before_retry": true,
+      "writes_truth": false
+    }
+  },
+  "typed_outcome": "blocked_formal_retry_authorization_missing_callback_source_lifecycle_pending_no_send",
+  "blocker": {
+    "blocker_type": "formal-acceptance-and-source-bearing-lifecycle",
+    "wait_only": false,
+    "retry_condition": "Formal safer-retry authorization plus fresh guarded lifecycle callback carrying callback_source, or source-bearing broker/exchange rejection rule."
+  },
+  "formal_acceptance": {
+    "paper_ready": false,
+    "live_ready": false,
+    "broker_tradable": false,
+    "t6_pass": false,
+    "fill_producing_acceptance_satisfied": false,
+    "runtime_truth_created": false,
+    "account_console_truth_created": false
+  },
+  "next_required_evidence": [
+    "formal safer-retry authorization before any future send",
+    "fresh guarded Paper lifecycle callback carrying callback_source if send is authorized",
+    "or source-bearing broker/exchange rejection rule tied to callback fields"
+  ]
+}

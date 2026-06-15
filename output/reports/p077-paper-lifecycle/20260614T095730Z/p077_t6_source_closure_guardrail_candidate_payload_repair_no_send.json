@@ -1,0 +1,67 @@
+{
+  "schema_version": "p077.t6.source_closure_guardrail_candidate_payload_repair.v1",
+  "artifact_id": "p077-t6-source-closure-guardrail-candidate-payload-repair-no-send-20260614T095730Z",
+  "created_at_utc": "2026-06-14T09:57:30Z",
+  "created_by": "Codex",
+  "owner_repo": "D:/Nautilus/nautilus_ctp_adapter",
+  "selected_lane": "P077-T6-REAL-PAPER-NODE-CAPABILITY-RUNWAY",
+  "change_ref": "D:/Nautilus/nautilus_strategies/docs/changes/20260614__paper__p077-safer-retry-lane/",
+  "proposal_ref": "D:/Nautilus/nautilus_strategies/docs/proposals/p077-p076-timed-paper-loop-workflow/",
+  "basis_artifact": {
+    "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T095000Z/p077_t6_source_candidate_insufficiency_evidence_repair_no_send.json",
+    "sha256": "eba3b0b7a43598acbe8ea5a016efa1d8d7c575881cf9c8f52bdbab5336d10e8c"
+  },
+  "owner_repair": {
+    "kind": "source_closure_authority_guardrail_payload_contract",
+    "description": "The source closure authority guardrail now carries missing source class, source closure requirement, external source candidate classes, and candidate insufficiency evidence when partial source context blocks retry authorization.",
+    "changed_files": [
+      {
+        "path": "scripts/ctp_guarded_paper_order_loop.py",
+        "sha256": "90e329ba50c5d75c0164b0acfb09d77595eb54b25b73969018de6f44f16d6932"
+      },
+      {
+        "path": "tests/test_guarded_paper_order_loop.py",
+        "sha256": "e126db6293219ab0631ae34f2e4bba2040d3b04ccbf734cfdc74d52bb5e28125"
+      }
+    ],
+    "contract_fields_added_to_guardrail": [
+      "missing_source_class",
+      "source_closure_requirement",
+      "external_source_candidate_classes_evaluated",
+      "external_source_candidate_evidence"
+    ]
+  },
+  "focused_gate": {
+    "command": "python -m pytest tests/test_guarded_paper_order_loop.py -q -p no:cacheprovider --basetemp output/pytest-tmp/p077-095730-source-closure-guardrail",
+    "result": "passed",
+    "summary": "53 passed in 1.09s"
+  },
+  "paper_order_action": {
+    "paper_account_authorization_prompt_present": true,
+    "paper_send_attempted": false,
+    "native_send_attempted": false,
+    "submit_attempted": false,
+    "cancel_attempted": false,
+    "retry_authorized_by_this_artifact": false,
+    "reason": "This owner slice is a no-send guardrail payload contract repair; it does not satisfy fresh same-slice authorization, lifecycle, post-snapshot, or reconcile requirements for a Paper send."
+  },
+  "truth_boundaries": {
+    "runtime_truth_created": false,
+    "ledger_truth_created": false,
+    "account_console_truth_created": false,
+    "fill_producing_acceptance_satisfied": false,
+    "paper_ready_claimed": false,
+    "live_ready_claimed": false,
+    "broker_tradable_claimed": false
+  },
+  "active_blocker": {
+    "blocker_type": "primary-broker-front-close-rejection-rule-source-or-stronger-adapter-native-semantic-repair-missing",
+    "still_blocking": true,
+    "next_required_evidence": [
+      "primary_or_official_broker_front_close_rejection_rule_source_that_explains_observed_response_offset",
+      "adapter_native_semantic_repair_beyond_local_diagnostics",
+      "new_formal_retry_authorization_before_any_future_send"
+    ],
+    "retry_condition": "Only a new owner artifact with fresh same-slice market/account/preflight evidence and formal bounded Paper authorization may attempt another guarded Paper send."
+  }
+}

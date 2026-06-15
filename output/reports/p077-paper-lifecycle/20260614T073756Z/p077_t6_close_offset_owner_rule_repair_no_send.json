@@ -1,0 +1,79 @@
+{
+  "schema": "p077.t6.close-offset-owner-rule-repair-no-send.v1",
+  "artifact_id": "p077_t6_close_offset_owner_rule_repair_no_send",
+  "created_at": "2026-06-14T07:37:56Z",
+  "owner_repo": "D:/Nautilus/nautilus_ctp_adapter",
+  "selected_lane": "ctp_owner_close_offset_semantics_repair",
+  "send_actions": {
+    "paper_send_attempted": false,
+    "native_send_attempted": false,
+    "submit_attempted": false,
+    "authorization_consumed": false,
+    "new_authorization_created": false
+  },
+  "source_blocker": {
+    "artifact": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T072956Z/p077_t6_e50_authorized_close_slice_insufficient_position_closeout.json",
+    "checksum": "sha256:1b51a3da95ba63884f99b705d55ae0fa44d3f00bbef54968396f97016c556737",
+    "blocker_type": "broker-or-adapter-close-position-semantics",
+    "observed_shape": {
+      "instrument": "rb2610",
+      "side": "SELL",
+      "quantity": 1,
+      "position_effect": "CLOSETODAY",
+      "submit_request_offset_flag": 3,
+      "callback_source": "OnRspOrderInsert",
+      "callback_offset_flag": 1,
+      "decoded_error_text": "持仓不足",
+      "fill_volume": 0
+    }
+  },
+  "owner_rule_repair": {
+    "changed_files": [
+      "D:/Nautilus/nautilus_ctp_adapter/scripts/ctp_guarded_paper_order_loop.py",
+      "D:/Nautilus/nautilus_ctp_adapter/tests/test_guarded_paper_order_loop.py"
+    ],
+    "new_payload_field": "close_offset_owner_rule_semantics",
+    "rule": "When submit-boundary provenance shows CLOSETODAY/native offset 3 and a source-bearing OnRspOrderInsert zero-fill insufficient-position rejection reports callback offset 1, the callback offset is diagnostic response evidence only. It must not rewrite submit-boundary provenance and must not silently downgrade a future CLOSETODAY request to generic CLOSE.",
+    "disposition_when_matched": "owner_rule_blocks_callback_offset_as_submit_truth",
+    "blocker_type_when_matched": "broker-or-adapter-close-position-semantics",
+    "auto_downgrade_to_generic_close_allowed": false,
+    "writes_fill_truth": false,
+    "writes_reconcile_truth": false,
+    "writes_runtime_truth": false,
+    "writes_account_console_truth": false
+  },
+  "verification": {
+    "focused_gate": {
+      "command": "$env:TMP=$repo/output/tmp/pytest-p077-073756; $env:TEMP=$repo/output/tmp/pytest-p077-073756; python -m pytest tests/test_guarded_paper_order_loop.py -q -p no:cacheprovider",
+      "result": "48 passed",
+      "initial_retry_note": "The first pytest invocation hit a Windows temp permission error on C:/Users/Administrator/AppData/Local/Temp/pytest-of-Administrator; the same focused gate passed after redirecting TMP/TEMP to a repo-local temp directory."
+    },
+    "owner_docs_gate": {
+      "command": "python scripts/check_change_docs.py --root .",
+      "result": "CHANGE_DOCS_CHECK_OK: changes=94"
+    },
+    "owner_harness_gate": {
+      "command": "python scripts/check_harness.py --root .",
+      "result": "HARNESS_CHECK_OK"
+    }
+  },
+  "retry_condition": {
+    "allow_retry_from_this_artifact": false,
+    "required_before_future_send": [
+      "broker_or_exchange_close_offset_rule_independent_of_rejected_callback_echo",
+      "new_formal_bounded_paper_authorization",
+      "fresh_same_slice_market_account_preflight_evidence"
+    ]
+  },
+  "truth_boundaries": {
+    "paper_ready": false,
+    "live_ready": false,
+    "production_ready": false,
+    "capital_allocated": false,
+    "broker_tradable": false,
+    "runtime_truth_created": false,
+    "account_console_runtime_truth": false,
+    "ui_truth_created": false,
+    "fill_producing_acceptance_satisfied": false
+  }
+}

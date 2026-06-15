@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Callable
 
 from .loader import add_windows_dll_directories, find_native_pack_dir, find_repo_owned_native_dll
+from .text import decode_ctp_text_ptr
 
 
 @dataclass(slots=True)
@@ -61,9 +62,7 @@ MdOnTickCallback = ctypes.CFUNCTYPE(None, ctypes.POINTER(_NativeTick))
 
 
 def _decode_ptr_text(ptr: int | None) -> str:
-    if not ptr:
-        return ""
-    return ctypes.string_at(ptr).decode("utf-8", errors="ignore")
+    return decode_ctp_text_ptr(ptr)
 
 
 class CtpMdApi:

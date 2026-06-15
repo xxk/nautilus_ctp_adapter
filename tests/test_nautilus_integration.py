@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import re
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -49,6 +51,7 @@ from nautilus_ctp_adapter.adapters.ctp.config import CtpAdapterConfig
 from nautilus_ctp_adapter.adapters.ctp.execution_client import CtpExecutionClient
 from nautilus_ctp_adapter.adapters.ctp.execution_client import CtpSubmitOrderIntent
 from nautilus_ctp_adapter.adapters.ctp.execution_client import CtpTdExecEventPayload
+from nautilus_ctp_adapter.adapters.ctp.execution_client import CtpTdSessionIdentity
 from nautilus_ctp_adapter.native import NativeExecView
 from nautilus_ctp_adapter.runtime.query import CtpAccountRecord
 from nautilus_ctp_adapter.runtime.query import CtpPositionRecord
@@ -1103,6 +1106,68 @@ class TestCtpClosePositionSemantics:
         with pytest.raises(ValueError, match="Unsupported position_effect"):
             client._native_comb_offset_value("FORCE_CLOSE")
 
+    def test_native_offset_mapping_matches_vendor_ctp_constants(self) -> None:
+        client = CtpExecutionClient()
+        header = (
+            Path(__file__).resolve().parents[1]
+            / "vendor"
+            / "ctp"
+            / "sdk"
+            / "ThostFtdcUserApiDataType.h"
+        )
+        text = header.read_bytes().decode("ascii", errors="ignore")
+
+        constants = dict(
+            re.findall(r"#define\s+(THOST_FTDC_OF_\w+)\s+'([^']+)'", text)
+        )
+
+        assert constants["THOST_FTDC_OF_Open"] == "0"
+        assert constants["THOST_FTDC_OF_Close"] == "1"
+        assert constants["THOST_FTDC_OF_CloseToday"] == "3"
+        assert constants["THOST_FTDC_OF_CloseYesterday"] == "4"
+        assert client._native_comb_offset_value("OPEN") == constants["THOST_FTDC_OF_Open"]
+        assert client._native_comb_offset_value("CLOSE") == constants["THOST_FTDC_OF_Close"]
+        assert client._native_comb_offset_value("CLOSETODAY") == constants["THOST_FTDC_OF_CloseToday"]
+        assert client._native_comb_offset_value("CLOSEYESTERDAY") == constants["THOST_FTDC_OF_CloseYesterday"]
+
+    def test_submit_payload_carries_native_offset_request_field_provenance(self) -> None:
+        client = CtpExecutionClient()
+        client._td_session_identity = CtpTdSessionIdentity(
+            front_id=1,
+            session_id=2,
+            max_order_ref=100,
+        )
+        intent = CtpSubmitOrderIntent(
+            instrument_id="rb2610",
+            side="SELL",
+            quantity=1,
+            limit_price=3162.0,
+            position_effect="CLOSETODAY",
+            client_order_id="request-offset-trace",
+        )
+
+        mapped = client.map_submit_order(intent)
+
+        assert mapped.command is not None
+        payload = mapped.command.payload
+        assert payload["position_effect"] == "CLOSETODAY"
+        assert payload["native_comb_offset"] == "3"
+        assert (
+            payload["native_comb_offset_source_field"]
+            == "CtpExecutionClient._native_comb_offset_value(position_effect)"
+            " -> TdOrderSend.comb_offset"
+            " -> CThostFtdcInputOrderField.CombOffsetFlag[0]"
+        )
+        assert payload["native_comb_offset_expected_from_position_effect"] == "3"
+        assert mapped.command.request_id == "submit-1"
+        assert payload["submit_request_id"] == "1"
+        assert (
+            payload["submit_request_id_source_field"]
+            == "CtpRuntimeCommand.request_id"
+            " -> TdOrderSend.request_id"
+            " -> CTP ReqOrderInsert nRequestID"
+        )
+
     def test_exec_callback_payload_preserves_native_error_msg_for_reject_classification(self) -> None:
         client = CtpExecutionClient()
         exec_view = NativeExecView(
@@ -1124,6 +1189,7 @@ class TestCtpClosePositionSemantics:
             trade_volume=0,
             error_msg="price rejected",
             leaves_qty=1,
+            callback_source="OnRspOrderInsert",
         )
 
         client._on_td_exec_callback(exec_view, client_order_id="client-reject")
@@ -1131,6 +1197,177 @@ class TestCtpClosePositionSemantics:
 
         assert events[-1].message == "price rejected"
         assert events[-1].payload["error_msg"] == "price rejected"
+        assert events[-1].payload["callback_source"] == "OnRspOrderInsert"
+
+    def test_exec_callback_preserves_native_submit_offset_boundary(self) -> None:
+        client = CtpExecutionClient()
+        exec_view = NativeExecView(
+            order_id="2",
+            symbol="rb2610",
+            price=3162.0,
+            qty=1,
+            side=1,
+            status=53,
+            ts_epoch_us=123,
+            order_ref="2",
+            front_id=1,
+            session_id=-1,
+            direction=1,
+            offset_flag=1,
+            hedge_flag=1,
+            is_trade=False,
+            trade_price=0.0,
+            trade_volume=0,
+            error_msg="持仓不足",
+            leaves_qty=1,
+            callback_source="OnRspOrderInsert",
+            submit_request_offset_flag=3,
+            submit_request_offset_source=(
+                "repo_ctp_td_order_send.CThostFtdcInputOrderField.CombOffsetFlag[0]"
+            ),
+            response_request_id=42,
+            response_is_last=True,
+            response_error_id=31,
+        )
+
+        client._on_td_exec_callback(exec_view, client_order_id="client-close-today")
+        events = client.runtime_bridge.drain_events()
+
+        assert events[-1].payload["offset_flag"] == "1"
+        assert events[-1].payload["submit_request_offset_flag"] == "3"
+        assert (
+            events[-1].payload["submit_request_offset_source"]
+            == "repo_ctp_td_order_send.CThostFtdcInputOrderField.CombOffsetFlag[0]"
+        )
+        assert events[-1].payload["response_request_id"] == "42"
+        assert events[-1].payload["response_is_last"] == "1"
+        assert events[-1].payload["response_error_id"] == "31"
+
+    def test_exec_callback_projection_must_succeed_before_match_is_counted(self, monkeypatch) -> None:
+        client = CtpExecutionClient()
+        exec_view = NativeExecView(
+            order_id="2",
+            symbol="rb2610",
+            price=3172.0,
+            qty=1,
+            side=1,
+            status=53,
+            ts_epoch_us=123,
+            order_ref="2",
+            front_id=1,
+            session_id=1334838132,
+            direction=1,
+            offset_flag=1,
+            hedge_flag=1,
+            is_trade=False,
+            trade_price=0.0,
+            trade_volume=0,
+            error_msg="",
+            leaves_qty=1,
+            callback_source="OnRtnOrder",
+            submit_request_offset_flag=3,
+            submit_request_offset_source=(
+                "repo_ctp_td_order_send.CThostFtdcInputOrderField.CombOffsetFlag[0]"
+            ),
+            response_request_id=42,
+            response_is_last=True,
+            response_error_id=31,
+        )
+        state = {
+            "login": None,
+            "disconnects": [],
+            "exec_views": [],
+            "matched_exec_views": [],
+            "matched_exec_events": [],
+            "pre_send_exec_view_count": 0,
+            "expected_client_order_id": "p077-t6-rb2610-fresh-close1-064825",
+            "expected_order_ref": "2",
+            "expected_instrument_id": "rb2610",
+            "expected_quantity": 1,
+            "expected_submit_request_id": "42",
+            "expected_submit_request_id_source": (
+                "CtpRuntimeCommand.request_id"
+                " -> TdOrderSend.request_id"
+                " -> CTP ReqOrderInsert nRequestID"
+            ),
+        }
+
+        def fail_projection(*_args, **_kwargs):
+            raise AttributeError("projection failed")
+
+        monkeypatch.setattr(client, "_on_td_exec_callback", fail_projection)
+
+        with pytest.raises(AttributeError, match="projection failed"):
+            client._on_td_exec_callback_with_state(exec_view, state)
+
+        assert state["exec_views"] == [exec_view]
+        assert state["matched_exec_views"] == []
+        assert state["matched_exec_events"] == []
+
+    def test_exec_callback_match_summary_preserves_callback_and_offset_provenance(self) -> None:
+        client = CtpExecutionClient()
+        exec_view = NativeExecView(
+            order_id="2",
+            symbol="rb2610",
+            price=3172.0,
+            qty=1,
+            side=1,
+            status=53,
+            ts_epoch_us=123,
+            order_ref="2",
+            front_id=1,
+            session_id=1334838132,
+            direction=1,
+            offset_flag=1,
+            hedge_flag=1,
+            is_trade=False,
+            trade_price=0.0,
+            trade_volume=0,
+            error_msg="",
+            leaves_qty=1,
+            callback_source="OnRtnOrder",
+            submit_request_offset_flag=3,
+            submit_request_offset_source=(
+                "repo_ctp_td_order_send.CThostFtdcInputOrderField.CombOffsetFlag[0]"
+            ),
+            response_request_id=42,
+            response_is_last=True,
+            response_error_id=31,
+        )
+        state = {
+            "login": None,
+            "disconnects": [],
+            "exec_views": [],
+            "matched_exec_views": [],
+            "matched_exec_events": [],
+            "pre_send_exec_view_count": 0,
+            "expected_client_order_id": "p077-t6-rb2610-fresh-close1-064825",
+            "expected_order_ref": "2",
+            "expected_instrument_id": "rb2610",
+            "expected_quantity": 1,
+        }
+
+        client._on_td_exec_callback_with_state(exec_view, state)
+
+        matched_event = state["matched_exec_events"][0]
+        assert matched_event.python_client_order_id == "p077-t6-rb2610-fresh-close1-064825"
+        assert matched_event.callback_source == "OnRtnOrder"
+        assert matched_event.offset_flag == 1
+        assert matched_event.submit_request_offset_flag == 3
+        assert (
+            matched_event.submit_request_offset_source
+            == "repo_ctp_td_order_send.CThostFtdcInputOrderField.CombOffsetFlag[0]"
+        )
+        assert matched_event.submit_request_id == 42
+        assert (
+            matched_event.submit_request_id_source
+            == "CtpRuntimeCommand.request_id"
+            " -> TdOrderSend.request_id"
+            " -> CTP ReqOrderInsert nRequestID"
+        )
+        assert matched_event.response_request_id == 42
+        assert matched_event.response_is_last is True
+        assert matched_event.response_error_id == 31
 
 
 class TestCtpOrderTypeAndPriceBoundary:

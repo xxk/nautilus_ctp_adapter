@@ -1,0 +1,244 @@
+{
+  "baseline": "ctp-paper-readonly-snapshot-v1",
+  "success": true,
+  "status": "passed",
+  "failure_reason": null,
+  "blocker_type": null,
+  "action_mode": "paper_connect",
+  "connect_requested": true,
+  "schema": {
+    "run_id": "paper-readonly-1781396599704",
+    "flow_path": null,
+    "session_label": "p077-t6-armed-pre-retry-20260614T082239",
+    "account_profile": "openctp-tts-7x24-simulation",
+    "evidence_class": "openctp-tts-7x24-simulation",
+    "reconciliation_role": "pre_or_post_order_snapshot",
+    "schema_version": "ctp-paper-readonly-snapshot-v1"
+  },
+  "config_path": "D:\\Nautilus\\nautilus_ctp_adapter\\cfgs\\local\\ctp.openctp.tts.7x24.local.json",
+  "issues": [],
+  "account": {
+    "identity": {
+      "account_id_present": true,
+      "account_id_fingerprint": "eabddb2a8122"
+    },
+    "disposition": {
+      "status": "passed",
+      "disposition": "account_present",
+      "failure_reason": null
+    },
+    "request_id": "query-account-4",
+    "query_code": 0,
+    "completed": true,
+    "timed_out": false,
+    "balance_present": true,
+    "available_present": true,
+    "margin_present": true
+  },
+  "positions": {
+    "disposition": {
+      "status": "passed",
+      "disposition": "positions_present",
+      "failure_reason": null
+    },
+    "request_id": "query-positions-2",
+    "query_code": 0,
+    "completed": true,
+    "timed_out": false,
+    "no_positions": false,
+    "position_count": 5,
+    "contract_issues": [],
+    "records": [
+      {
+        "venue_symbol": "c2609",
+        "exchange_id": null,
+        "direction": "LONG",
+        "position_qty": 1,
+        "yd_position_qty": 1,
+        "td_position_qty": 0,
+        "position_cost": 23400.0
+      },
+      {
+        "venue_symbol": "c2609",
+        "exchange_id": null,
+        "direction": "SHORT",
+        "position_qty": 3,
+        "yd_position_qty": 3,
+        "td_position_qty": 0,
+        "position_cost": 70200.0
+      },
+      {
+        "venue_symbol": "rb2609",
+        "exchange_id": null,
+        "direction": "LONG",
+        "position_qty": 5,
+        "yd_position_qty": 5,
+        "td_position_qty": 0,
+        "position_cost": 157150.0
+      },
+      {
+        "venue_symbol": "rb2610",
+        "exchange_id": null,
+        "direction": "LONG",
+        "position_qty": 5,
+        "yd_position_qty": 0,
+        "td_position_qty": 5,
+        "position_cost": 157840.0
+      },
+      {
+        "venue_symbol": "zn2610",
+        "exchange_id": null,
+        "direction": "LONG",
+        "position_qty": 2,
+        "yd_position_qty": 2,
+        "td_position_qty": 0,
+        "position_cost": 243850.0
+      }
+    ]
+  },
+  "instruments": {
+    "requested_symbols": [
+      "rb2610"
+    ],
+    "loaded": true,
+    "instrument_count": 1,
+    "records": [
+      {
+        "venue_symbol": "rb2610",
+        "display_symbol": "rb2610.SHFE",
+        "exchange_id": "SHFE",
+        "product_kind": "futures",
+        "price_tick": 1.0,
+        "volume_multiple": 10,
+        "detail_fields": {
+          "instrument_name": "rb2610",
+          "open_date": "20251016",
+          "expire_date": "20261015",
+          "start_deliv_date": null,
+          "end_deliv_date": null,
+          "is_trading": null,
+          "long_margin_ratio": null,
+          "short_margin_ratio": null,
+          "max_market_order_volume": null,
+          "min_market_order_volume": null,
+          "max_limit_order_volume": null,
+          "min_limit_order_volume": null,
+          "product_id": "rb",
+          "underlying_instr_id": "rb",
+          "delivery_year": 2026,
+          "delivery_month": 10
+        },
+        "raw_detail": {
+          "instrument_name": "rb2610",
+          "open_date": "20251016",
+          "expire_date": "20261015",
+          "start_deliv_date": null,
+          "end_deliv_date": null,
+          "is_trading": null,
+          "long_margin_ratio": null,
+          "short_margin_ratio": null,
+          "max_market_order_volume": null,
+          "min_market_order_volume": null,
+          "max_limit_order_volume": null,
+          "min_limit_order_volume": null,
+          "product_id": "rb",
+          "underlying_instr_id": "rb",
+          "delivery_year": 2026,
+          "delivery_month": 10
+        },
+        "missing_fields": [
+          "start_deliv_date",
+          "end_deliv_date",
+          "is_trading",
+          "long_margin_ratio",
+          "short_margin_ratio",
+          "max_market_order_volume",
+          "min_market_order_volume",
+          "max_limit_order_volume",
+          "min_limit_order_volume"
+        ],
+        "contract_issues": [],
+        "correctness_status": "passed",
+        "completeness_status": "partial"
+      }
+    ],
+    "contract_issues": [],
+    "detail_fields": [
+      "instrument_name",
+      "open_date",
+      "expire_date",
+      "start_deliv_date",
+      "end_deliv_date",
+      "is_trading",
+      "long_margin_ratio",
+      "short_margin_ratio",
+      "max_market_order_volume",
+      "min_market_order_volume",
+      "max_limit_order_volume",
+      "min_limit_order_volume",
+      "product_id",
+      "underlying_instr_id",
+      "delivery_year",
+      "delivery_month"
+    ],
+    "correctness_summary": {
+      "total": 1,
+      "passed": 0,
+      "failed": 0,
+      "partial": 1,
+      "out_of_scope_current": 9
+    }
+  },
+  "order_trade": {
+    "disposition": "evidence_only",
+    "observed_order_event_count": 0,
+    "observed_trade_event_count": 0,
+    "no_order_events": true,
+    "no_trade_events": true,
+    "historical_order_count": 0,
+    "historical_trade_count": 0,
+    "current_session_order_count": 0,
+    "current_session_trade_count": 0,
+    "manual_review_codes": [],
+    "boundary_codes": [],
+    "evidence_only_codes": [
+      "no_order_events_observed",
+      "no_trade_events_observed"
+    ]
+  },
+  "bridge_command_kinds": [
+    "connect",
+    "query_positions",
+    "connect",
+    "query_account",
+    "query_instruments",
+    "connect"
+  ],
+  "bridge_event_kinds": [
+    "login_succeeded",
+    "settlement_confirmed",
+    "login_succeeded",
+    "position",
+    "position",
+    "position",
+    "position",
+    "position",
+    "position",
+    "login_succeeded",
+    "settlement_confirmed",
+    "login_succeeded",
+    "account",
+    "instrument",
+    "instrument_end",
+    "login_succeeded",
+    "settlement_confirmed"
+  ],
+  "flow_mode": "default_shared_flow",
+  "export": {
+    "path": "output\\reports\\p077-paper-lifecycle\\20260614T082239\\fresh_pre_snapshot_retry.json",
+    "written": true,
+    "session_label": "p077-t6-armed-pre-retry-20260614T082239",
+    "evidence_root": null,
+    "explicit_path": true
+  }
+}

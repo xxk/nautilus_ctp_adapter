@@ -1,0 +1,104 @@
+{
+  "artifact_id": "p077_t6_close_rejection_semantics_narrowed_no_send",
+  "generated_at_utc": "2026-06-14T04:09:10Z",
+  "lane": "P077 timed paper loop T6",
+  "owner_repo": "D:/Nautilus/nautilus_ctp_adapter",
+  "owner_lane": "broker-or-adapter-close-position-semantics",
+  "mode": "owner_side_semantic_diagnosis_no_send",
+  "paper_send_armed": false,
+  "native_order_send_attempted": false,
+  "global_analysis": {
+    "p078_adr0044_a0_a3_foundation": "closed_verified_not_reopened",
+    "p077_timed_paper_loop": "T6_active_blocked_on_broker_or_adapter_close_position_semantics",
+    "adr0045_account_console": "deferred_until_ledger_read_model_fixtures_exist_no_ui_runtime_truth_claimed",
+    "sibling_handoff_ready": "nautilus_ctp_adapter_owner_side_repair_continues",
+    "dirty_worktrees": "pre_existing_dirty_worktrees_observed_do_not_revert_unrelated_changes"
+  },
+  "source_evidence": {
+    "authorized_retry_closeout": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T030139Z/p077_t6_authorized_retry_cancelled_insufficient_position_closeout.json",
+      "checksum": "sha256:8b4c38f4fc95f43ba9ee944766cee806c1cb9c4c2178b933debbb0296e834500",
+      "request": {
+        "instrument": "rb2610",
+        "side": "SELL",
+        "quantity": 1,
+        "position_effect": "CLOSETODAY",
+        "limit_price": 3162.0
+      },
+      "observed_lifecycle": {
+        "disposition": "cancelled",
+        "status": "53",
+        "status_meaning": "ascii_code_53_for_ctp_order_status_char_5_cancelled",
+        "fill_volume": 0,
+        "decoded_error_text": "持仓不足",
+        "callback_offset_flag": "1",
+        "callback_hedge_flag": "1"
+      }
+    },
+    "fresh_position_exchange_snapshot": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T040410Z/p077_t6_native_position_exchange_fresh_readonly_no_send.json",
+      "checksum": "sha256:affe9459753e9a9332ccce479b0b60222a78cc401b5d2cd865c1e5a7f2a86e67",
+      "source_snapshot": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T040410Z/native_position_exchange_fresh_snapshot.json",
+      "source_snapshot_checksum": "sha256:7849469c2d9abf350ed8dec3b17fd818b811eaa4025d8000c41bb93e32df92d2",
+      "rb2610_position": {
+        "exchange_id": "SHFE",
+        "direction": "LONG",
+        "position_qty": 5,
+        "td_position_qty": 5,
+        "yd_position_qty": 0,
+        "hedge_flag": "1",
+        "date_type": "1"
+      }
+    },
+    "native_source_trace": {
+      "submit_comb_offset_source": "CThostFtdcInputOrderField.CombOffsetFlag[0]",
+      "order_callback_offset_source": "CThostFtdcOrderField.CombOffsetFlag[0]",
+      "trade_callback_offset_source": "CThostFtdcTradeField.OffsetFlag",
+      "submit_mapping": {
+        "CLOSETODAY": "3",
+        "CLOSE": "1",
+        "CLOSEYESTERDAY": "4"
+      }
+    }
+  },
+  "diagnostic_semantics": {
+    "disposition": "sufficient_position_detail_but_callback_offset_mismatch_and_broker_rejected_close",
+    "blocker_type": "broker-or-adapter-close-position-semantics",
+    "position_detail_sufficient": true,
+    "decoded_insufficient_position_close_rejection": true,
+    "close_today_intent": true,
+    "native_offset_disposition": "callback_offset_differs_from_submit_native_comb_offset",
+    "diagnostic_conclusion": "position_detail_gap_ruled_out_close_semantics_still_unresolved",
+    "ruled_out_gaps": [
+      "position_exchange_id_missing",
+      "raw_position_date_type_missing",
+      "raw_position_hedge_flag_missing",
+      "td_bucket_missing"
+    ],
+    "next_required_evidence": [
+      "native_callback_source_or_order_insert_rejection_source",
+      "broker_or_exchange_close_offset_rule_tied_to_callback_fields",
+      "new_formal_retry_authorization_before_any_future_send"
+    ],
+    "acceptance_implication": "typed_blocker_only_not_fill_or_closeout_truth",
+    "fill_producing_acceptance_satisfied": false,
+    "requires_owner_resolution_before_retry": true,
+    "writes_truth": false
+  },
+  "verification": {
+    "focused_gate": {
+      "command": "New-Item -ItemType Directory -Force -Path output/pytest-tmp | Out-Null; python -m pytest tests/test_guarded_paper_order_loop.py -q -p no:cacheprovider --basetemp output/pytest-tmp/p077-040910",
+      "result": "41 passed"
+    }
+  },
+  "blocker_after_diagnosis": {
+    "type": "broker-or-adapter-close-position-semantics",
+    "status": "active",
+    "reason": "Position detail gap is now ruled out for rb2610, but the prior close rejection still has decoded broker text 持仓不足 and callback offset 1 while the guarded close-today submit mapping is 3. This remains a broker/adapter close semantics blocker and does not authorize retry.",
+    "retry_conditions": [
+      "Add native callback source/provenance or OnRspOrderInsert/OnErrRtnOrderInsert source classification so rejected callbacks can be separated from broker order returns.",
+      "Or add an owner-maintained broker/exchange close offset semantic rule tied to decoded callback fields.",
+      "Any future Paper send requires a new formal acceptance/authorization artifact with fresh market and snapshot evidence."
+    ]
+  }
+}

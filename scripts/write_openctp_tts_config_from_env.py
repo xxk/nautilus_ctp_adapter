@@ -97,7 +97,9 @@ def build_openctp_payload(template_path: Path, values: dict[str, str]) -> dict[s
 
     payload["UserID"] = user_id
     payload["Password"] = password
-    payload.setdefault("ExecutionGuardrails", {})["AllowLiveOrderSmoke"] = False
+    guardrails = payload.setdefault("ExecutionGuardrails", {})
+    guardrails["AllowLiveOrderSmoke"] = False
+    guardrails["AllowExposureReductionOrderSmoke"] = False
     return payload
 
 
@@ -143,6 +145,9 @@ def main() -> int:
                 "td_front": config.td_front,
                 "instruments": config.instruments,
                 "allow_live_order_smoke": config.execution_guardrails.allow_live_order_smoke,
+                "allow_exposure_reduction_order_smoke": (
+                    config.execution_guardrails.allow_exposure_reduction_order_smoke
+                ),
                 "validate": config.validate(),
             },
             ensure_ascii=False,
