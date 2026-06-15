@@ -16,8 +16,9 @@ Read these in order:
 7. [../global_docs/harness/任务分层与命名统一口径_Cross-Repo Work Item Layering And Naming.md](/D:/Nautilus/global_docs/harness/%E4%BB%BB%E5%8A%A1%E5%88%86%E5%B1%82%E4%B8%8E%E5%91%BD%E5%90%8D%E7%BB%9F%E4%B8%80%E5%8F%A3%E5%BE%84_Cross-Repo%20Work%20Item%20Layering%20And%20Naming.md)
 8. [../global_docs/adr/0003-owner-side-blocker-repair-loop.md](/D:/Nautilus/global_docs/adr/0003-owner-side-blocker-repair-loop.md)
 9. [../global_docs/harness/Owner-Side Blocker Repair Loop Contract.md](/D:/Nautilus/global_docs/harness/Owner-Side%20Blocker%20Repair%20Loop%20Contract.md)
-10. [docs/architecture/runtime-performance-guidelines.md](/D:/Nautilus/nautilus_ctp_adapter/docs/architecture/runtime-performance-guidelines.md)
-11. The current change bundle under `docs/changes/<change-id>/` when the frontier reports one
+10. [../global_docs/adr/0006-project-scoped-codex-worktree-layout.md](/D:/Nautilus/global_docs/adr/0006-project-scoped-codex-worktree-layout.md)
+11. [docs/architecture/runtime-performance-guidelines.md](/D:/Nautilus/nautilus_ctp_adapter/docs/architecture/runtime-performance-guidelines.md)
+12. The current change bundle under `docs/changes/<change-id>/` when the frontier reports one
 
 ## Autonomous Execution Policy
 
@@ -49,6 +50,29 @@ When an upstream proposal / change / tracer typed blocker names `nautilus_ctp_ad
 The following remain typed blockers or must be split to the external owner; they must not be faked here: missing broker/CTP credentials, auth code, account permission, external endpoint outage, market window unavailability, remote machine permission, Live/Paper admission, capital/PM approval, unsafe order emission, or defects owned by strategies runtime, factor truth, contract metadata/catalog, or verifier owners.
 
 This rule establishes the cross-repo repair loop only. It does not move `nautilus_ctp_adapter` execution truth into central docs, and it must not create a second runtime, gateway, market data route, schema family, validator, artifact root, or CTP evidence truth.
+
+## Codex Project Worktree Layout
+
+This repository participates in `D:/Nautilus/global_docs/adr/0006-project-scoped-codex-worktree-layout.md`.
+
+Codex development branches should be opened from `D:/Nautilus/_worktrees/<project-topic>/nautilus_ctp_adapter/`. The primary repo at `D:/Nautilus/nautilus_ctp_adapter` is reserved for `main` / `master` sync, merges, worktree creation and recovery.
+
+When a project also changes sibling owners, each sibling repo must have its own worktree under the same project topic:
+
+```text
+D:/Nautilus/_worktrees/<project-topic>/
+  nautilus_strategies/
+  nautilus_account_console/
+  nautilus_ctp_adapter/
+```
+
+The `_worktrees` layout is operational only. It must not become CTP runtime truth, market data truth, broker/account truth, proposal acceptance, or evidence truth. This repository still owns CTP adapter code, config, diagnostics, and owner-local gates.
+
+Current repo/worktree gate:
+
+```powershell
+python D:/Nautilus/global_docs/scripts/check_codex_worktree_layout.py --repo .
+```
 
 ## Current Frontier Shortcut
 
@@ -160,6 +184,9 @@ python scripts/check_proposal_docs.py --root .
 
 # ADR0003 owner-side blocker repair loop and commit hook drift gate
 python D:/Nautilus/global_docs/scripts/check_owner_side_blocker_repair_adoption.py --check-hooks
+
+# ADR0006 Codex project worktree layout gate
+python D:/Nautilus/global_docs/scripts/check_codex_worktree_layout.py --repo .
 
 # Frontier status
 python scripts/show_current_frontier.py --root .
