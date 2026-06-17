@@ -1,0 +1,79 @@
+{
+  "schema": "p077_t6_native_submit_boundary_contract_no_send.v1",
+  "created_at": "2026-06-16T14:16:23.947Z",
+  "owner_repo": "D:/Nautilus/_worktrees/r1-heartbeat-driver-contract/nautilus_ctp_adapter",
+  "selected_lane": "ctp_adapter_owner_side_native_submit_boundary_contract",
+  "no_send": true,
+  "paper_send_attempted": false,
+  "native_send_attempted": false,
+  "submit_attempted": false,
+  "order_actions": 0,
+  "operator_authorization_context": {
+    "real_market_data_authorized": true,
+    "sandbox_paper_trade_authorized": true,
+    "live_prod_capital_authorized": false,
+    "current_lane_requires_trade": false,
+    "authorization_implication": "Authorization is recorded as operational context only; this selected successor lane first requires no-send submit-boundary or broker/front semantics evidence."
+  },
+  "source_evidence": {
+    "previous_submit_request_trace_artifact": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T061124Z/p077_t6_submit_request_offset_trace_no_send.json",
+    "previous_submit_request_trace_sha256": "eb8d1a641b297ee91e1356459f759f3f2de1293fc809ddb0e9bf13fed89bda89",
+    "previous_submit_payload_offset_provenance_artifact": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T061755Z/p077_t6_submit_payload_offset_provenance_no_send.json",
+    "previous_submit_payload_offset_provenance_sha256": "26f752f63edf647008932fefbb4200d5ffe39ff48a41ccc8406d879abcb83737",
+    "order_insert_offset_source_rule_artifact": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T054119Z/p077_t6_order_insert_offset_source_rule_no_send.json",
+    "order_insert_offset_source_rule_sha256": "def4fce858fbe2a88025716ccd46fb6cf7381331a125177d5da7bc4de9ea7a6c",
+    "authorized_closeout_artifact": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T045227Z/p077_t6_authorized_callback_source_insufficient_position_closeout.json",
+    "authorized_closeout_sha256": "9523c4083141ea57bacfa5b2e659fe6b8f0b9130f4ea381350b6bed3e033397b"
+  },
+  "native_submit_boundary_contract": {
+    "source_file": "rust/ctp_runtime_core/native/ctp_vendor_bridge.cpp",
+    "source_file_sha256": "e93b5deb3763d9c891b3ee75a4b602fe53fd31bd8c318d55a6d30dbcd83097e4",
+    "function": "repo_ctp_td_order_send",
+    "request_field": "CThostFtdcInputOrderField.CombOffsetFlag[0]",
+    "field_assignment": "order.CombOffsetFlag[0] = offset_text.empty() ? THOST_FTDC_OF_Open : offset_text[0]",
+    "boundary_record": "remember_td_submit_offset_locked(*session, order_ref_text, normalize_enum_value(order.CombOffsetFlag[0]))",
+    "native_submit_call": "api->ReqOrderInsert(&order, request_id)",
+    "ordering_contract": "field_assignment_before_boundary_record_before_req_order_insert",
+    "submit_boundary_source": "repo_ctp_td_order_send.CThostFtdcInputOrderField.CombOffsetFlag[0]",
+    "diagnostic_conclusion": "The C++ submit boundary records the exact CThostFtdcInputOrderField.CombOffsetFlag[0] value before ReqOrderInsert is called. Existing callback evidence still shows OnRspOrderInsert response offset 1, so the remaining edge is broker/front response semantics or a stronger external rule, not another P077 docs inference."
+  },
+  "response_projection_contract": {
+    "callback": "OnRspOrderInsert",
+    "response_offset_field": "CThostFtdcInputOrderField.CombOffsetFlag[0]",
+    "submit_boundary_lookup": "resolve_td_submit_offset_locked(*session_ptr, normalized_text(input_order->OrderRef))",
+    "projection_rule": "NativeExec carries response offset and submit-boundary offset separately; response offset must not rewrite submit-boundary provenance."
+  },
+  "focused_gates": [
+    {
+      "command": "python -m pytest tests/test_p077_native_submit_boundary_contract.py -q -p no:cacheprovider --basetemp output/pytest-tmp/p077-native-submit-boundary-20260616",
+      "result": "2 passed"
+    },
+    {
+      "command": "python -m pytest tests/test_guarded_paper_order_loop.py::test_native_offset_semantics_scopes_order_insert_response_offset_mismatch -q -p no:cacheprovider --basetemp output/pytest-tmp/p077-native-offset-semantics-20260616",
+      "result": "1 passed"
+    }
+  ],
+  "changed_files": [
+    {
+      "path": "tests/test_p077_native_submit_boundary_contract.py",
+      "sha256": "6f5298c2eb46d088a7fee0de239f136c3ed1e8186edcaf4ef02ac5da1800c3be",
+      "purpose": "focused regression that locks native submit boundary offset recording before ReqOrderInsert and separate OnRspOrderInsert response projection"
+    }
+  ],
+  "typed_outcome": "passed_no_send_native_submit_boundary_contract_still_blocked_on_broker_front_response_semantics",
+  "blocker": {
+    "blocker_type": "broker-front-order-insert-response-semantics",
+    "wait_only": false,
+    "retry_condition": "Provide an owner-accepted broker/front semantics rule explaining why source-bearing OnRspOrderInsert returned InputOrder.CombOffsetFlag[0]=1 after native submit boundary recorded CombOffsetFlag[0]=3, or obtain a new formal bounded Paper authorization after this no-send evidence is accepted."
+  },
+  "formal_acceptance": {
+    "allow_authorize_retry": false,
+    "paper_ready": false,
+    "live_ready": false,
+    "broker_tradable": false,
+    "t6_pass": false,
+    "fill_producing_acceptance_satisfied": false,
+    "runtime_truth_created": false,
+    "account_console_truth_created": false
+  }
+}

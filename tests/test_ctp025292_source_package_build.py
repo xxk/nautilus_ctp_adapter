@@ -64,12 +64,16 @@ def _write_runtime_pack(runtime_bin: Path) -> None:
 
 def test_missing_runtime_pack_blocks_source_package_write(tmp_path: Path) -> None:
     output_path = tmp_path / "source-package.json"
+    config_path = tmp_path / "cfgs" / "local" / "ctp.live.025292.local.json"
+    _write_config(config_path)
 
     payload = build_source_package_summary(
         runtime_bin=tmp_path / "missing-runtime-pack",
+        config_path=config_path,
         output_path=output_path,
         write=True,
         observed_at="2026-06-16T00:00:00Z",
+        trusted_config_roots=[tmp_path],
     )
 
     assert payload["success"] is False
@@ -89,15 +93,25 @@ def test_runtime_pack_builds_source_package_that_passes_lineage_gate(tmp_path: P
 
     payload = build_source_package_summary(
         runtime_bin=runtime_bin,
+        config_path=config_path,
         output_path=output_path,
         write=True,
         observed_at="2026-06-16T00:00:00Z",
+        trusted_config_roots=[tmp_path],
     )
 
     assert payload["success"] is True
     assert output_path.exists()
     package = json.loads(output_path.read_text(encoding="utf-8"))
     assert package["runtime_pack"]["runtime_pack_id"] == "ctp-live-025292-md"
+    assert package["md_config_lineage"]["schema_version"] == "ctp025292.md_config_lineage.v1"
+    assert package["md_config_lineage"]["raw_secret_values_recorded"] is False
+    assert package["md_config_lineage"]["raw_front_values_recorded"] is False
+    assert package["md_config_lineage"]["user_id_fingerprint"]
+    package_text = json.dumps(package, ensure_ascii=False)
+    assert '"Password": "secret"' not in package_text
+    assert '"AuthCode": "auth"' not in package_text
+    assert "tcp://106.75.173.28:51213" not in package_text
     assert package["source_health"]["state"] == "runtime_lineage_ready"
     assert package["negative_assertions"]["not_market_data_ready_evidence"] is True
 
@@ -105,8 +119,55 @@ def test_runtime_pack_builds_source_package_that_passes_lineage_gate(tmp_path: P
         config_path=config_path,
         source_package_path=output_path,
         runtime_bin=runtime_bin,
+        trusted_config_roots=[tmp_path],
     )
     assert lineage["success"] is True
+
+
+def test_source_package_write_rejects_missing_source_owned_config_lineage(tmp_path: Path) -> None:
+    runtime_bin = tmp_path / "runtime_packs" / "ctp-live-025292-md" / "bin"
+    output_path = tmp_path / "account_console" / "source-package.json"
+    _write_runtime_pack(runtime_bin)
+
+    payload = build_source_package_summary(
+        runtime_bin=runtime_bin,
+        config_path=tmp_path / "cfgs" / "local" / "missing.json",
+        output_path=output_path,
+        write=True,
+        observed_at="2026-06-16T00:00:00Z",
+        trusted_config_roots=[tmp_path],
+    )
+
+    assert payload["success"] is False
+    assert "config_lineage_missing" in payload["issues"]
+    assert payload["md_config_lineage"]["exists"] is False
+    assert payload["md_config_lineage"]["raw_secret_values_recorded"] is False
+    assert payload["md_config_lineage"]["raw_front_values_recorded"] is False
+    assert not output_path.exists()
+
+
+def test_source_package_write_rejects_external_config_lineage(tmp_path: Path) -> None:
+    runtime_bin = tmp_path / "runtime_packs" / "ctp-live-025292-md" / "bin"
+    output_path = tmp_path / "account_console" / "source-package.json"
+    external_config = tmp_path.parent / f"{tmp_path.name}-external" / "ctp.live.025292.local.json"
+    _write_runtime_pack(runtime_bin)
+    _write_config(external_config)
+
+    payload = build_source_package_summary(
+        runtime_bin=runtime_bin,
+        config_path=external_config,
+        output_path=output_path,
+        write=True,
+        observed_at="2026-06-16T00:00:00Z",
+        trusted_config_roots=[tmp_path / "trusted-worktree"],
+    )
+
+    assert payload["success"] is False
+    assert "config_lineage_outside_repo_root" in payload["issues"]
+    assert payload["md_config_lineage"]["trusted_config_root"] is False
+    assert payload["md_config_lineage"]["raw_secret_values_recorded"] is False
+    assert payload["md_config_lineage"]["raw_front_values_recorded"] is False
+    assert not output_path.exists()
 
 
 def test_cli_preview_returns_nonzero_without_writing_for_missing_runtime(tmp_path: Path) -> None:
@@ -119,6 +180,8 @@ def test_cli_preview_returns_nonzero_without_writing_for_missing_runtime(tmp_pat
             str(REPO_ROOT / "scripts" / "ctp025292_source_package_build.py"),
             "--runtime-bin",
             str(tmp_path / "missing"),
+            "--config",
+            str(tmp_path / "cfgs" / "local" / "missing.json"),
             "--output-path",
             str(source_package),
             "--output-json",

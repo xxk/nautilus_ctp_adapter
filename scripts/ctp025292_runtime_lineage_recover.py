@@ -74,8 +74,10 @@ def recover_runtime_lineage(
         else:
             source_package = build_source_package_summary(
                 runtime_bin=runtime_bin,
+                config_path=config_path,
                 output_path=source_package_path,
                 write=write,
+                trusted_config_roots=roots,
             )
             if not source_package["success"]:
                 issues.append(str(source_package["blocker_id"]))
@@ -84,6 +86,7 @@ def recover_runtime_lineage(
                     config_path=config_path,
                     source_package_path=source_package_path,
                     runtime_bin=runtime_bin,
+                    trusted_config_roots=roots,
                 )
                 if not lineage["success"]:
                     issues.append(str(lineage["blocker_id"]))

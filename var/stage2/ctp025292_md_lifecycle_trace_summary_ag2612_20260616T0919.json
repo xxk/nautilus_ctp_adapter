@@ -1,0 +1,55 @@
+{
+  "baseline": "ctp025292-md-lifecycle-trace-summary-v1",
+  "route_scenario": "ctp025292_marketdata_sandbox_paper_simulated_001",
+  "market_source": "CTP 025292 official market data only",
+  "market_data_account_id": "025292",
+  "broker_order_submission": false,
+  "trading_adapter": "disabled",
+  "trace_path": "var\\stage2\\ctp025292_md_flow_ag2612_20260616T0919\\repo_md_lifecycle_trace.jsonl",
+  "success": false,
+  "status": "blocked",
+  "blocker_id": "ctp025292_marketdata_login_response_missing_after_runtime_lineage",
+  "event_count": 456,
+  "event_counts": {
+    "front_connected": 152,
+    "front_disconnected": 152,
+    "md_login_dispatch_return": 152
+  },
+  "duration_ms": 20001.155,
+  "connected_count": 152,
+  "dispatch_count": 152,
+  "disconnect_count": 152,
+  "login_response_count": 0,
+  "tick_count": 0,
+  "request_id_min": 1,
+  "request_id_max": 152,
+  "request_id_count": 152,
+  "return_codes": [
+    0
+  ],
+  "disconnect_reasons": [
+    0
+  ],
+  "dispatch_to_disconnect_latency": {
+    "count": 152,
+    "min_ms": 83.329,
+    "max_ms": 132.689,
+    "avg_ms": 100.814
+  },
+  "diagnosis": {
+    "response_missing_after_dispatch": true,
+    "all_dispatch_returns_ok": true,
+    "all_disconnect_reasons_zero": true,
+    "signature": "front_connected -> md_login_dispatch_return(return_code=0) -> front_disconnected(reason=0), without md_login_response"
+  },
+  "negative_assertions": {
+    "did_not_open_trading_channel": true,
+    "did_not_submit_broker_order": true,
+    "did_not_use_025292_as_trading_account": true,
+    "did_not_generate_or_consume_paper_request": true,
+    "did_not_claim_market_data_ready": true,
+    "did_not_claim_paper_ready": true,
+    "did_not_claim_live_ready": true
+  },
+  "next_action": "Compare current 025292 MD login payload against known-success payload/config lineage and capture any broker-side login rejection or network close reason without opening TD/order channels."
+}

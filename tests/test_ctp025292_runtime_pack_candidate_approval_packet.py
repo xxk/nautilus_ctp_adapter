@@ -37,7 +37,7 @@ def test_candidate_packet_groups_duplicate_vnpy_family_and_requires_operator_ack
     assert payload["negative_assertions"]["did_not_write_trust_marker"] is True
 
 
-def test_candidate_packet_rejects_openctp_path_even_when_hash_unknown() -> None:
+def test_candidate_packet_allows_non_tts_openctp_container_path_when_hash_unknown() -> None:
     discovery = {
         "candidates": [
             _candidate("D:/Nautilus/nautilus_ctp_adapter/output/openctp/ctpapi-python-win64", "C" * 64, "D" * 64),
@@ -46,10 +46,25 @@ def test_candidate_packet_rejects_openctp_path_even_when_hash_unknown() -> None:
 
     payload = build_candidate_approval_packet(discovery)
 
+    assert payload["status"] == "blocked_waiting_operator_ack"
+    assert payload["operator_ack_eligible_family_count"] == 1
+    assert payload["families"][0]["path_paper_tts_like"] is False
+    assert "family_path_paper_tts_rejected" not in payload["families"][0]["issues"]
+
+
+def test_candidate_packet_rejects_tts_paper_path_even_when_hash_unknown() -> None:
+    discovery = {
+        "candidates": [
+            _candidate("D:/Nautilus/nautilus_ctp_adapter/output/openctp/tts-sdk/tts_6.6.9/win32", "C" * 64, "D" * 64),
+        ]
+    }
+
+    payload = build_candidate_approval_packet(discovery)
+
     assert payload["status"] == "blocked_no_operator_ack_eligible_family"
     assert payload["operator_ack_eligible_family_count"] == 0
-    assert payload["families"][0]["path_openctp_like"] is True
-    assert "family_path_openctp_like_rejected" in payload["families"][0]["issues"]
+    assert payload["families"][0]["path_paper_tts_like"] is True
+    assert "family_path_paper_tts_rejected" in payload["families"][0]["issues"]
 
 
 def test_candidate_packet_flags_multiple_non_openctp_families_ambiguous() -> None:
@@ -65,3 +80,33 @@ def test_candidate_packet_flags_multiple_non_openctp_families_ambiguous() -> Non
     assert payload["status"] == "blocked_ambiguous_operator_ack_family"
     assert payload["blocker_id"] == "ctp025292_candidate_family_ambiguous"
     assert payload["operator_ack_eligible_family_count"] == 2
+
+
+def test_candidate_packet_ranks_bridge_rebuild_ready_choice_first(tmp_path) -> None:
+    ready = tmp_path / "output" / "openctp" / "ctpapi-python-win64"
+    ready.mkdir(parents=True)
+    for name in (
+        "ThostFtdcMdApi.h",
+        "ThostFtdcTraderApi.h",
+        "ThostFtdcUserApiDataType.h",
+        "ThostFtdcUserApiStruct.h",
+        "thostmduserapi_se.lib",
+        "thosttraderapi_se.lib",
+    ):
+        (ready / name).write_text("placeholder", encoding="utf-8")
+    runtime_only = tmp_path / "output" / "openctp" / "vitrader-runtime"
+    runtime_only.mkdir(parents=True)
+    discovery = {
+        "candidates": [
+            _candidate(str(runtime_only), "A" * 64, "B" * 64),
+            _candidate(str(ready), "C" * 64, "D" * 64),
+        ]
+    }
+
+    payload = build_candidate_approval_packet(discovery)
+
+    assert payload["status"] == "blocked_ambiguous_operator_ack_family"
+    assert payload["operator_ack_choices"][0]["source_bin"] == str(ready)
+    assert payload["operator_ack_choices"][0]["bridge_rebuild_ready"] is True
+    assert payload["operator_ack_choices"][1]["source_bin"] == str(runtime_only)
+    assert payload["operator_ack_choices"][1]["bridge_rebuild_ready"] is False

@@ -3,10 +3,12 @@ from __future__ import annotations
 import os
 from pathlib import Path
 from typing import Iterable
+import ctypes
 
 from .manifest import BOOTSTRAP_MANAGED_DLLS, REQUIRED_NATIVE_DLLS
 
 _DLL_DIRECTORY_HANDLES: list[object] = []
+_PRELOADED_RUNTIME_DLL_HANDLES: list[object] = []
 CTP_RUNTIME_PACK_BIN_ENV = "NAUTILUS_CTP_RUNTIME_PACK_BIN"
 CTP_RUNTIME_PACK_STRICT_ENV = "NAUTILUS_CTP_RUNTIME_PACK_STRICT"
 
@@ -26,6 +28,15 @@ def runtime_pack_strict_from_env() -> bool:
     return _as_bool(os.environ.get(CTP_RUNTIME_PACK_STRICT_ENV))
 
 
+def _resolve_runtime_pack_bin(base_dir: Path, value: str | Path | None) -> Path | None:
+    if value is None:
+        return None
+    path = Path(value)
+    if not path.is_absolute():
+        path = base_dir / path
+    return path.resolve()
+
+
 def candidate_native_paths(
     base_dir: str | Path,
     *,
@@ -33,8 +44,11 @@ def candidate_native_paths(
     strict_runtime_pack: bool | None = None,
 ) -> list[Path]:
     """Return probable directories for CTP native DLL resolution."""
-    root = Path(base_dir)
-    explicit_runtime_pack = Path(runtime_pack_bin) if runtime_pack_bin else explicit_runtime_pack_bin_from_env()
+    root = Path(base_dir).resolve()
+    explicit_runtime_pack = _resolve_runtime_pack_bin(
+        root,
+        runtime_pack_bin if runtime_pack_bin else explicit_runtime_pack_bin_from_env(),
+    )
     strict = runtime_pack_strict_from_env() if strict_runtime_pack is None else strict_runtime_pack
     repo_owned_native_paths = [
         root / "rust" / "target" / "debug",
@@ -136,3 +150,24 @@ def add_windows_dll_directories(*paths: str | Path) -> list[Path]:
         _DLL_DIRECTORY_HANDLES.append(add_dll_directory(str(path)))
         registered.append(path)
     return registered
+
+
+def preload_runtime_vendor_dlls(
+    *paths: str | Path,
+    dll_loader=ctypes.WinDLL,
+) -> list[Path]:
+    """Preload MD/TD vendor DLLs so PyO3 imports resolve CTP C++ exports."""
+    loaded: list[Path] = []
+    for raw_path in paths:
+        directory = Path(raw_path)
+        if not directory.exists():
+            continue
+        for dll_name in REQUIRED_NATIVE_DLLS:
+            if dll_name == "ctp_native.dll":
+                continue
+            dll_path = directory / dll_name
+            if not dll_path.exists():
+                continue
+            _PRELOADED_RUNTIME_DLL_HANDLES.append(dll_loader(str(dll_path)))
+            loaded.append(dll_path)
+    return loaded

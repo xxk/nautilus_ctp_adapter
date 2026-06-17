@@ -47,6 +47,14 @@ def _safe_path(path: Path) -> str:
         return str(path)
 
 
+def _is_under(path: Path, root: Path) -> bool:
+    try:
+        path.resolve().relative_to(root.resolve())
+        return True
+    except ValueError:
+        return False
+
+
 def _read_json(path: Path) -> dict[str, Any] | None:
     payload = json.loads(path.read_text(encoding="utf-8-sig"))
     if not isinstance(payload, dict):
@@ -120,6 +128,56 @@ def _config_summary(config: CtpAdapterConfig) -> dict[str, Any]:
         "native_pack_dir_present": bool(config.native_pack_dir),
         "managed_assembly_dir_present": bool(config.managed_assembly_dir),
     }
+
+
+def _config_fingerprint_expectations(config: CtpAdapterConfig) -> dict[str, Any]:
+    return {
+        "broker_id": config.broker_id,
+        "user_id_fingerprint": _fingerprint(config.user_id),
+        "md_front_fingerprint": _fingerprint(config.md_front),
+        "td_front_fingerprint": _fingerprint(config.td_front),
+        "app_id_fingerprint": _fingerprint(config.app_id),
+        "product_info_fingerprint": _fingerprint(config.product_info),
+        "instruments": list(config.instruments),
+    }
+
+
+def _source_package_config_lineage_issues(
+    payload: dict[str, Any],
+    *,
+    expected_config: dict[str, Any] | None,
+) -> list[str]:
+    issues: list[str] = []
+    lineage = payload.get("md_config_lineage")
+    if not isinstance(lineage, dict):
+        return ["source_package.md_config_lineage_missing"]
+    if lineage.get("schema_version") != "ctp025292.md_config_lineage.v1":
+        issues.append("source_package.md_config_lineage_schema_invalid")
+    if lineage.get("raw_secret_values_recorded") is not False:
+        issues.append("source_package.md_config_lineage_raw_secret_values_not_forbidden")
+    if lineage.get("raw_front_values_recorded") is not False:
+        issues.append("source_package.md_config_lineage_raw_front_values_not_forbidden")
+    if lineage.get("trusted_config_root") is not True:
+        issues.append("source_package.md_config_lineage_not_source_owned")
+    if lineage.get("market_data_account_id") != "025292":
+        issues.append("source_package.md_config_lineage_account_not_025292")
+    if lineage.get("broker_id") != "0155":
+        issues.append("source_package.md_config_lineage_broker_id_not_0155")
+    if lineage.get("md_front_shape", {}).get("tcp_scheme") is not True:
+        issues.append("source_package.md_config_lineage_md_front_not_tcp")
+    if expected_config is not None:
+        for key in (
+            "user_id_fingerprint",
+            "md_front_fingerprint",
+            "td_front_fingerprint",
+            "app_id_fingerprint",
+            "product_info_fingerprint",
+        ):
+            if expected_config.get(key) and lineage.get(key) != expected_config.get(key):
+                issues.append(f"source_package.md_config_lineage_mismatch:{key}")
+        if expected_config.get("instruments") and lineage.get("instruments") != expected_config.get("instruments"):
+            issues.append("source_package.md_config_lineage_mismatch:instruments")
+    return issues
 
 
 def _source_package_issues(payload: dict[str, Any]) -> list[str]:
@@ -220,8 +278,15 @@ def _runtime_manifest_issues(manifest: dict[str, str]) -> list[str]:
     return issues
 
 
-def _config_issues(config: CtpAdapterConfig) -> list[str]:
+def _config_issues(
+    config: CtpAdapterConfig,
+    *,
+    config_path: Path,
+    trusted_config_roots: list[Path],
+) -> list[str]:
     issues = list(config.validate())
+    if not any(_is_under(config_path, root) for root in trusted_config_roots):
+        issues.append("config_outside_repo_root")
     if config.broker_id != "0155":
         issues.append("config.broker_id_not_0155")
     if config.user_id != "025292":
@@ -236,12 +301,14 @@ def build_lineage_summary(
     config_path: Path = DEFAULT_CONFIG,
     source_package_path: Path = DEFAULT_SOURCE_PACKAGE,
     runtime_bin: Path = DEFAULT_RUNTIME_BIN,
+    trusted_config_roots: list[Path] | None = None,
 ) -> dict[str, Any]:
     config_path = config_path if config_path.is_absolute() else REPO_ROOT / config_path
     source_package_path = (
         source_package_path if source_package_path.is_absolute() else REPO_ROOT / source_package_path
     )
     runtime_bin = runtime_bin if runtime_bin.is_absolute() else REPO_ROOT / runtime_bin
+    trusted_config_roots = trusted_config_roots or [REPO_ROOT]
     runtime_manifest_path = runtime_bin / "_synced_from.txt"
 
     payload: dict[str, Any] = {
@@ -261,6 +328,7 @@ def build_lineage_summary(
             "source_package": _safe_path(source_package_path),
             "runtime_bin": _safe_path(runtime_bin),
             "runtime_manifest": _safe_path(runtime_manifest_path),
+            "trusted_config_roots": [_safe_path(root) for root in trusted_config_roots],
         },
         "config": None,
         "source_package": {
@@ -286,6 +354,7 @@ def build_lineage_summary(
 
     issues: list[str] = []
     source_package: dict[str, Any] | None = None
+    expected_config_fingerprints: dict[str, Any] | None = None
     if not config_path.exists():
         issues.append("config_missing")
     else:
@@ -295,7 +364,14 @@ def build_lineage_summary(
             issues.append(f"config_load_failed:{type(exc).__name__}")
         else:
             payload["config"] = _config_summary(config)
-            issues.extend(_config_issues(config))
+            expected_config_fingerprints = _config_fingerprint_expectations(config)
+            issues.extend(
+                _config_issues(
+                    config,
+                    config_path=config_path,
+                    trusted_config_roots=trusted_config_roots,
+                )
+            )
 
     if not source_package_path.exists():
         issues.append("source_package_missing")
@@ -311,8 +387,17 @@ def build_lineage_summary(
                 "account_uid": source_package.get("account_uid"),
                 "market_data_account_id": source_package.get("market_data_account_id"),
                 "market_source": source_package.get("market_source"),
+                "md_config_lineage_present": isinstance(
+                    source_package.get("md_config_lineage"), dict
+                ),
             }
             issues.extend(_source_package_issues(source_package))
+            issues.extend(
+                _source_package_config_lineage_issues(
+                    source_package,
+                    expected_config=expected_config_fingerprints,
+                )
+            )
 
     runtime_manifest = _read_runtime_manifest(runtime_bin)
     payload["runtime_manifest"]["values"] = runtime_manifest
@@ -331,7 +416,6 @@ def build_lineage_summary(
         payload["success"] = True
         payload["status"] = "passed"
         payload["blocker_id"] = None
-        payload["negative_assertions"]["did_not_claim_market_data_ready"] = False
     return payload
 
 

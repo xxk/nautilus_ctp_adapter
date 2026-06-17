@@ -14,6 +14,7 @@ from nautilus_ctp_adapter.native.loader import (
     CTP_RUNTIME_PACK_STRICT_ENV,
     candidate_native_paths,
     find_native_pack_dir,
+    preload_runtime_vendor_dlls,
 )
 from nautilus_ctp_adapter.native import pyo3_runtime
 
@@ -64,6 +65,18 @@ def test_runtime_pack_env_drives_candidate_paths(tmp_path: Path, monkeypatch: py
     assert tmp_path / "vendor" / "ctp" / "bin" not in paths
 
 
+def test_relative_runtime_pack_resolves_against_repo_root(tmp_path: Path) -> None:
+    runtime_pack = Path("output") / "runtime_packs" / "ctp-live-025292-md" / "bin"
+
+    paths = candidate_native_paths(
+        tmp_path,
+        runtime_pack_bin=runtime_pack,
+        strict_runtime_pack=True,
+    )
+
+    assert paths[0] == (tmp_path / runtime_pack).resolve()
+
+
 def test_pyo3_runtime_rejects_in_process_runtime_pack_switch(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -77,6 +90,55 @@ def test_pyo3_runtime_rejects_in_process_runtime_pack_switch(
     pyo3_runtime._select_runtime_pack(first_pack, strict_runtime_pack=True)
     with pytest.raises(RuntimeError, match="fresh worker process"):
         pyo3_runtime._select_runtime_pack(second_pack, strict_runtime_pack=True)
+
+
+def test_pyo3_runtime_preloads_explicit_runtime_thost_dependencies(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runtime_pack = tmp_path / "runtime_packs" / "ctp-live-025292-md" / "bin"
+    _write_runtime_pack(runtime_pack)
+    loaded: list[Path] = []
+
+    class FakeWinDll:
+        def __init__(self, path: str) -> None:
+            loaded.append(Path(path))
+
+    monkeypatch.setattr(pyo3_runtime, "_PRELOADED_NATIVE_DLLS", [])
+    monkeypatch.setattr(pyo3_runtime.ctypes, "WinDLL", FakeWinDll)
+
+    pyo3_runtime._preload_runtime_dependencies(
+        runtime_pack_bin=runtime_pack,
+        strict_runtime_pack=True,
+    )
+
+    assert loaded == [
+        runtime_pack / "thostmduserapi_se.dll",
+        runtime_pack / "thosttraderapi_se.dll",
+    ]
+
+
+def test_loader_preloads_runtime_vendor_dlls_for_package_import(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runtime_pack = tmp_path / "runtime_packs" / "ctp-live-025292-md" / "bin"
+    _write_runtime_pack(runtime_pack)
+    loaded: list[Path] = []
+
+    class FakeWinDll:
+        def __init__(self, path: str) -> None:
+            loaded.append(Path(path))
+
+    monkeypatch.setattr(loader_module, "_PRELOADED_RUNTIME_DLL_HANDLES", [])
+
+    result = preload_runtime_vendor_dlls(runtime_pack, dll_loader=FakeWinDll)
+
+    assert result == [
+        runtime_pack / "thostmduserapi_se.dll",
+        runtime_pack / "thosttraderapi_se.dll",
+    ]
+    assert loaded == result
 
 
 def test_md_smoke_passes_configured_native_pack_dir_to_session_factory(

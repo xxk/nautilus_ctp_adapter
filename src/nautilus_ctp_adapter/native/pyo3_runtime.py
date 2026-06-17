@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import ctypes
 
 from .loader import (
     CTP_RUNTIME_PACK_BIN_ENV,
@@ -11,8 +12,10 @@ from .loader import (
     add_windows_dll_directories,
     candidate_native_paths,
 )
+from .manifest import REQUIRED_NATIVE_DLLS
 
 _ACTIVE_RUNTIME_PACK_BIN: Path | None = None
+_PRELOADED_NATIVE_DLLS: list[object] = []
 
 
 def _repo_root() -> Path:
@@ -48,6 +51,34 @@ def _prepare_runtime_dll_dirs(
             strict_runtime_pack=strict_runtime_pack,
         )
     )
+    _preload_runtime_dependencies(
+        runtime_pack_bin=runtime_pack_bin,
+        strict_runtime_pack=strict_runtime_pack,
+    )
+
+
+def _preload_runtime_dependencies(
+    *,
+    runtime_pack_bin: str | Path | None = None,
+    strict_runtime_pack: bool = False,
+) -> None:
+    if strict_runtime_pack and runtime_pack_bin is not None:
+        candidate_dirs = [Path(runtime_pack_bin).resolve()]
+    else:
+        candidate_dirs = candidate_native_paths(
+            _repo_root(),
+            runtime_pack_bin=runtime_pack_bin,
+            strict_runtime_pack=strict_runtime_pack,
+        )
+    for directory in candidate_dirs:
+        if not directory.exists():
+            continue
+        for dll_name in REQUIRED_NATIVE_DLLS:
+            if dll_name == "ctp_native.dll":
+                continue
+            dll_path = directory / dll_name
+            if dll_path.exists():
+                _PRELOADED_NATIVE_DLLS.append(ctypes.WinDLL(str(dll_path)))
 
 
 def create_md_live_session(

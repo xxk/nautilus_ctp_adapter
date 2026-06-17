@@ -8,8 +8,15 @@ from typing import Any
 
 RUNTIME_PACK_ID = "ctp-live-025292-md"
 REQUIRED_DLLS = ("thostmduserapi_se.dll", "thosttraderapi_se.dll")
+REQUIRED_BRIDGE_HEADERS = (
+    "ThostFtdcMdApi.h",
+    "ThostFtdcTraderApi.h",
+    "ThostFtdcUserApiDataType.h",
+    "ThostFtdcUserApiStruct.h",
+)
+REQUIRED_BRIDGE_LIBS = ("thostmduserapi_se.lib", "thosttraderapi_se.lib")
 DEFAULT_DISCOVERY_JSON = Path("var/stage2/ctp025292_runtime_pack_discovery_inventory_latest.json")
-OPENCTP_PATH_TOKENS = ("openctp", "tts-sdk", "tts_6.6.9", "vitrader")
+PAPER_TTS_PATH_TOKENS = ("tts-sdk", "tts_6.6.9", "py-openctp-tts", "openctp_tts")
 
 
 def _family_id(candidate: dict[str, Any]) -> str:
@@ -24,9 +31,27 @@ def _family_id(candidate: dict[str, Any]) -> str:
     return f"ctp025292-dll-family-{digest[:16]}"
 
 
-def _path_is_openctp_like(path: str) -> bool:
+def _path_is_paper_tts_like(path: str) -> bool:
     lowered = path.replace("\\", "/").lower()
-    return any(token in lowered for token in OPENCTP_PATH_TOKENS)
+    return any(token in lowered for token in PAPER_TTS_PATH_TOKENS)
+
+
+def _bridge_inputs_for_path(path: str) -> dict[str, Any]:
+    root = Path(path)
+    headers_present = sorted(name for name in REQUIRED_BRIDGE_HEADERS if (root / name).exists())
+    libs_present = sorted(name for name in REQUIRED_BRIDGE_LIBS if (root / name).exists())
+    return {
+        "headers_required": list(REQUIRED_BRIDGE_HEADERS),
+        "headers_present": headers_present,
+        "headers_missing": sorted(set(REQUIRED_BRIDGE_HEADERS) - set(headers_present)),
+        "libs_required": list(REQUIRED_BRIDGE_LIBS),
+        "libs_present": libs_present,
+        "libs_missing": sorted(set(REQUIRED_BRIDGE_LIBS) - set(libs_present)),
+        "bridge_rebuild_ready": (
+            len(headers_present) == len(REQUIRED_BRIDGE_HEADERS)
+            and len(libs_present) == len(REQUIRED_BRIDGE_LIBS)
+        ),
+    }
 
 
 def _family_summary(family_id: str, members: list[dict[str, Any]]) -> dict[str, Any]:
@@ -40,17 +65,24 @@ def _family_summary(family_id: str, members: list[dict[str, Any]]) -> dict[str, 
             for issue in (member.get("issues") or [])
         }
     )
-    path_openctp_like = any(_path_is_openctp_like(path) for path in paths)
+    bridge_inputs_by_path = {path: _bridge_inputs_for_path(path) for path in paths}
+    bridge_rebuild_ready = any(
+        bool(inputs.get("bridge_rebuild_ready"))
+        for inputs in bridge_inputs_by_path.values()
+    )
+    path_paper_tts_like = any(_path_is_paper_tts_like(path) for path in paths)
     known_openctp_tts = "known_openctp_tts_rejected" in classifications
     marker_present = any(bool(member.get("trust_marker_present")) for member in members)
-    operator_ack_eligible = not known_openctp_tts and not path_openctp_like and not marker_present
+    operator_ack_eligible = not known_openctp_tts and not path_paper_tts_like and not marker_present
     family_issues = list(issues)
     if known_openctp_tts:
         family_issues.append("family_known_openctp_tts_rejected")
-    if path_openctp_like:
-        family_issues.append("family_path_openctp_like_rejected")
+    if path_paper_tts_like:
+        family_issues.append("family_path_paper_tts_rejected")
     if marker_present:
         family_issues.append("family_marker_already_present_requires_discovery_validation")
+    if operator_ack_eligible and not bridge_rebuild_ready:
+        family_issues.append("bridge_rebuild_inputs_missing_for_candidate_family")
     if operator_ack_eligible:
         family_issues.append("operator_ack_missing")
     return {
@@ -59,12 +91,53 @@ def _family_summary(family_id: str, members: list[dict[str, Any]]) -> dict[str, 
         "path_count": len(paths),
         "classifications": classifications,
         "dlls": first.get("dlls"),
-        "path_openctp_like": path_openctp_like,
+        "path_paper_tts_like": path_paper_tts_like,
         "known_openctp_tts": known_openctp_tts,
         "trust_marker_present": marker_present,
+        "bridge_rebuild_ready": bridge_rebuild_ready,
+        "bridge_inputs_by_path": bridge_inputs_by_path,
         "operator_ack_eligible": operator_ack_eligible,
         "issues": sorted(set(family_issues)),
     }
+
+
+def _operator_ack_choices(eligible_families: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    raw_choices: list[dict[str, Any]] = []
+    for family in eligible_families:
+        bridge_inputs_by_path = family.get("bridge_inputs_by_path")
+        if not isinstance(bridge_inputs_by_path, dict):
+            bridge_inputs_by_path = {}
+        for path in family["paths"]:
+            bridge_inputs = bridge_inputs_by_path.get(path)
+            if not isinstance(bridge_inputs, dict):
+                bridge_inputs = _bridge_inputs_for_path(path)
+            raw_choices.append(
+                {
+                    "family_id": family["family_id"],
+                    "source_bin": path,
+                    "dlls": family.get("dlls"),
+                    "bridge_rebuild_ready": bool(bridge_inputs.get("bridge_rebuild_ready")),
+                    "headers_present": bridge_inputs.get("headers_present"),
+                    "headers_missing": bridge_inputs.get("headers_missing"),
+                    "libs_present": bridge_inputs.get("libs_present"),
+                    "libs_missing": bridge_inputs.get("libs_missing"),
+                    "marker_preview_command": (
+                        "python scripts\\ctp025292_runtime_pack_trust_marker.py "
+                        f"--source-bin \"{path}\" --operator-ack --write "
+                        "--output-json var\\stage2\\ctp025292_runtime_pack_trust_marker_write.json"
+                    ),
+                }
+            )
+    raw_choices.sort(key=lambda item: (not item["bridge_rebuild_ready"], item["family_id"], item["source_bin"]))
+    for rank, choice in enumerate(raw_choices, start=1):
+        choice["rank"] = rank
+        choice["selection_requires_operator_ack"] = True
+        choice["recommended_next_repair"] = (
+            "operator-ack this source_bin, then rebuild/sync the route runtime pack against this SDK family before MD smoke"
+            if choice["bridge_rebuild_ready"]
+            else "operator-ack only after matching SDK headers/libs are supplied or a compatible bridge rebuild path is documented"
+        )
+    return raw_choices
 
 
 def build_candidate_approval_packet(discovery: dict[str, Any]) -> dict[str, Any]:
@@ -96,19 +169,7 @@ def build_candidate_approval_packet(discovery: dict[str, Any]) -> dict[str, Any]
         blocker_id = "ctp025292_candidate_family_ambiguous"
         issues = ["operator_ack_eligible_family_not_unique"]
 
-    source_bin_choices: list[dict[str, Any]] = []
-    if len(eligible) == 1:
-        for path in eligible[0]["paths"]:
-            source_bin_choices.append(
-                {
-                    "source_bin": path,
-                    "marker_preview_command": (
-                        "python scripts\\ctp025292_runtime_pack_trust_marker.py "
-                        f"--source-bin \"{path}\" --operator-ack --write "
-                        "--output-json var\\stage2\\ctp025292_runtime_pack_trust_marker_write.json"
-                    ),
-                }
-            )
+    source_bin_choices = _operator_ack_choices(eligible)
 
     return {
         "baseline": "ctp025292-runtime-pack-candidate-approval-packet-v1",
@@ -142,9 +203,9 @@ def build_candidate_approval_packet(discovery: dict[str, Any]) -> dict[str, Any]
             "did_not_claim_market_data_ready": True,
         },
         "next_action": (
-            "Operator must approve exactly one source_bin from operator_ack_choices, then run the marker write command and ctp025292_runtime_lineage_recover.py --write."
+            "Operator must approve exactly one source_bin from operator_ack_choices, then rebuild/sync the route runtime pack and run ctp025292_runtime_lineage_recover.py --write."
             if len(eligible) == 1
-            else "Resolve candidate ambiguity or provide a trusted source package before writing a marker."
+            else "Resolve candidate ambiguity by approving exactly one non-Paper/TTS source_bin, or provide a trusted source package before writing a marker."
         ),
     }
 
