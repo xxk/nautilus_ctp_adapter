@@ -166,6 +166,8 @@ Rules:
 
 2026-06-03 local evidence: MD login and first `rb2610` tick succeed with the CSV fronts; TD reaches the live request path but returns `login_error_id=3`. The same TD error class also appears with the original local TD front, so do not reopen front discovery unless the local CSV/config files are missing.
 
+2026-06-16 update: formal broker account `025292` must be tested with the matching 6.7.x CTP SDK/runtime pack under `output/vnpy_ctp_clone/vnpy_ctp/api`. The default `vendor/ctp/bin` pack may point at OpenCTP TTS 6.6.9 and is not a valid formal-broker runtime verdict for 025292. A bridge built against 6.6.9 imports `CreateFtdcTraderApi(const char*)`, while the 025292 6.7.x runtime exports `CreateFtdcTraderApi(const char*, bool)`. Do not treat ABI-mismatch disconnects or `WinError 127` as front or credential evidence. After rebuilding against the 6.7.x SDK/runtime and updating local credentials, the read-only `TdQryAccount` path succeeded; see `docs/changes/20260403__position-account-query-baseline__account-query-smoke/evidence_20260616_account_query_6_7_runtime.md`. The step-by-step login runbook is `docs/changes/20260402__live-ops-and-reconciliation__live-startup-runbook/ctp_025292_login_runbook.md`.
+
 ## Topic 5 Startup Layering
 
 Topic 5 adopts the following startup layering:

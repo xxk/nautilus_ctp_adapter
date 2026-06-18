@@ -49,6 +49,7 @@ topic 不作为 proposal 推进容器。Proposal 状态由 `docs/proposals/<prop
 2. OpenCTP paper evidence: use `cfgs/local/ctp.openctp.tts.7x24.local.json` generated from `.env`; current official 7x24 TTS fronts are TD `tcp://trading.openctp.cn:30001` and MD `tcp://trading.openctp.cn:30011`, with BrokerID `9999` and local TTS runtime/SDK readiness required.
 3. Formal-trading evidence: use ignored formal local config only for final/pre-go-live checks; never use it to close ordinary paper-development rows.
 4. Real `c2609` live-send: run TD order truth preflight first; only add `ctp_order_lifecycle_smoke.py ... --live-send` when vendor/runtime, trade window, and net-position guardrails are explicit.
+5. CTP usage knowledge base: [CTP Formal Trading Usage Knowledge Base](/D:/Nautilus/nautilus_ctp_adapter/docs/workflows/ctp-formal-trading-usage-kb.md).
 
 ## Change / Proposal Workflow Commands
 

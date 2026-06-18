@@ -108,6 +108,15 @@ python scripts/ctp_td_login_smoke.py --config <temp-config> --timeout-seconds 20
 3. 使用 CSV front 的 `ctp_nautilus_live_smoke.py` 到达真实 TD 请求路径，但 TD 登录回调返回 `login_error_id=3`，主线结果为 `td_login_failed`。
 4. 使用原本 local config TD front 单独跑 `ctp_td_login_smoke.py` 也返回同类 `login_error_id=3`，所以后续不要再把该结果优先归因为 CSV front 缺失或需要重新询问 front。
 
+2026-06-16 本机补充口径：
+
+1. `vendor/ctp/bin` 当前同步的是 OpenCTP TTS 6.6.9 runtime/SDK，不应直接用于判断正式 broker 账号 `025292` 的 TD readiness。
+2. `025292` 对应的本机 operator-trusted runtime/SDK 位于 `output/vnpy_ctp_clone/vnpy_ctp/api`，其 API family 为 6.7.x。
+3. 两套 runtime 的 CTP factory ABI 不同：6.6.9 TD 导出 `CreateFtdcTraderApi(const char*)`，6.7.x TD 导出 `CreateFtdcTraderApi(const char*, bool)`；MD 也相应多出 `bIsProductionMode` 参数。
+4. 使用 6.6.9 bridge/runtime 连接 `025292` formal front 会产生误导性的 disconnect-only 或 DLL load failure；必须用 6.7.x SDK/runtime 重建 bridge 后再判断正式 TD 登录状态。
+5. 更新本地凭据并使用 6.7.x runtime 后，真实 `025292` TD 登录、结算确认和 `TdQryAccount` 已成功；证据见 `docs/changes/20260403__position-account-query-baseline__account-query-smoke/evidence_20260616_account_query_6_7_runtime.md`。
+6. 具体登录和资金查询步骤见 [ctp_025292_login_runbook.md](./ctp_025292_login_runbook.md)。
+
 ## 四、标准启动顺序
 
 ### Phase 1: 仓库门禁

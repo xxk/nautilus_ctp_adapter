@@ -208,3 +208,17 @@ python -m pytest
 ```
 
 Temporary outputs should stay out of the repository root.
+
+## Test Contract Change Authority / 测试契约修改权威
+
+This repository participates in `D:/Nautilus/global_docs/adr/0008-test-contract-change-authority-and-human-approval-boundary.md` and `D:/Nautilus/global_docs/harness/Test Contract Change Authority Contract.md`.
+
+Protected tests must not be weakened, replaced, skipped, deleted, renamed away, or retired by AI self-approval. Same-worktree password locks are not a security boundary. Any protected-test contract change requires a project-local change record plus worktree-external human approval, with the workspace policy anchored at `D:/Nautilus/_human_control/test_contract_authority/workspace_policy.yaml`.
+
+Global adoption gate:
+
+```powershell
+python D:/Nautilus/global_docs/scripts/check_test_contract_authority_adoption.py
+```
+
+AI must not self-approve protected test contract changes.

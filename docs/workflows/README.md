@@ -40,6 +40,7 @@ ADR003 closeout status:
 | Path | Role |
 | --- | --- |
 | [work-item-type-system.md](work-item-type-system.md) | Canonical type/layer/mode schema |
+| [ctp-formal-trading-usage-kb.md](ctp-formal-trading-usage-kb.md) | Operator knowledge base for CTP read-only checks, paper practice, and guarded formal live-send |
 | [fragments/](fragments/) | Reusable template fragments |
 | [gates/](gates/) | Gate designs that scripts may enforce |
 
