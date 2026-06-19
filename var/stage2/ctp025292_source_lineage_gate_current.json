@@ -1,0 +1,45 @@
+{
+  "baseline": "ctp025292-source-lineage-gate-v1",
+  "route_scenario": "ctp025292_marketdata_sandbox_paper_simulated_001",
+  "market_source": "CTP 025292 official market data only",
+  "market_data_account_id": "025292",
+  "broker_order_submission": false,
+  "trading_adapter": "disabled",
+  "execution_target": "Nautilus Sandbox Paper account sandbox-paper.simulated-001",
+  "success": false,
+  "status": "blocked",
+  "blocker_id": "ctp025292_source_lineage_unready",
+  "issues": [
+    "config_missing",
+    "source_package_missing",
+    "runtime_manifest_openctp_tts_for_025292"
+  ],
+  "paths": {
+    "config": "cfgs\\local\\ctp.live.025292.local.json",
+    "source_package": "D:\\Nautilus\\_worktrees\\r1-heartbeat-driver-contract\\nautilus_account_console\\output\\account_capability\\ctp-live-025292\\source-package.json",
+    "runtime_bin": "vendor\\ctp\\bin",
+    "runtime_manifest": "vendor\\ctp\\bin\\_synced_from.txt"
+  },
+  "config": null,
+  "source_package": {
+    "exists": false,
+    "summary": null
+  },
+  "runtime_manifest": {
+    "exists": true,
+    "values": {
+      "profile": "auto",
+      "pack_kind": "runtime",
+      "repo_native": "",
+      "repo_native_mode": "",
+      "ctp_api": "output\\openctp\\tts-sdk\\tts_6.6.9-win64-combined",
+      "managed": ""
+    }
+  },
+  "negative_assertions": {
+    "did_not_open_trading_channel": true,
+    "did_not_submit_broker_order": true,
+    "did_not_generate_or_consume_paper_request": true,
+    "did_not_claim_market_data_ready": true
+  }
+}

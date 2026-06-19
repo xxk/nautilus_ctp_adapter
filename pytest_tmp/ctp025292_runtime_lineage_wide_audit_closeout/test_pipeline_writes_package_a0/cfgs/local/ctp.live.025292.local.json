@@ -1,0 +1,1 @@
+{"BrokerID": "0155", "UserID": "025292", "Password": "secret", "AuthCode": "auth", "AppID": "client_iq_3.6.2", "ProductInfo": "iQuant", "Pricer": "tcp://106.75.173.28:51213", "Host": "tcp://106.75.173.28:51205", "ProviderId": 45, "Instruments": ["ag2612"]}

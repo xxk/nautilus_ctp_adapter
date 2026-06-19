@@ -7,7 +7,10 @@
 #include <chrono>
 #include <cctype>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
+#include <filesystem>
+#include <fstream>
 #include <mutex>
 #include <string>
 #include <unordered_map>
@@ -35,13 +38,24 @@ struct MdSession {
     std::string broker_id;
     std::string user_id;
     std::string password;
+    std::string product_info;
+    std::string interface_product_info;
+    std::string protocol_info;
+    std::string mac_address;
+    std::string client_ip_address;
+    std::string login_remark;
     bool initialized = false;
     bool connected = false;
     bool login_requested = false;
     bool login_dispatched = false;
+    std::int64_t last_connected_epoch_us = 0;
+    std::int64_t last_login_dispatch_epoch_us = 0;
+    std::int32_t last_login_request_id = 0;
+    std::int32_t last_login_return_code = 0;
     std::int32_t next_request_id = 1;
     MdOnLoginCallback login_callback = nullptr;
     MdOnTickCallback tick_callback = nullptr;
+    MdOnFrontConnectedCallback connected_callback = nullptr;
     MdOnFrontDisconnectedCallback disconnect_callback = nullptr;
 };
 
@@ -102,6 +116,18 @@ std::string normalized_text(const char* value) {
     return trim_text(std::string(value));
 }
 
+bool env_flag_enabled(const char* name) {
+    const char* raw_value = std::getenv(name);
+    if (raw_value == nullptr) {
+        return false;
+    }
+    std::string value = trim_text(std::string(raw_value));
+    for (char& ch : value) {
+        ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+    }
+    return value == "1" || value == "true" || value == "yes" || value == "on";
+}
+
 template <std::size_t N>
 void copy_ctp_text(char (&destination)[N], const std::string& value) {
     std::memset(destination, 0, N);
@@ -115,6 +141,73 @@ void copy_ctp_text(char (&destination)[N], const std::string& value) {
 std::int64_t now_epoch_us() {
     using namespace std::chrono;
     return duration_cast<microseconds>(system_clock::now().time_since_epoch()).count();
+}
+
+std::string json_escape(std::string value) {
+    std::string escaped;
+    escaped.reserve(value.size());
+    for (const char ch : value) {
+        switch (ch) {
+        case '\\':
+            escaped += "\\\\";
+            break;
+        case '"':
+            escaped += "\\\"";
+            break;
+        case '\b':
+            escaped += "\\b";
+            break;
+        case '\f':
+            escaped += "\\f";
+            break;
+        case '\n':
+            escaped += "\\n";
+            break;
+        case '\r':
+            escaped += "\\r";
+            break;
+        case '\t':
+            escaped += "\\t";
+            break;
+        default:
+            escaped.push_back(ch);
+            break;
+        }
+    }
+    return escaped;
+}
+
+void append_md_lifecycle_trace(const std::string& flow_path, const std::string& event, const std::string& fields = {}) {
+    if (flow_path.empty()) {
+        return;
+    }
+    const std::filesystem::path trace_path = std::filesystem::path(flow_path) / "repo_md_lifecycle_trace.jsonl";
+    std::ofstream trace(trace_path, std::ios::app);
+    if (!trace) {
+        return;
+    }
+    trace << "{\"ts_epoch_us\":" << now_epoch_us() << ",\"event\":\"" << json_escape(event) << "\"";
+    if (!fields.empty()) {
+        trace << "," << fields;
+    }
+    trace << "}\n";
+}
+
+std::string json_bool_field(const std::string& name, bool value) {
+    return "\"" + name + "\":" + (value ? "true" : "false");
+}
+
+std::string json_i64_field(const std::string& name, std::int64_t value) {
+    return "\"" + name + "\":" + std::to_string(value);
+}
+
+std::string text_shape_fields(const std::string& prefix, const std::string& value) {
+    return json_bool_field(prefix + "_present", !value.empty()) + "," + json_i64_field(prefix + "_len", static_cast<std::int64_t>(value.size()));
+}
+
+std::string front_shape_fields(const std::string& front) {
+    const bool is_tcp_front = front.rfind("tcp://", 0) == 0;
+    return text_shape_fields("front", front) + "," + json_bool_field("front_tcp_scheme", is_tcp_front) + ",\"raw_values_recorded\":false";
 }
 
 bool is_all_digits(const std::string& value) {
@@ -217,6 +310,8 @@ public:
     void OnFrontConnected() override;
     void OnFrontDisconnected(int reason) override;
     void OnRspUserLogin(CThostFtdcRspUserLoginField* rsp_user_login, CThostFtdcRspInfoField* rsp_info, int request_id, bool is_last) override;
+    void OnRspError(CThostFtdcRspInfoField* rsp_info, int request_id, bool is_last) override;
+    void OnHeartBeatWarning(int time_lapse) override;
     void OnRtnDepthMarketData(CThostFtdcDepthMarketDataField* depth_market_data) override;
 
 private:
@@ -261,11 +356,20 @@ private:
 };
 
 struct MdLoginRequest {
+    MdSession* session = nullptr;
     CThostFtdcMdApi* api = nullptr;
+    std::string flow_path;
     std::string broker_id;
     std::string user_id;
     std::string password;
+    std::string product_info;
+    std::string interface_product_info;
+    std::string protocol_info;
+    std::string mac_address;
+    std::string client_ip_address;
+    std::string login_remark;
     std::int32_t request_id = 0;
+    bool request_id_zero_override = false;
     bool ready = false;
 };
 
@@ -274,13 +378,25 @@ MdLoginRequest prepare_md_login(MdSession* session) {
     if (session->api == nullptr || !session->connected || !session->login_requested || session->login_dispatched) {
         return {};
     }
+    const bool request_id_zero_override = env_flag_enabled("NAUTILUS_CTP_MD_LOGIN_REQUEST_ID_ZERO");
+    const std::int32_t request_id = request_id_zero_override ? 0 : session->next_request_id++;
     session->login_dispatched = true;
+    session->last_login_request_id = request_id;
     return {
+        session,
         session->api,
+        session->flow_path,
         session->broker_id,
         session->user_id,
         session->password,
-        session->next_request_id++,
+        session->product_info,
+        session->interface_product_info,
+        session->protocol_info,
+        session->mac_address,
+        session->client_ip_address,
+        session->login_remark,
+        request_id,
+        request_id_zero_override,
         true,
     };
 }
@@ -294,7 +410,36 @@ std::int32_t send_md_login_if_ready(MdSession* session) {
     copy_ctp_text(login.BrokerID, request.broker_id);
     copy_ctp_text(login.UserID, request.user_id);
     copy_ctp_text(login.Password, request.password);
-    return request.api->ReqUserLogin(&login, request.request_id);
+    copy_ctp_text(login.UserProductInfo, request.product_info);
+    copy_ctp_text(login.InterfaceProductInfo, request.interface_product_info);
+    copy_ctp_text(login.ProtocolInfo, request.protocol_info);
+    copy_ctp_text(login.MacAddress, request.mac_address);
+    copy_ctp_text(login.ClientIPAddress, request.client_ip_address);
+    copy_ctp_text(login.LoginRemark, request.login_remark);
+    append_md_lifecycle_trace(
+        request.flow_path,
+        "md_login_payload_shape",
+        json_i64_field("request_id", request.request_id) + "," + json_bool_field("request_id_zero_override", request.request_id_zero_override) + ","
+            + text_shape_fields("broker_id", request.broker_id) + ","
+            + text_shape_fields("user_id", request.user_id) + "," + text_shape_fields("password", request.password) + ","
+            + text_shape_fields("user_product_info", request.product_info) + ","
+            + text_shape_fields("interface_product_info", request.interface_product_info) + ","
+            + text_shape_fields("protocol_info", request.protocol_info) + "," + text_shape_fields("mac_address", request.mac_address) + ","
+            + text_shape_fields("client_ip_address", request.client_ip_address) + "," + text_shape_fields("login_remark", request.login_remark)
+            + ",\"raw_values_recorded\":false");
+    const std::int64_t dispatch_epoch_us = now_epoch_us();
+    const std::int32_t return_code = request.api->ReqUserLogin(&login, request.request_id);
+    if (request.session != nullptr) {
+        std::scoped_lock lock(request.session->mutex);
+        request.session->last_login_dispatch_epoch_us = dispatch_epoch_us;
+        request.session->last_login_return_code = return_code;
+    }
+    append_md_lifecycle_trace(
+        request.flow_path,
+        "md_login_dispatch_return",
+        "\"request_id\":" + std::to_string(request.request_id) + "," + json_bool_field("request_id_zero_override", request.request_id_zero_override)
+            + ",\"return_code\":" + std::to_string(return_code));
+    return return_code;
 }
 
 struct TdAuthRequest {
@@ -427,23 +572,71 @@ const char* submit_offset_source_for(int offset_flag) {
 
 void MdSpiImpl::OnFrontConnected() {
     if (MdSession* session_ptr = session()) {
+        MdOnFrontConnectedCallback callback = nullptr;
+        std::string flow_path;
+        bool login_requested = false;
+        bool login_dispatched = false;
+        std::int64_t connected_epoch_us = now_epoch_us();
         {
             std::scoped_lock lock(session_ptr->mutex);
             session_ptr->connected = true;
+            session_ptr->last_connected_epoch_us = connected_epoch_us;
+            flow_path = session_ptr->flow_path;
+            login_requested = session_ptr->login_requested;
+            login_dispatched = session_ptr->login_dispatched;
+            callback = session_ptr->connected_callback;
         }
+        append_md_lifecycle_trace(
+            flow_path,
+            "front_connected",
+            std::string("\"login_requested\":") + (login_requested ? "true" : "false") + ",\"login_dispatched\":" + (login_dispatched ? "true" : "false"));
         static_cast<void>(send_md_login_if_ready(session_ptr));
+        if (callback != nullptr) {
+            callback();
+        }
     }
 }
 
 void MdSpiImpl::OnFrontDisconnected(int reason) {
     if (MdSession* session_ptr = session()) {
         MdOnFrontDisconnectedCallback callback = nullptr;
+        std::string flow_path;
+        bool login_requested = false;
+        bool login_dispatched = false;
+        bool connected_before_disconnect = false;
+        std::int32_t pending_login_request_id = 0;
+        std::int64_t dispatch_to_disconnect_us = -1;
+        std::int64_t connected_to_disconnect_us = -1;
+        std::int32_t last_login_return_code = 0;
+        const std::int64_t disconnected_epoch_us = now_epoch_us();
         {
             std::scoped_lock lock(session_ptr->mutex);
+            login_requested = session_ptr->login_requested;
+            login_dispatched = session_ptr->login_dispatched;
+            connected_before_disconnect = session_ptr->connected;
+            pending_login_request_id = session_ptr->login_dispatched ? session_ptr->last_login_request_id : 0;
+            if (session_ptr->last_login_dispatch_epoch_us > 0) {
+                dispatch_to_disconnect_us = disconnected_epoch_us - session_ptr->last_login_dispatch_epoch_us;
+            }
+            if (session_ptr->last_connected_epoch_us > 0) {
+                connected_to_disconnect_us = disconnected_epoch_us - session_ptr->last_connected_epoch_us;
+            }
+            last_login_return_code = session_ptr->last_login_return_code;
             session_ptr->connected = false;
             session_ptr->login_dispatched = false;
+            flow_path = session_ptr->flow_path;
             callback = session_ptr->disconnect_callback;
         }
+        append_md_lifecycle_trace(
+            flow_path,
+            "front_disconnected",
+            "\"reason\":" + std::to_string(reason) + "," + json_bool_field("login_requested", login_requested) + ","
+                + json_bool_field("login_dispatched_before_disconnect", login_dispatched) + ","
+                + json_bool_field("connected_before_disconnect", connected_before_disconnect) + ","
+                + json_i64_field("pending_login_request_id", pending_login_request_id) + ","
+                + json_i64_field("dispatch_to_disconnect_us", dispatch_to_disconnect_us) + ","
+                + json_i64_field("connected_to_disconnect_us", connected_to_disconnect_us) + ","
+                + json_i64_field("last_login_return_code", last_login_return_code));
         if (callback != nullptr) {
             callback(reason);
         }
@@ -462,11 +655,18 @@ void MdSpiImpl::OnRspUserLogin(CThostFtdcRspUserLoginField* rsp_user_login, CTho
         const std::int32_t session_id = rsp_user_login == nullptr ? 0 : rsp_user_login->SessionID;
         const std::int64_t max_order_ref = rsp_user_login == nullptr ? 0 : parse_i64_text(normalized_text(rsp_user_login->MaxOrderRef));
         MdOnLoginCallback callback = nullptr;
+        std::string flow_path;
         {
             std::scoped_lock lock(session_ptr->mutex);
             session_ptr->login_dispatched = false;
+            flow_path = session_ptr->flow_path;
             callback = session_ptr->login_callback;
         }
+        append_md_lifecycle_trace(
+            flow_path,
+            "md_login_response",
+            "\"request_id\":" + std::to_string(request_id) + ",\"error_id\":" + std::to_string(error_id) + ",\"error_message\":\"" + json_escape(error_message)
+                + "\",\"front_id\":" + std::to_string(front_id) + ",\"session_id\":" + std::to_string(session_id));
         if (callback != nullptr) {
             const NativeLoginResponse response{
                 front_id,
@@ -477,6 +677,34 @@ void MdSpiImpl::OnRspUserLogin(CThostFtdcRspUserLoginField* rsp_user_login, CTho
             };
             callback(&response);
         }
+    }
+}
+
+void MdSpiImpl::OnRspError(CThostFtdcRspInfoField* rsp_info, int request_id, bool is_last) {
+    if (MdSession* session_ptr = session()) {
+        std::string flow_path;
+        {
+            std::scoped_lock lock(session_ptr->mutex);
+            flow_path = session_ptr->flow_path;
+        }
+        const std::string error_message = rsp_error_message(rsp_info);
+        append_md_lifecycle_trace(
+            flow_path,
+            "md_rsp_error",
+            std::string("\"request_id\":") + std::to_string(request_id) + ",\"is_last\":" + (is_last ? "true" : "false")
+                + ",\"error_id\":" + std::to_string(rsp_error_id(rsp_info)) + "," + text_shape_fields("error_message", error_message)
+                + ",\"raw_values_recorded\":false");
+    }
+}
+
+void MdSpiImpl::OnHeartBeatWarning(int time_lapse) {
+    if (MdSession* session_ptr = session()) {
+        std::string flow_path;
+        {
+            std::scoped_lock lock(session_ptr->mutex);
+            flow_path = session_ptr->flow_path;
+        }
+        append_md_lifecycle_trace(flow_path, "md_heartbeat_warning", "\"time_lapse\":" + std::to_string(time_lapse));
     }
 }
 
@@ -959,8 +1187,16 @@ Session* checked_handle(void* handle) {
 extern "C" void* repo_ctp_md_create(const char* flow_path) {
     auto* session = new MdSession();
     session->flow_path = normalized_text(flow_path);
-    session->api = CThostFtdcMdApi::CreateFtdcMdApi(session->flow_path.c_str(), false, false);
+    const bool create_empty_flow_override = env_flag_enabled("NAUTILUS_CTP_MD_CREATE_EMPTY_FLOW");
+    const char* api_flow_path = create_empty_flow_override ? "" : session->flow_path.c_str();
+    session->api = CThostFtdcMdApi::CreateFtdcMdApi(api_flow_path, false, false);
     session->spi = new MdSpiImpl(session);
+    append_md_lifecycle_trace(
+        session->flow_path,
+        "md_api_created",
+        json_bool_field("api_created", session->api != nullptr) + "," + json_bool_field("spi_created", session->spi != nullptr) + ","
+            + json_bool_field("api_flow_path_empty_override", create_empty_flow_override) + ","
+            + json_bool_field("api_flow_path_present", !create_empty_flow_override && !session->flow_path.empty()) + ",\"raw_values_recorded\":false");
     return session;
 }
 
@@ -993,16 +1229,59 @@ extern "C" std::int32_t repo_ctp_md_init(void* handle, const char* front) {
     session->front = normalized_text(front);
     if (!session->initialized) {
         session->api->RegisterSpi(session->spi);
+        append_md_lifecycle_trace(
+            session->flow_path,
+            "md_register_spi",
+            json_bool_field("spi_registered", true));
         if (!session->front.empty()) {
+            append_md_lifecycle_trace(
+                session->flow_path,
+                "md_register_front",
+                front_shape_fields(session->front));
             session->api->RegisterFront(const_cast<char*>(session->front.c_str()));
         }
+        append_md_lifecycle_trace(session->flow_path, "md_init_call", json_bool_field("already_initialized", session->initialized));
         session->api->Init();
+        append_md_lifecycle_trace(session->flow_path, "md_init_return", json_bool_field("call_completed", true));
         session->initialized = true;
     }
     return 0;
 }
 
 extern "C" std::int32_t repo_ctp_md_login(void* handle, const char* broker_id, const char* user_id, const char* password) {
+    return repo_ctp_md_login_with_product_info(handle, broker_id, user_id, password, nullptr);
+}
+
+extern "C" std::int32_t repo_ctp_md_login_with_product_info(
+    void* handle,
+    const char* broker_id,
+    const char* user_id,
+    const char* password,
+    const char* product_info) {
+    return repo_ctp_md_login_with_compatibility(
+        handle,
+        broker_id,
+        user_id,
+        password,
+        product_info,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr);
+}
+
+extern "C" std::int32_t repo_ctp_md_login_with_compatibility(
+    void* handle,
+    const char* broker_id,
+    const char* user_id,
+    const char* password,
+    const char* product_info,
+    const char* interface_product_info,
+    const char* protocol_info,
+    const char* mac_address,
+    const char* client_ip_address,
+    const char* login_remark) {
     auto* session = checked_handle<MdSession>(handle);
     if (session == nullptr) {
         return INVALID_HANDLE_CODE;
@@ -1012,6 +1291,12 @@ extern "C" std::int32_t repo_ctp_md_login(void* handle, const char* broker_id, c
         session->broker_id = normalized_text(broker_id);
         session->user_id = normalized_text(user_id);
         session->password = normalized_text(password);
+        session->product_info = normalized_text(product_info);
+        session->interface_product_info = normalized_text(interface_product_info);
+        session->protocol_info = normalized_text(protocol_info);
+        session->mac_address = normalized_text(mac_address);
+        session->client_ip_address = normalized_text(client_ip_address);
+        session->login_remark = normalized_text(login_remark);
         session->login_requested = true;
     }
     return send_md_login_if_ready(session);
@@ -1052,6 +1337,13 @@ extern "C" void repo_ctp_md_set_login_callback(void* handle, MdOnLoginCallback c
     if (auto* session = checked_handle<MdSession>(handle)) {
         std::scoped_lock lock(session->mutex);
         session->login_callback = callback;
+    }
+}
+
+extern "C" void repo_ctp_md_set_front_connected_callback(void* handle, MdOnFrontConnectedCallback callback) {
+    if (auto* session = checked_handle<MdSession>(handle)) {
+        std::scoped_lock lock(session->mutex);
+        session->connected_callback = callback;
     }
 }
 

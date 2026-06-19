@@ -63,6 +63,7 @@ from nautilus_ctp_adapter.adapters.ctp import (
     normalize_product_kind,
     normalize_symbol,
 )
+from nautilus_ctp_adapter.adapters.ctp.config import CtpMdLoginCompatibility
 from nautilus_ctp_adapter.adapters.ctp.data_client import (
     CtpMdBootstrapState,
     CtpLiveDataBootstrapResult,
@@ -523,6 +524,36 @@ def test_ctp_config_accepts_myvnpy_connect_ctp_shape() -> None:
     assert config.product_info == "iQuant"
     assert config.md_front == "tcp://106.75.173.28:51213"
     assert config.td_front == "tcp://106.75.173.28:51205"
+    assert config.validate() == []
+
+
+def test_ctp_config_loads_optional_md_login_compatibility_fields() -> None:
+    config = CtpAdapterConfig.from_dict(
+        {
+            "UserID": "025292",
+            "BrokerID": "0155",
+            "Password": "secret",
+            "Pricer": "tcp://106.75.173.28:51213",
+            "Host": "tcp://106.75.173.28:51205",
+            "ProductInfo": "iQuant",
+            "Instruments": ["ag2612"],
+            "MdLoginCompatibility": {
+                "InterfaceProductInfo": "trusted-interface",
+                "ProtocolInfo": "trusted-protocol",
+                "MacAddress": "trusted-mac",
+                "ClientIPAddress": "trusted-client-ip",
+                "LoginRemark": "trusted-login-remark",
+            },
+        }
+    )
+
+    assert config.md_login_compatibility == CtpMdLoginCompatibility(
+        interface_product_info="trusted-interface",
+        protocol_info="trusted-protocol",
+        mac_address="trusted-mac",
+        client_ip_address="trusted-client-ip",
+        login_remark="trusted-login-remark",
+    )
     assert config.validate() == []
 
 
@@ -993,6 +1024,7 @@ def test_native_manifest_tracks_repo_owned_abi_and_pack_layout() -> None:
     assert "MdCreate" in export_symbols
     assert "TdOrderSend" in export_symbols
     assert "MdSetLoginCallback" in manifest["repo_owned_exports"]
+    assert "MdSetFrontConnectedCallback" in manifest["repo_owned_exports"]
     assert OPTIONAL_COMPAT_DLLS == ("thostmduserapi.dll", "thosttraderapi.dll")
 
 
@@ -5616,6 +5648,7 @@ def test_repo_owned_native_export_manifest_covers_python_ctypes_entrypoints() ->
         "MdSubscribe",
         "MdSetCallback",
         "MdSetLoginCallback",
+        "MdSetFrontConnectedCallback",
         "MdSetFrontDisconnectedCallback",
         "TdCreate",
         "TdDispose",
@@ -6322,6 +6355,427 @@ def test_md_login_smoke_writes_isolated_flow_export(
         "explicit_path": False,
     }
     assert exported["export"]["path"] == str(expected_output)
+
+
+def test_md_login_smoke_writes_redacted_exception_export(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_md_login_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_md_login_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    output_json = tmp_path / "md-exception.json"
+    runtime_pack = tmp_path / "runtime-pack" / "bin"
+    sensitive_message = "config failed with password=top-secret and tcp://raw-md-front"
+
+    def raise_config_error(cls, path):
+        raise RuntimeError(sensitive_message)
+
+    monkeypatch.setattr(module.CtpAdapterConfig, "from_json_file", classmethod(raise_config_error))
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--runtime-pack-bin",
+            str(runtime_pack),
+            "--output-json",
+            str(output_json),
+        ],
+    )
+
+    exit_code = module.main()
+    stdout_payload = json.loads(capsys.readouterr().out)
+    exported_text = output_json.read_text(encoding="utf-8")
+    exported = json.loads(exported_text)
+
+    assert exit_code == 1
+    assert stdout_payload["exception_export"]["written"] is True
+    assert stdout_payload["error_message"] == "<redacted; see error_message_shape>"
+    assert exported["baseline"] == "md-login-smoke-v1"
+    assert exported["success"] is False
+    assert exported["failure_reason"] == "exception"
+    assert exported["error_stage"] == "config_load"
+    assert exported["error_type"] == "RuntimeError"
+    assert exported["error_message"] == "<redacted; see error_message_shape>"
+    assert exported["error_message_shape"]["raw_value_recorded"] is False
+    assert exported["runtime_pack_override"] == {
+        "enabled": True,
+        "path": str(runtime_pack),
+        "strict_runtime_pack": True,
+    }
+    assert exported["raw_secret_values_recorded"] is False
+    assert exported["raw_front_values_recorded"] is False
+    assert exported["exception_export"] == {
+        "attempted": True,
+        "written": True,
+        "path": str(output_json),
+        "raw_error_message_recorded": False,
+    }
+    assert "top-secret" not in exported_text
+    assert "tcp://raw-md-front" not in exported_text
+    assert sensitive_message not in json.dumps(stdout_payload, ensure_ascii=False)
+
+
+def test_md_login_smoke_overrides_config_instruments(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    from nautilus_ctp_adapter.adapters.ctp.config import CtpAdapterConfig
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_md_login_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_md_login_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+    class FakeResult:
+        init_code = 0
+        login_request_code = 0
+        subscribe_code = -1
+        login_success = False
+        login_error_id = -1
+        login_error_message = ""
+        front_connected = False
+        front_connected_count = 0
+        disconnect_count = 0
+        disconnect_reasons = []
+        first_tick_symbol = None
+        first_tick_last = None
+        first_tick_bid = None
+        first_tick_ask = None
+        first_tick_ts_epoch_us = None
+
+    seen: dict[str, object] = {}
+
+    class FakeClient:
+        def __init__(self, config):
+            seen["instruments"] = list(config.instruments)
+            self.runtime_bridge = FakeBridge()
+
+        def run_live_md_smoke(self, *, timeout_seconds: int, flow_path=None):
+            return FakeResult()
+
+    monkeypatch.setattr(
+        module.CtpAdapterConfig,
+        "from_json_file",
+        classmethod(lambda cls, path: CtpAdapterConfig(instruments=["rb2610"])),
+    )
+    monkeypatch.setattr(module, "CtpDataClient", FakeClient)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--instrument",
+            "ag2612",
+        ],
+    )
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 1
+    assert seen["instruments"] == ["ag2612"]
+    assert payload["instruments"] == ["ag2612"]
+    assert payload["instrument_override"] is True
+
+
+def test_md_login_smoke_overrides_md_login_compatibility_without_emitting_raw_values(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    from nautilus_ctp_adapter.adapters.ctp.config import CtpAdapterConfig
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_md_login_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_md_login_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+    class FakeResult:
+        init_code = 0
+        login_request_code = 0
+        subscribe_code = -1
+        login_success = False
+        login_error_id = -1
+        login_error_message = ""
+        front_connected = False
+        front_connected_count = 0
+        disconnect_count = 0
+        disconnect_reasons = []
+        first_tick_symbol = None
+        first_tick_last = None
+        first_tick_bid = None
+        first_tick_ask = None
+        first_tick_ts_epoch_us = None
+
+    seen: dict[str, object] = {}
+
+    class FakeClient:
+        def __init__(self, config):
+            seen["login_args"] = (
+                config.product_info,
+                *config.md_login_compatibility.as_login_args(),
+            )
+            self.runtime_bridge = FakeBridge()
+
+        def run_live_md_smoke(self, *, timeout_seconds: int, flow_path=None):
+            return FakeResult()
+
+    monkeypatch.setattr(
+        module.CtpAdapterConfig,
+        "from_json_file",
+        classmethod(
+            lambda cls, path: CtpAdapterConfig(
+                broker_id="0155",
+                user_id="025292",
+                password="secret",
+                md_front="tcp://106.75.173.28:51213",
+                td_front="tcp://106.75.173.28:51205",
+                product_info="iQuant",
+                instruments=["ag2612"],
+            )
+        ),
+    )
+    monkeypatch.setattr(module, "CtpDataClient", FakeClient)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--md-user-product-info",
+            "Q7 155",
+            "--md-protocol-info",
+            "Q7 155",
+        ],
+    )
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 1
+    assert seen["login_args"] == ("Q7 155", "", "Q7 155", "", "", "")
+    assert payload["md_login_override"]["enabled"] is True
+    assert payload["md_login_override"]["fields"] == [
+        "md_protocol_info",
+        "md_user_product_info",
+    ]
+    assert payload["md_login_override"]["field_shapes"] == {
+        "md_protocol_info": {"present": True, "length": 6, "raw_value_recorded": False},
+        "md_user_product_info": {"present": True, "length": 6, "raw_value_recorded": False},
+    }
+    assert "Q7 155" not in json.dumps(payload, ensure_ascii=False)
+
+
+def test_md_login_smoke_overrides_md_front_without_emitting_raw_value(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    from nautilus_ctp_adapter.adapters.ctp.config import CtpAdapterConfig
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_md_login_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_md_login_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+    class FakeResult:
+        init_code = 0
+        login_request_code = 0
+        subscribe_code = -1
+        login_success = False
+        login_error_id = -1
+        login_error_message = ""
+        front_connected = False
+        front_connected_count = 0
+        disconnect_count = 0
+        disconnect_reasons = []
+        first_tick_symbol = None
+        first_tick_last = None
+        first_tick_bid = None
+        first_tick_ask = None
+        first_tick_ts_epoch_us = None
+
+    seen: dict[str, object] = {}
+
+    class FakeClient:
+        def __init__(self, config):
+            seen["md_front"] = config.md_front
+            self.runtime_bridge = FakeBridge()
+
+        def run_live_md_smoke(self, *, timeout_seconds: int, flow_path=None):
+            return FakeResult()
+
+    monkeypatch.setattr(
+        module.CtpAdapterConfig,
+        "from_json_file",
+        classmethod(
+            lambda cls, path: CtpAdapterConfig(
+                broker_id="0155",
+                user_id="025292",
+                password="secret",
+                md_front="tcp://106.75.173.28:51213",
+                td_front="tcp://106.75.173.28:51205",
+                product_info="iQuant",
+                instruments=["ag2612"],
+            )
+        ),
+    )
+    monkeypatch.setattr(module, "CtpDataClient", FakeClient)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--md-front",
+            "tcp://180.168.159.225:51213",
+        ],
+    )
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 1
+    assert seen["md_front"] == "tcp://180.168.159.225:51213"
+    assert payload["md_front_override"] == {
+        "enabled": True,
+        "field_shape": {
+            "present": True,
+            "length": 27,
+            "tcp_scheme": True,
+            "raw_value_recorded": False,
+        },
+    }
+    assert "180.168.159.225" not in json.dumps(payload, ensure_ascii=False)
+
+
+def test_md_login_smoke_runtime_pack_override_sets_strict_runtime(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    import importlib.util
+
+    from nautilus_ctp_adapter.adapters.ctp.config import CtpAdapterConfig
+
+    root = Path(__file__).resolve().parents[1]
+    script_path = root / "scripts" / "ctp_md_login_smoke.py"
+    spec = importlib.util.spec_from_file_location("ctp_md_login_smoke", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class FakeBridge:
+        def drain_events(self):
+            return []
+
+    class FakeResult:
+        init_code = 0
+        login_request_code = 0
+        subscribe_code = -1
+        login_success = False
+        login_error_id = -1
+        login_error_message = ""
+        front_connected = True
+        front_connected_count = 1
+        disconnect_count = 1
+        disconnect_reasons = [0]
+        first_tick_symbol = None
+        first_tick_last = None
+        first_tick_bid = None
+        first_tick_ask = None
+        first_tick_ts_epoch_us = None
+
+    seen: dict[str, object] = {}
+
+    class FakeClient:
+        def __init__(self, config):
+            seen["native_pack_dir"] = config.native_pack_dir
+            self.runtime_bridge = FakeBridge()
+
+        def run_live_md_smoke(self, *, timeout_seconds: int, flow_path=None):
+            return FakeResult()
+
+    runtime_pack = tmp_path / "runtime-pack" / "bin"
+
+    monkeypatch.setattr(
+        module.CtpAdapterConfig,
+        "from_json_file",
+        classmethod(
+            lambda cls, path: CtpAdapterConfig(
+                broker_id="0155",
+                user_id="025292",
+                password="secret",
+                md_front="tcp://106.75.173.28:51213",
+                td_front="tcp://106.75.173.28:51205",
+                product_info="iQuant",
+                instruments=["ag2612"],
+            )
+        ),
+    )
+    monkeypatch.setattr(module, "CtpDataClient", FakeClient)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(script_path),
+            "--config",
+            str(tmp_path / "fake.json"),
+            "--runtime-pack-bin",
+            str(runtime_pack),
+        ],
+    )
+
+    exit_code = module.main()
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 1
+    assert seen["native_pack_dir"] == str(runtime_pack)
+    assert payload["runtime_pack_override"] == {
+        "enabled": True,
+        "path": str(runtime_pack),
+        "strict_runtime_pack": True,
+    }
 
 
 def test_md_login_smoke_rejects_conflicting_export_targets(
@@ -14621,9 +15075,13 @@ def test_run_live_md_smoke_uses_pyo3_md_live_session_mainline(
         def __init__(self, flow_path: str) -> None:
             records["flow_path"] = Path(flow_path)
             records["session_factory_used"] = True
+            self._connected_callback = None
             self._login_callback = None
             self._tick_callback = None
             self._disconnect_callback = None
+
+        def set_front_connected_callback(self, callback) -> None:
+            self._connected_callback = callback
 
         def set_login_callback(self, callback) -> None:
             self._login_callback = callback
@@ -14636,10 +15094,33 @@ def test_run_live_md_smoke_uses_pyo3_md_live_session_mainline(
 
         def init(self, front: str) -> int:
             records["front"] = front
+            assert self._connected_callback is not None
+            self._connected_callback()
             return 0
 
-        def login(self, broker: str, user: str, password: str) -> int:
-            records["login_args"] = (broker, user, password)
+        def login(
+            self,
+            broker: str,
+            user: str,
+            password: str,
+            product_info: str = "",
+            interface_product_info: str = "",
+            protocol_info: str = "",
+            mac_address: str = "",
+            client_ip_address: str = "",
+            login_remark: str = "",
+        ) -> int:
+            records["login_args"] = (
+                broker,
+                user,
+                password,
+                product_info,
+                interface_product_info,
+                protocol_info,
+                mac_address,
+                client_ip_address,
+                login_remark,
+            )
 
             class LoginResponse:
                 success = True
@@ -14678,7 +15159,10 @@ def test_run_live_md_smoke_uses_pyo3_md_live_session_mainline(
     monkeypatch.setattr(
         data_client_module,
         "_create_md_live_session",
-        lambda flow_path: FakeMdLiveSession(str(flow_path)),
+        lambda flow_path, **kwargs: (
+            records.__setitem__("runtime_pack_kwargs", kwargs),
+            FakeMdLiveSession(str(flow_path)),
+        )[1],
     )
 
     config = CtpAdapterConfig.from_dict(
@@ -14688,6 +15172,14 @@ def test_run_live_md_smoke_uses_pyo3_md_live_session_mainline(
             "Password": "secret",
             "Pricer": "tcp://106.75.173.28:51213",
             "Host": "tcp://106.75.173.28:51205",
+            "ProductInfo": "iQuant",
+            "MdLoginCompatibility": {
+                "InterfaceProductInfo": "trusted-interface",
+                "ProtocolInfo": "trusted-protocol",
+                "MacAddress": "trusted-mac",
+                "ClientIPAddress": "trusted-client-ip",
+                "LoginRemark": "trusted-login-remark",
+            },
             "Instruments": ["rb2610"],
         }
     )
@@ -14697,17 +15189,36 @@ def test_run_live_md_smoke_uses_pyo3_md_live_session_mainline(
     events = data_client.runtime_bridge.drain_events()
 
     assert records["session_factory_used"] is True  # [CONTRACT-LOCK: run_live_md_smoke must construct the PyO3 MD live session mainline instead of ctypes CtpMdApi]
+    assert records["runtime_pack_kwargs"] == {
+        "runtime_pack_bin": None,
+        "strict_runtime_pack": False,
+    }  # [CONTRACT-LOCK: default MD smoke must preserve the existing repo-owned runtime resolution when no route-bound runtime pack is configured]
+    assert records["login_args"] == (
+        "0155",
+        "025292",
+        "secret",
+        "iQuant",
+        "trusted-interface",
+        "trusted-protocol",
+        "trusted-mac",
+        "trusted-client-ip",
+        "trusted-login-remark",
+    )  # [CONTRACT-LOCK: MD live login must propagate ProductInfo/UserProductInfo and optional trusted MD compatibility fields from local config when present]
     assert records["symbols"] == ["rb2610"]
     assert records["disposed"] is True
     assert result.init_code == 0
     assert result.login_request_code == 0
     assert result.subscribe_code == 0
     assert result.login_success is True
+    assert result.front_connected is True
+    assert result.front_connected_count == 1
+    assert result.disconnect_count == 0
     assert result.first_tick_symbol == "rb2610"
     assert [event.kind for event in events] == [
+        CtpRuntimeEventKind.CONNECTED,
         CtpRuntimeEventKind.LOGIN_SUCCEEDED,
         CtpRuntimeEventKind.TICK,
-    ]  # [CONTRACT-LOCK: PyO3 MD mainline must still feed the same runtime bridge event kinds as the old ctypes smoke path]
+    ]  # [CONTRACT-LOCK: PyO3 MD mainline must expose read-only front-connected lifecycle evidence before login/tick]
 
 
 def test_run_live_md_smoke_fails_fast_when_pyo3_md_bridge_unavailable(monkeypatch) -> None:
@@ -14716,7 +15227,7 @@ def test_run_live_md_smoke_fails_fast_when_pyo3_md_bridge_unavailable(monkeypatc
     monkeypatch.setattr(
         data_client_module,
         "_create_md_live_session",
-        lambda flow_path: (_ for _ in ()).throw(RuntimeError("PyO3 MD bridge unavailable")),
+        lambda flow_path, **kwargs: (_ for _ in ()).throw(RuntimeError("PyO3 MD bridge unavailable")),
     )
 
     config = CtpAdapterConfig.from_dict(
