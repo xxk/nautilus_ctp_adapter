@@ -8,6 +8,8 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.pyd.*.bak
+*.dll.*.bak
 
 cfgs/local/
 vendor/ctp/bin/

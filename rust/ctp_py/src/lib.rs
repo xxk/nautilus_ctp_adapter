@@ -1190,6 +1190,20 @@ impl CtpTdLiveSession {
         Ok(ffi::TdQryAccount(self.handle_ptr()))
     }
 
+    fn qry_order(&mut self) -> PyResult<i32> {
+        if self.disposed {
+            return Ok(INVALID_HANDLE);
+        }
+        Ok(ffi::TdQryOrder(self.handle_ptr()))
+    }
+
+    fn qry_trade(&mut self) -> PyResult<i32> {
+        if self.disposed {
+            return Ok(INVALID_HANDLE);
+        }
+        Ok(ffi::TdQryTrade(self.handle_ptr()))
+    }
+
     #[allow(clippy::too_many_arguments)]
     fn order_send(
         &mut self,
