@@ -90,14 +90,21 @@ def classify_cancel_events(cancel_contract: dict[str, Any], events: list[Any]) -
     for event in events:
         client_order_id = str(_event_value(event, "client_order_id", "") or "")
         venue_symbol = str(_event_value(event, "venue_symbol", "") or "")
-        if client_order_id != cancel_contract["client_order_id"]:
+        order_ref = str(_event_value(event, "native_order_ref", "") or "")
+        front_id = str(_event_value(event, "front_id", "") or "")
+        session_id = str(_event_value(event, "session_id", "") or "")
+        identity_matches = (
+            order_ref == str(cancel_contract["order_ref"])
+            and front_id == str(cancel_contract["front_id"])
+            and session_id == str(cancel_contract["session_id"])
+        )
+        if client_order_id != cancel_contract["client_order_id"] and not identity_matches:
             continue
         if venue_symbol and venue_symbol != cancel_contract["instrument"]:
             continue
         kind = str(_event_value(event, "kind", "") or "").lower()
         status = str(_event_value(event, "status", "") or "").lower()
         order_id = str(_event_value(event, "native_order_id", "") or "")
-        order_ref = str(_event_value(event, "native_order_ref", "") or "")
         error_message = str(_event_value(event, "error_message", "") or "")
         event_key = (kind, order_id, order_ref, status)
         if event_key in seen_keys:
@@ -109,7 +116,7 @@ def classify_cancel_events(cancel_contract: dict[str, Any], events: list[Any]) -
             cancelled = True
         if kind == "trade":
             filled = True
-        if error_message:
+        if error_message and status not in {"97", "accepted"}:
             rejected = True
 
     if cancelled:
@@ -234,11 +241,13 @@ def run_guarded_paper_cancel(
         execution_client.submit_mapped_order(mapped_cancel)
     commands = runtime_bridge.drain_submitted_commands()
     events = runtime_bridge.drain_events()
+    native_events = (payload.get("native_cancel") or {}).get("events") or []
+    lifecycle_events = [*events, *native_events]
     payload["cancel_lifecycle"] = {
         "dry_run": not arm_cancel_send,
         "command_kinds": [command.kind.value for command in commands],
-        "event_kinds": [event.kind.value for event in events],
-        "verdict": classify_cancel_events(cancel_contract, events),
+        "event_kinds": [event.kind.value for event in events] + [event.get("kind", "") for event in native_events],
+        "verdict": classify_cancel_events(cancel_contract, lifecycle_events),
     }
     if not arm_cancel_send and commands:
         payload["failure_reason"] = "dry_run_submitted_cancel"
@@ -332,6 +341,9 @@ def _run_native_cancel_action(
             "",
             0,
         )
+        observation_deadline = time.time() + max(timeout_seconds / 2, 1)
+        while time.time() < observation_deadline and not state["events"]:
+            time.sleep(0.1)
         return {
             "accepted": native_code == 0,
             "failure_reason": None if native_code == 0 else "native_cancel_action_failed",
@@ -341,9 +353,27 @@ def _run_native_cancel_action(
             "flow_path": str(flow_path),
             "disconnect_count": len(state["disconnects"]),
             "observed_event_count": len(state["events"]),
+            "events": [_native_exec_event_payload(event) for event in state["events"]],
         }
     finally:
         session.dispose()
+
+
+def _native_exec_event_payload(event: Any) -> dict[str, Any]:
+    return {
+        "kind": "trade" if bool(getattr(event, "is_trade", False)) else "order",
+        "client_order_id": "",
+        "venue_symbol": getattr(event, "symbol", ""),
+        "native_order_id": getattr(event, "order_id", ""),
+        "native_order_ref": getattr(event, "order_ref", ""),
+        "front_id": getattr(event, "front_id", None),
+        "session_id": getattr(event, "session_id", None),
+        "status": getattr(event, "status", None),
+        "trade_volume": getattr(event, "trade_volume", None),
+        "leaves_qty": getattr(event, "leaves_qty", None),
+        "error_message": getattr(event, "error_msg", ""),
+        "callback_source": getattr(event, "callback_source", ""),
+    }
 
 
 def _event_value(event: Any, name: str, default: Any = None) -> Any:
@@ -361,6 +391,9 @@ def _event_value(event: Any, name: str, default: Any = None) -> Any:
     if name == "status":
         payload = getattr(event, "payload", {}) or {}
         return payload.get("status", default)
+    if name in {"front_id", "session_id"}:
+        payload = getattr(event, "payload", {}) or {}
+        return payload.get(name, getattr(event, name, default))
     return getattr(event, name, default)
 
 
