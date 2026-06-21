@@ -2189,6 +2189,19 @@ class CtpExecutionClient:
             match_reason=match_reason,
         )
         if matched_client_order_id and match_reason:
+            submit_request_id = self._parse_native_int(
+                str(state.get("expected_submit_request_id", "") or "")
+            )
+            submit_request_id_source = str(
+                state.get("expected_submit_request_id_source", "") or ""
+            )
+            if submit_request_id is None:
+                submit_request_id = int(exec_view.response_request_id)
+                submit_request_id_source = (
+                    "CtpRuntimeCommand.request_id"
+                    " -> TdOrderSend.request_id"
+                    " -> CTP ReqOrderInsert nRequestID"
+                )
             state["matched_exec_views"].append(exec_view)
             state["matched_exec_events"].append(
                 CtpMatchedExecEvent(
@@ -2203,13 +2216,8 @@ class CtpExecutionClient:
                     offset_flag=int(exec_view.offset_flag),
                     submit_request_offset_flag=int(exec_view.submit_request_offset_flag),
                     submit_request_offset_source=exec_view.submit_request_offset_source,
-                    submit_request_id=self._parse_native_int(
-                        str(state.get("expected_submit_request_id", "") or "")
-                    )
-                    or -1,
-                    submit_request_id_source=str(
-                        state.get("expected_submit_request_id_source", "") or ""
-                    ),
+                    submit_request_id=submit_request_id,
+                    submit_request_id_source=submit_request_id_source,
                     is_trade=bool(exec_view.is_trade),
                     trade_volume=int(exec_view.trade_volume),
                     leaves_qty=int(exec_view.leaves_qty),

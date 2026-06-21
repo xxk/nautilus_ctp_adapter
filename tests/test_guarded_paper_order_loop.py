@@ -1633,6 +1633,88 @@ def test_close_offset_owner_rule_blocks_callback_offset_as_submit_truth() -> Non
     assert verdict["writes_truth"] is False
 
 
+def test_close_yesterday_owner_rule_blocks_callback_offset_as_submit_truth() -> None:
+    intent = build_intent_contract(
+        instrument="rb2610",
+        side="SELL",
+        quantity=1,
+        limit_price=3178.0,
+        position_effect="CLOSEYESTERDAY",
+        price_mode="snapshot_close",
+        client_order_id="source-bearing-close-yesterday-insufficient-position",
+    )
+    lifecycle_events = [
+        {
+            "kind": "order",
+            "client_order_id": "source-bearing-close-yesterday-insufficient-position",
+            "venue_symbol": "rb2610",
+            "status": "53",
+            "trade_volume": 0,
+            "leaves_qty": 0,
+            "offset_flag": "1",
+            "submit_request_offset_flag": "4",
+            "submit_request_offset_source": (
+                "repo_ctp_td_order_send.CThostFtdcInputOrderField.CombOffsetFlag[0]"
+            ),
+            "callback_source": "OnRspOrderInsert",
+            "response_request_id": "43",
+            "response_is_last": "1",
+            "response_error_id": "31",
+            "payload_error_msg": "持仓不足",
+            "error_message": "持仓不足",
+        }
+    ]
+    lifecycle_verdict = classify_lifecycle_events(intent, lifecycle_events)
+    offset_semantics = order_loop.build_native_offset_semantics(
+        intent_contract=intent,
+        command_payload={"native_comb_offset": "4"},
+        lifecycle_events=lifecycle_events,
+    )
+    rejection_semantics = order_loop.build_broker_rejection_semantics(
+        intent_contract=intent,
+        lifecycle_events=lifecycle_events,
+        lifecycle_verdict=lifecycle_verdict,
+        native_offset_semantics=offset_semantics,
+    )
+    position_detail_semantics = {
+        "disposition": "position_detail_sufficient_for_current_close_diagnostic",
+        "position_exchange_ids": ["SHFE"],
+        "instrument_exchange_id": "SHFE",
+        "position_buckets": [
+            {
+                "direction": "LONG",
+                "position_qty": 5,
+                "td_position_qty": 0,
+                "yd_position_qty": 5,
+            }
+        ],
+    }
+
+    verdict = order_loop.build_close_offset_owner_rule_semantics(
+        intent_contract=intent,
+        position_detail_semantics=position_detail_semantics,
+        native_offset_semantics=offset_semantics,
+        broker_rejection_semantics=rejection_semantics,
+    )
+
+    assert verdict["disposition"] == "owner_rule_blocks_callback_offset_as_submit_truth"
+    assert verdict["blocker_type"] == "broker-or-adapter-close-position-semantics"
+    assert verdict["position_effect"] == "CLOSEYESTERDAY"
+    assert verdict["expected_submit_offset_from_position_effect"] == "4"
+    assert verdict["observed_submit_boundary_offset"] == "4"
+    assert verdict["callback_offset_flags"] == ["1"]
+    assert verdict["callback_sources"] == ["OnRspOrderInsert"]
+    assert verdict["submit_boundary_matches_command_payload"] is True
+    assert verdict["callback_is_rejection_diagnostic_only"] is True
+    assert verdict["auto_downgrade_to_generic_close_allowed"] is False
+    assert verdict["primary_rule_source_required"] is True
+    assert verdict["local_diagnostics_sufficient_to_close"] is False
+    assert verdict["acceptance_implication"] == "typed_blocker_only_not_fill_or_closeout_truth"
+    assert verdict["fill_producing_acceptance_satisfied"] is False
+    assert verdict["requires_owner_resolution_before_retry"] is True
+    assert verdict["writes_truth"] is False
+
+
 def test_source_exhaustion_semantics_requires_primary_rule_or_stronger_repair() -> None:
     intent = build_intent_contract(
         instrument="rb2610",

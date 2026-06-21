@@ -1274,14 +1274,20 @@ def build_close_offset_owner_rule_semantics(
         position_detail_semantics.get("disposition")
         == "position_detail_sufficient_for_current_close_diagnostic"
     )
-    close_today_submit_observed = (
-        position_effect == "CLOSETODAY"
-        and expected_offset == "3"
-        and submit_offset == "3"
-        and submit_boundary_matches
+    close_offset_submit_observed = submit_boundary_matches and (
+        (
+            position_effect == "CLOSETODAY"
+            and expected_offset == "3"
+            and submit_offset == "3"
+        )
+        or (
+            position_effect == "CLOSEYESTERDAY"
+            and expected_offset == "4"
+            and submit_offset == "4"
+        )
     )
     callback_is_rejection_diagnostic_only = (
-        close_today_submit_observed
+        close_offset_submit_observed
         and order_insert_response_mismatch
         and source_bearing_rejection
         and "OnRspOrderInsert" in callback_sources
@@ -1316,8 +1322,8 @@ def build_close_offset_owner_rule_semantics(
         "rule": (
             "OnRspOrderInsert offset fields on a zero-fill insufficient-position "
             "close rejection are diagnostic response fields only. They must not "
-            "rewrite submit-boundary provenance or silently change a future "
-            "CLOSETODAY request into CLOSE."
+            "rewrite close-offset submit-boundary provenance or silently change "
+            "a future CLOSETODAY or CLOSEYESTERDAY request into CLOSE."
         ),
         "next_required_evidence": (
             [
