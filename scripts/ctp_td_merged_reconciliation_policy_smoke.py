@@ -12,6 +12,10 @@ if str(SRC_ROOT) not in sys.path:
 
 from nautilus_ctp_adapter.adapters.ctp.config import CtpAdapterConfig
 from nautilus_ctp_adapter.adapters.ctp.factory import build_ctp_stack
+from nautilus_ctp_adapter.diagnostics.evidence_payloads import (
+    TD_MERGED_RECONCILIATION_POLICY_BASELINE,
+    build_td_merged_reconciliation_policy_payload,
+)
 from nautilus_ctp_adapter.devtools.offhours_cli import (
     build_export_metadata,
     resolve_export_path,
@@ -21,7 +25,7 @@ from nautilus_ctp_adapter.devtools.offhours_cli import (
 )
 
 
-BASELINE = "td-merged-reconciliation-policy-v1"
+BASELINE = TD_MERGED_RECONCILIATION_POLICY_BASELINE
 
 
 def _emit_payload(payload: dict[str, object]) -> None:
@@ -87,101 +91,20 @@ def main() -> int:
     except Exception as exc:
         return _emit_exception(stage="run_smoke", exc=exc)
 
-    failure_reason = None
-    if result.snapshot.positions.query_code != 0:
-        failure_reason = "positions_query_failed"
-    elif result.snapshot.positions.timed_out:
-        failure_reason = "positions_timed_out"
-    elif not result.snapshot.positions.completed:
-        failure_reason = "positions_incomplete"
-    elif result.snapshot.account.query_code != 0:
-        failure_reason = "account_query_failed"
-    elif result.snapshot.account.timed_out:
-        failure_reason = "account_timed_out"
-    elif not result.snapshot.account.completed:
-        failure_reason = "account_incomplete"
-    elif result.snapshot.account.account is None:
-        failure_reason = "account_missing"
-    elif result.disposition not in {"clear", "manual_review_required", "boundary_required", "evidence_only"}:
-        failure_reason = "unexpected_disposition"
-
-    payload = {
-        "baseline": BASELINE,
-        "success": failure_reason is None,
-        "failure_reason": failure_reason,
-        "flow_path": None if args.flow_path is None else str(args.flow_path),
-        "flow_mode": flow_mode,
-        "session_label": session_label,
-        "account_id": result.snapshot.order_truth.account_id,
-        "order_truth": {
-            "account_id": result.snapshot.order_truth.account_id,
-            "disposition": result.snapshot.order_truth.disposition,
-            "observed_callback_count": result.snapshot.order_truth.observed_callback_count,
-            "historical_callback_count": result.snapshot.order_truth.historical_callback_count,
-            "delayed_callback_count": result.snapshot.order_truth.delayed_callback_count,
-            "current_session_callback_count": result.snapshot.order_truth.current_session_callback_count,
-            "first_historical_order_id": result.snapshot.order_truth.first_historical_order_id,
-            "first_current_session_order_id": result.snapshot.order_truth.first_current_session_order_id,
-            "manual_review_codes": list(result.snapshot.order_truth.manual_review_codes),
-            "boundary_codes": list(result.snapshot.order_truth.boundary_codes),
-            "evidence_only_codes": list(result.snapshot.order_truth.evidence_only_codes),
-        },
-        "positions": {
-            "request_id": result.snapshot.positions.request_id,
-            "query_code": result.snapshot.positions.query_code,
-            "completed": result.snapshot.positions.completed,
-            "timed_out": result.snapshot.positions.timed_out,
-            "no_positions": result.snapshot.positions.no_positions,
-            "position_count": result.snapshot.positions.position_count,
-        },
-        "account": {
-            "request_id": result.snapshot.account.request_id,
-            "query_code": result.snapshot.account.query_code,
-            "completed": result.snapshot.account.completed,
-            "timed_out": result.snapshot.account.timed_out,
-            "account_present": result.snapshot.account.account is not None,
-            "account_id": None if result.snapshot.account.account is None else result.snapshot.account.account.account_id,
-            "balance": None if result.snapshot.account.account is None else result.snapshot.account.account.balance,
-            "available": None if result.snapshot.account.account is None else result.snapshot.account.account.available,
-            "margin": None if result.snapshot.account.account is None else result.snapshot.account.account.margin,
-        },
-        "disposition": result.disposition,
-        "position_count": result.snapshot.positions.position_count,
-        "observed_callback_count": result.snapshot.order_truth.observed_callback_count,
-        "historical_callback_count": result.snapshot.order_truth.historical_callback_count,
-        "current_session_callback_count": result.snapshot.order_truth.current_session_callback_count,
-        "available_ratio": result.available_ratio,
-        "margin_ratio": result.margin_ratio,
-        "manual_review_codes": [
-            finding.code for finding in result.findings if finding.action == "manual_review_required"
-        ],
-        "boundary_codes": [
-            finding.code for finding in result.findings if finding.action == "boundary_required"
-        ],
-        "evidence_only_codes": [
-            finding.code for finding in result.findings if finding.action == "evidence_only"
-        ],
-        "findings": [
-            {
-                "code": finding.code,
-                "severity": finding.severity,
-                "action": finding.action,
-                "metric": finding.metric,
-                "metric_value": finding.metric_value,
-                "threshold": finding.threshold,
-                "message": finding.message,
-            }
-            for finding in result.findings
-        ],
-        "export": build_export_metadata(
+    payload = build_td_merged_reconciliation_policy_payload(
+        result,
+        flow_path=None if args.flow_path is None else str(args.flow_path),
+        flow_mode=flow_mode,
+        session_label=session_label,
+        export=build_export_metadata(
             export_path=export_path,
             evidence_root=args.evidence_root,
             session_label=session_label,
             explicit_path=args.output_json is not None,
         ),
-        "bridge_command_kinds": [command.kind.value for command in commands],
-        "bridge_event_kinds": [event.kind.value for event in events],
-    }
+        bridge_commands=commands,
+        bridge_events=events,
+    )
 
     if export_path is not None:
         try:
@@ -190,7 +113,7 @@ def main() -> int:
             return _emit_exception(stage="export_payload", exc=exc)
 
     _emit_payload(payload)
-    return 0 if failure_reason is None else 1
+    return 0 if payload["failure_reason"] is None else 1
 
 
 if __name__ == "__main__":

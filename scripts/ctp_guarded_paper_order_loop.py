@@ -17,6 +17,10 @@ if str(SRC_ROOT) not in sys.path:
 from nautilus_ctp_adapter.adapters.ctp.config import CtpAdapterConfig
 from nautilus_ctp_adapter.adapters.ctp.execution_client import CtpExecutionClient
 from nautilus_ctp_adapter.adapters.ctp.factory import build_ctp_stack
+from nautilus_ctp_adapter.diagnostics.guarded_paper_order import (
+    build_callback_source_observability,
+    finalize_order_lifecycle_payload,
+)
 from nautilus_ctp_adapter.devtools.offhours_cli import write_json_payload
 
 from scripts.ctp_paper_session_preflight import paper_config_issues
@@ -792,48 +796,6 @@ def build_native_offset_semantics(
         "fill_producing_acceptance_satisfied": False,
         "requires_owner_resolution_before_retry": disposition
         != "callback_offset_matches_submit_native_comb_offset",
-        "writes_truth": False,
-    }
-
-
-def build_callback_source_observability(
-    *,
-    lifecycle_events: list[dict[str, Any]],
-    lifecycle_verdict: dict[str, Any],
-    paper_send_armed: bool = False,
-) -> dict[str, Any]:
-    callback_sources = sorted(
-        {
-            str(event.get("callback_source", "")).strip()
-            for event in lifecycle_events
-            if str(event.get("callback_source", "")).strip()
-        }
-    )
-    zero_fill_rejection = (
-        lifecycle_verdict.get("disposition") in {"cancelled", "rejected"}
-        and int(lifecycle_verdict.get("fill_volume", 0) or 0) == 0
-    )
-    lifecycle_timeout = lifecycle_verdict.get("disposition") == "timeout"
-    source_observed = bool(callback_sources)
-    source_required = zero_fill_rejection or (paper_send_armed and lifecycle_timeout)
-    accepted = not source_required or source_observed
-    return {
-        "accepted": accepted,
-        "disposition": (
-            "callback_source_observed"
-            if source_observed
-            else "missing_callback_source_for_armed_lifecycle_timeout"
-            if paper_send_armed and lifecycle_timeout
-            else "callback_source_not_required_for_non_rejection"
-            if not source_required
-            else "missing_callback_source_for_zero_fill_rejection"
-        ),
-        "callback_sources": callback_sources,
-        "zero_fill_rejection": zero_fill_rejection,
-        "armed_lifecycle_timeout": paper_send_armed and lifecycle_timeout,
-        "acceptance_implication": "diagnostic_only_not_fill_or_closeout_truth",
-        "fill_producing_acceptance_satisfied": False,
-        "requires_owner_resolution_before_retry": source_required and not source_observed,
         "writes_truth": False,
     }
 
@@ -2078,24 +2040,18 @@ def run_guarded_paper_order(
                 "disposition": "post_snapshot_rejected",
                 "issues": list(post_snapshot_verdict["issues"]),
             }
-    success = (
-        result.bootstrap.ready
-        and result.mapped_submit.error is None
-        and result.mapped_submit.command is not None
-        and payload["order_contract"]["accepted"]
-        and lifecycle_verdict["accepted"]
+    return finalize_order_lifecycle_payload(
+        payload=payload,
+        bootstrap_ready=result.bootstrap.ready,
+        mapped_error=result.mapped_submit.error,
+        mapped_command=result.mapped_submit.command,
+        order_contract=payload["order_contract"],
+        lifecycle_verdict=lifecycle_verdict,
+        reconciliation=payload["reconciliation"],
+        arm_paper_send=arm_paper_send,
+        dry_run=result.dry_run,
+        live_send_armed=result.live_send_armed,
     )
-    if payload["reconciliation"] is not None:
-        success = success and payload["reconciliation"]["accepted"]
-    if not arm_paper_send:
-        success = success and result.dry_run and result.live_send_armed is False
-    else:
-        success = success and result.live_send_armed
-    payload["success"] = success
-    payload["status"] = "passed" if success else "blocked"
-    payload["failure_reason"] = None if success else "order_lifecycle_not_ready"
-    payload["blocker_type"] = None if success else "paper-resource"
-    return payload
 
 
 def main() -> int:

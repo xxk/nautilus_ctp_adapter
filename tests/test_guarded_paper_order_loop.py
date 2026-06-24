@@ -12,7 +12,8 @@ from scripts.ctp_guarded_paper_order_loop import (
     validate_order_command_contract,
     validate_pre_order_snapshot,
 )
-from nautilus_ctp_adapter.adapters.ctp.execution_client import CtpMappedOrderCommand
+from nautilus_ctp_adapter.adapters.ctp.config import CtpAdapterConfig, CtpExecutionGuardrails
+from nautilus_ctp_adapter.adapters.ctp.execution_client import CtpExecutionClient, CtpMappedOrderCommand
 from nautilus_ctp_adapter.runtime import (
     CtpRuntimeCommand,
     CtpRuntimeCommandKind,
@@ -486,6 +487,48 @@ def test_guarded_loop_dry_run_accepts_exposure_reduction_config_flag(tmp_path: P
     assert result["risk_preflight"]["projected_net_position"] == -2
     assert result["risk_preflight"]["verified_exposure_reduction"] is False
     assert result["order_contract"]["accepted"] is True
+    assert (
+        result["order_lifecycle"]["bootstrap_ready"] is True
+    ), "dry-run preflight should not require native TD login"
+
+
+def test_execution_client_dry_run_lifecycle_does_not_require_native_td_bridge() -> None:
+    config = CtpAdapterConfig(
+        broker_id="9999",
+        user_id="u",
+        password="p",
+        md_front="tcp://trading.openctp.cn:30011",
+        td_front="tcp://trading.openctp.cn:30001",
+        app_id="client_test",
+        auth_code="auth",
+        product_info="prod",
+        instruments=["c2609"],
+        execution_guardrails=CtpExecutionGuardrails(
+            enabled=True,
+            allowed_instruments=["c2609"],
+            max_order_qty=3,
+            max_net_position=5,
+            max_submit_per_minute=10,
+            allow_live_order_smoke=False,
+        ),
+    )
+    client = CtpExecutionClient(config)
+
+    result = client.run_order_lifecycle_smoke_baseline(
+        instrument_id="c2609",
+        side="BUY",
+        quantity=1,
+        limit_price=2300.0,
+        position_effect="OPEN",
+        client_order_id="dry-run-no-native",
+        dry_run=True,
+        timeout_seconds=1,
+    )
+
+    assert result.bootstrap.ready is True
+    assert result.bootstrap.execution_bootstrap.td_smoke.login_success is None
+    assert result.bootstrap.execution_bootstrap.td_smoke.login_error_message == "dry_run_native_login_not_executed"
+    assert result.mapped_submit.command is not None
 
 
 def test_guarded_loop_lifecycle_events_preserve_native_diagnostic_fields(

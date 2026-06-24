@@ -31,12 +31,18 @@ from nautilus_ctp_adapter.adapters.ctp.nautilus_provider import CtpNautilusInstr
 from nautilus_ctp_adapter.adapters.ctp.normalization import CtpProductKind, NormalizedCtpInstrument
 from nautilus_ctp_adapter.adapters.ctp.execution_client import CtpTdExecEventPayload
 from nautilus_ctp_adapter.devtools.offhours_cli import write_json_payload
+from nautilus_ctp_adapter.diagnostics.evidence_payloads import (
+    NAUTILUS_ENGINE_HARNESS_ACCOUNT_PROFILE,
+    NAUTILUS_ENGINE_HARNESS_BASELINE,
+    NAUTILUS_ENGINE_HARNESS_EVIDENCE_CLASS,
+    build_nautilus_engine_harness_payload,
+)
 from nautilus_ctp_adapter.runtime.query import CtpAccountRecord, CtpPositionRecord
 
 
-BASELINE = "ctp-nautilus-engine-harness-v1"
-ACCOUNT_PROFILE = "openctp-tts-7x24-simulation"
-EVIDENCE_CLASS = "openctp-tts-7x24-simulation"
+BASELINE = NAUTILUS_ENGINE_HARNESS_BASELINE
+ACCOUNT_PROFILE = NAUTILUS_ENGINE_HARNESS_ACCOUNT_PROFILE
+EVIDENCE_CLASS = NAUTILUS_ENGINE_HARNESS_EVIDENCE_CLASS
 
 
 class _HarnessClock:
@@ -235,55 +241,16 @@ def build_engine_harness_payload(*, run_id: str) -> dict[str, Any]:
         )
     )
 
-    order_statuses = [report.order_status.name for report in order_reports]
-    payload = {
-        "baseline": BASELINE,
-        "run_id": run_id,
-        "proposal_id": "p004-openctp-tts-simulation-provider-completeness",
-        "change_id": "20260608__openctp-tts-simulation-provider__nautilus-engine-harness",
-        "account_profile": ACCOUNT_PROFILE,
-        "evidence_class": EVIDENCE_CLASS,
-        "success": True,
-        "status": "passed",
-        "provider_entrypoint": "CtpLiveExecutionClient",
-        "script_only_smoke": False,
-        "paper_send_armed": False,
-        "instrument_provider": {
-            "loaded": True,
-            "instrument_ids": [item.id.value for item in provider.list_all()],
-        },
-        "engine_commands": {
-            "submit_order": {"report_statuses": order_statuses},
-            "cancel_order": {"report_statuses": order_statuses},
-            "generate_order_status_reports": {"count": len(order_reports)},
-            "generate_fill_reports": {"count": len(fill_reports)},
-            "generate_position_status_reports": {"count": len(position_reports)},
-        },
-        "reports": {
-            "order_statuses": order_statuses,
-            "accepted_count": order_statuses.count("ACCEPTED"),
-            "canceled_count": order_statuses.count("CANCELED"),
-            "rejected_count": order_statuses.count("REJECTED"),
-            "fill_count": len(fill_reports),
-            "duplicate_fill_ignored": len(fill_reports) == 1,
-            "position_count": len(position_reports),
-            "account_state_reported": account_state.is_reported,
-            "account_id_redacted": account_state.account_id.value == "OPENCTP-TTS-REDACTED",
-        },
-        "issues": [],
-    }
-    payload["success"] = (
-        payload["reports"]["accepted_count"] == 1
-        and payload["reports"]["canceled_count"] == 1
-        and payload["reports"]["rejected_count"] == 1
-        and payload["reports"]["fill_count"] == 1
-        and payload["reports"]["position_count"] == 1
-        and payload["reports"]["account_state_reported"]
-        and payload["reports"]["account_id_redacted"]
-        and not payload["script_only_smoke"]
+    return build_nautilus_engine_harness_payload(
+        run_id=run_id,
+        instrument_ids=[item.id.value for item in provider.list_all()],
+        order_statuses=[report.order_status.name for report in order_reports],
+        order_report_count=len(order_reports),
+        fill_report_count=len(fill_reports),
+        position_report_count=len(position_reports),
+        account_state_reported=account_state.is_reported,
+        account_id_redacted=account_state.account_id.value == "OPENCTP-TTS-REDACTED",
     )
-    payload["status"] = "passed" if payload["success"] else "blocked"
-    return payload
 
 
 def main() -> int:
