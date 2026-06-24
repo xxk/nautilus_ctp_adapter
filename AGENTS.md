@@ -82,8 +82,9 @@ When the goal is to enter the formal frontier quickly, use this order:
 2. `python scripts/show_current_frontier.py --root .`
 3. `python scripts/show_current_frontier.py --by-topic` only when a grouped topic projection is useful
 4. `python scripts/check_harness.py`
-5. `python scripts/check_change_docs.py --root .`
-6. Open only the active change bundle.
+5. `python scripts/check_architecture_governance.py --root .`
+6. `python scripts/check_change_docs.py --root .`
+7. Open only the active change bundle.
 
 ## Repository Role
 
@@ -178,6 +179,9 @@ python scripts/check_adr_docs.py --root .
 
 # Change docs completeness
 python scripts/check_change_docs.py --root .
+
+# Architecture owner/truth/retirement governance
+python scripts/check_architecture_governance.py --root .
 
 # Proposal docs completeness
 python scripts/check_proposal_docs.py --root .

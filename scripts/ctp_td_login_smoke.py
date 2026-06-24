@@ -19,10 +19,14 @@ from nautilus_ctp_adapter.devtools.offhours_cli import (
     resolve_session_label,
     write_json_payload,
 )
+from nautilus_ctp_adapter.diagnostics.evidence_payloads import (
+    TD_LOGIN_SMOKE_BASELINE,
+    build_td_login_smoke_payload,
+)
 from nautilus_ctp_adapter.native import CtpTdApi
 
 
-BASELINE = "td-login-smoke-v1"
+BASELINE = TD_LOGIN_SMOKE_BASELINE
 
 
 def _emit_payload(payload: dict[str, object]) -> None:
@@ -102,46 +106,30 @@ def main() -> int:
         if login is not None and login.success:
             settlement_code = api.confirm_settlement(handle)
 
-        failure_reason = None
-        if login is None:
-            failure_reason = "login_response_missing"
-        elif login.success is not True:
-            failure_reason = "login_failed"
-        elif settlement_code != 0:
-            failure_reason = "settlement_not_confirmed"
-
-        payload = {
-            "baseline": BASELINE,
-            "success": failure_reason is None,
-            "failure_reason": failure_reason,
-            "flow_path": str(flow_path),
-            "flow_mode": flow_mode,
-            "session_label": session_label,
-            "init_code": init_code,
-            "authenticate_code": authenticate_code,
-            "login_code": login_code,
-            "settlement_code": settlement_code,
-            "login_success": None if login is None else login.success,
-            "login_error_id": None if login is None else login.error_id,
-            "login_error_message": None if login is None else login.error_message,
-            "front_id": None if login is None else login.front_id,
-            "session_id": None if login is None else login.session_id,
-            "max_order_ref": None if login is None else login.max_order_ref,
-            "disconnects": list(state["disconnects"]),
-            "export": build_export_metadata(
+        payload = build_td_login_smoke_payload(
+            login=login,
+            settlement_code=settlement_code,
+            init_code=init_code,
+            authenticate_code=authenticate_code,
+            login_code=login_code,
+            flow_path=str(flow_path),
+            flow_mode=flow_mode,
+            session_label=session_label,
+            disconnects=state["disconnects"],
+            export=build_export_metadata(
                 export_path=export_path,
                 evidence_root=args.evidence_root,
                 session_label=session_label,
                 explicit_path=args.output_json is not None,
             ),
-        }
+        )
         if export_path is not None:
             try:
                 write_json_payload(path=export_path, payload=payload)
             except Exception as exc:
                 return _emit_exception(stage="export_payload", exc=exc)
         _emit_payload(payload)
-        return 0 if failure_reason is None else 1
+        return 0 if payload["success"] else 1
     except Exception as exc:
         return _emit_exception(stage="run_smoke", exc=exc)
     finally:
