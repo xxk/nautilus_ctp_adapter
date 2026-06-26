@@ -8,6 +8,8 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.pyd.*.bak
+*.dll.*.bak
 
 cfgs/local/
 vendor/ctp/bin/
@@ -27,4 +29,5 @@ output/sdk_download/
 output/vnpy_ctp_clone/
 output/openctp/
 output/debug/
+output/account-console-ctp19053-readback/
 output/pytest-tmp/

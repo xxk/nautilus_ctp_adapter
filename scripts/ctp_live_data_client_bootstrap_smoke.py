@@ -19,9 +19,13 @@ from nautilus_ctp_adapter.devtools.offhours_cli import (
     resolve_session_label,
     write_json_payload,
 )
+from nautilus_ctp_adapter.diagnostics.evidence_payloads import (
+    LIVE_DATA_CLIENT_BOOTSTRAP_BASELINE,
+    build_live_data_client_bootstrap_payload,
+)
 
 
-BASELINE = "live-data-client-bootstrap-smoke-v1"
+BASELINE = LIVE_DATA_CLIENT_BOOTSTRAP_BASELINE
 
 
 def _emit_payload(payload: dict[str, object]) -> None:
@@ -90,50 +94,22 @@ def main() -> int:
     except Exception as exc:
         return _emit_exception(stage="run_smoke", exc=exc)
 
-    failure_reason = None
-    if not load_result.loaded:
-        failure_reason = "instrument_not_loaded"
-    elif load_result.instrument_count <= 0:
-        failure_reason = "instrument_missing"
-    elif args.symbol not in bootstrap_result.selected_symbols:
-        failure_reason = "symbol_not_selected"
-    elif not bootstrap_result.bootstrap_state.started:
-        failure_reason = "bootstrap_not_started"
-    elif bootstrap_result.bootstrap_state.connect_request_id is None:
-        failure_reason = "connect_request_missing"
-    elif not bootstrap_result.bootstrap_state.subscribe_request_ids:
-        failure_reason = "subscribe_requests_missing"
-
-    payload = {
-        "baseline": BASELINE,
-        "success": failure_reason is None,
-        "failure_reason": failure_reason,
-        "flow_mode": flow_mode,
-        "session_label": session_label,
-        "flow_path": None if args.flow_path is None else str(args.flow_path),
-        "requested_symbol": args.symbol,
-        "instrument_request_id": load_result.request_id,
-        "instrument_loaded": load_result.loaded,
-        "instrument_count": load_result.instrument_count,
-        "instrument_symbols": [instrument.display_symbol for instrument in load_result.instruments[:5]],
-        "selected_symbols": list(bootstrap_result.selected_symbols),
-        "bootstrap_started": bootstrap_result.bootstrap_state.started,
-        "connect_request_id": bootstrap_result.bootstrap_state.connect_request_id,
-        "subscribe_request_ids": list(bootstrap_result.bootstrap_state.subscribe_request_ids),
-        "bootstrap_command_kinds": [command.kind.value for command in bootstrap_commands],
-        "bootstrap_subscribe_symbols": [
-            command.venue_symbol
-            for command in bootstrap_commands
-            if command.venue_symbol
-        ],
-        "instrument_event_kinds_tail": [event.kind.value for event in instrument_events[-5:]],
-        "export": build_export_metadata(
+    payload = build_live_data_client_bootstrap_payload(
+        load_result=load_result,
+        bootstrap_result=bootstrap_result,
+        requested_symbol=args.symbol,
+        flow_path=None if args.flow_path is None else str(args.flow_path),
+        flow_mode=flow_mode,
+        session_label=session_label,
+        export=build_export_metadata(
             export_path=export_path,
             evidence_root=args.evidence_root,
             session_label=session_label,
             explicit_path=args.output_json is not None,
         ),
-    }
+        bootstrap_commands=bootstrap_commands,
+        instrument_events=instrument_events,
+    )
 
     if export_path is not None:
         try:
@@ -142,7 +118,7 @@ def main() -> int:
             return _emit_exception(stage="export_payload", exc=exc)
 
     _emit_payload(payload)
-    return 0 if failure_reason is None else 1
+    return 0 if payload["success"] else 1
 
 
 if __name__ == "__main__":

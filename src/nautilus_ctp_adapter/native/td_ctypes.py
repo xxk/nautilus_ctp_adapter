@@ -348,6 +348,12 @@ class CtpTdApi:
     def qry_account(self, handle: int) -> int:
         return int(self._dll.TdQryAccount(ctypes.c_void_p(handle)))
 
+    def qry_order(self, handle: int) -> int:
+        return int(self._dll.TdQryOrder(ctypes.c_void_p(handle)))
+
+    def qry_trade(self, handle: int) -> int:
+        return int(self._dll.TdQryTrade(ctypes.c_void_p(handle)))
+
     def set_login_callback(
         self,
         handle: int,
@@ -568,6 +574,10 @@ class CtpTdApi:
         self._dll.TdQryPosition.restype = ctypes.c_int
         self._dll.TdQryAccount.argtypes = [ctypes.c_void_p]
         self._dll.TdQryAccount.restype = ctypes.c_int
+        self._dll.TdQryOrder.argtypes = [ctypes.c_void_p]
+        self._dll.TdQryOrder.restype = ctypes.c_int
+        self._dll.TdQryTrade.argtypes = [ctypes.c_void_p]
+        self._dll.TdQryTrade.restype = ctypes.c_int
         self._dll.TdSetCallback.argtypes = [ctypes.c_void_p, TdOnExecCallback]
         self._dll.TdSetLoginCallback.argtypes = [ctypes.c_void_p, TdOnLoginCallback]
         self._dll.TdSetFrontDisconnectedCallback.argtypes = [ctypes.c_void_p, TdOnFrontDisconnectedCallback]

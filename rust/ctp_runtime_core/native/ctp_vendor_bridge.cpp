@@ -340,6 +340,8 @@ public:
     void OnRspQryInstrument(CThostFtdcInstrumentField* instrument, CThostFtdcRspInfoField* rsp_info, int request_id, bool is_last) override;
     void OnRspQryInvestorPosition(CThostFtdcInvestorPositionField* position, CThostFtdcRspInfoField* rsp_info, int request_id, bool is_last) override;
     void OnRspQryTradingAccount(CThostFtdcTradingAccountField* account, CThostFtdcRspInfoField* rsp_info, int request_id, bool is_last) override;
+    void OnRspQryOrder(CThostFtdcOrderField* order, CThostFtdcRspInfoField* rsp_info, int request_id, bool is_last) override;
+    void OnRspQryTrade(CThostFtdcTradeField* trade, CThostFtdcRspInfoField* rsp_info, int request_id, bool is_last) override;
     void OnRspOrderInsert(CThostFtdcInputOrderField* input_order, CThostFtdcRspInfoField* rsp_info, int request_id, bool is_last) override;
     void OnErrRtnOrderInsert(CThostFtdcInputOrderField* input_order, CThostFtdcRspInfoField* rsp_info) override;
     void OnRtnOrder(CThostFtdcOrderField* order) override;
@@ -956,6 +958,115 @@ void TdSpiImpl::OnRspQryTradingAccount(CThostFtdcTradingAccountField* account, C
     }
 }
 
+void TdSpiImpl::OnRspQryOrder(CThostFtdcOrderField* order, CThostFtdcRspInfoField* rsp_info, int request_id, bool is_last) {
+    if (order == nullptr) {
+        return;
+    }
+    if (TdSession* session_ptr = session()) {
+        TdOnExecCallback callback = nullptr;
+        SessionIdentity fallback_identity{};
+        int submit_request_offset_flag = -1;
+        const std::string order_ref = normalized_text(order->OrderRef);
+        const std::string order_sys_id = normalized_text(order->OrderSysID);
+        {
+            std::scoped_lock lock(session_ptr->mutex);
+            callback = session_ptr->exec_callback;
+            fallback_identity = current_td_identity_locked(*session_ptr);
+            submit_request_offset_flag = resolve_td_submit_offset_locked(*session_ptr, order_ref);
+            remember_td_order_identity_locked(
+                *session_ptr,
+                order_ref,
+                order_sys_id,
+                SessionIdentity{order->FrontID, order->SessionID});
+        }
+        if (callback == nullptr) {
+            return;
+        }
+        const std::string symbol = normalized_text(order->InstrumentID);
+        const std::string status_message = normalized_text(order->StatusMsg);
+        const std::string order_id = order_sys_id.empty() ? order_ref : order_sys_id;
+        const std::string update_time = normalized_text(order->UpdateTime).empty() ? normalized_text(order->InsertTime) : normalized_text(order->UpdateTime);
+        const NativeExec snapshot{
+            order_id.c_str(),
+            symbol.c_str(),
+            order->LimitPrice,
+            order->VolumeTotalOriginal,
+            normalize_enum_value(order->Direction),
+            normalize_enum_value(order->OrderStatus),
+            compose_epoch_us(normalized_text(order->InsertDate).empty() ? normalized_text(order->TradingDay) : normalized_text(order->InsertDate), update_time, 0),
+            order_ref.c_str(),
+            order->FrontID == 0 ? fallback_identity.front_id : order->FrontID,
+            order->SessionID == 0 ? fallback_identity.session_id : order->SessionID,
+            normalize_enum_value(order->Direction),
+            normalize_enum_value(order->CombOffsetFlag[0]),
+            normalize_enum_value(order->CombHedgeFlag[0]),
+            0,
+            0.0,
+            0,
+            status_message.empty() ? nullptr : status_message.c_str(),
+            order->VolumeTotal,
+            "OnRspQryOrder",
+            submit_request_offset_flag,
+            submit_offset_source_for(submit_request_offset_flag),
+            request_id,
+            is_last ? 1 : 0,
+            rsp_info == nullptr ? 0 : rsp_info->ErrorID,
+        };
+        callback(&snapshot);
+    }
+}
+
+void TdSpiImpl::OnRspQryTrade(CThostFtdcTradeField* trade, CThostFtdcRspInfoField* rsp_info, int request_id, bool is_last) {
+    if (trade == nullptr) {
+        return;
+    }
+    if (TdSession* session_ptr = session()) {
+        TdOnExecCallback callback = nullptr;
+        const std::string order_ref = normalized_text(trade->OrderRef);
+        const std::string order_sys_id = normalized_text(trade->OrderSysID);
+        SessionIdentity identity{};
+        int submit_request_offset_flag = -1;
+        {
+            std::scoped_lock lock(session_ptr->mutex);
+            callback = session_ptr->exec_callback;
+            identity = resolve_td_order_identity_locked(*session_ptr, order_ref, order_sys_id);
+            submit_request_offset_flag = resolve_td_submit_offset_locked(*session_ptr, order_ref);
+        }
+        if (callback == nullptr) {
+            return;
+        }
+        const std::string symbol = normalized_text(trade->InstrumentID);
+        const std::string order_id = order_sys_id.empty() ? order_ref : order_sys_id;
+        const NativeExec snapshot{
+            order_id.c_str(),
+            symbol.c_str(),
+            trade->Price,
+            trade->Volume,
+            normalize_enum_value(trade->Direction),
+            0,
+            compose_epoch_us(normalized_text(trade->TradeDate).empty() ? normalized_text(trade->TradingDay) : normalized_text(trade->TradeDate), normalized_text(trade->TradeTime), 0),
+            order_ref.c_str(),
+            identity.front_id,
+            identity.session_id,
+            normalize_enum_value(trade->Direction),
+            normalize_enum_value(trade->OffsetFlag),
+            normalize_enum_value(trade->HedgeFlag),
+            1,
+            trade->Price,
+            trade->Volume,
+            nullptr,
+            0,
+            "OnRspQryTrade",
+            submit_request_offset_flag,
+            submit_offset_source_for(submit_request_offset_flag),
+            request_id,
+            is_last ? 1 : 0,
+            rsp_info == nullptr ? 0 : rsp_info->ErrorID,
+        };
+        callback(&snapshot);
+    }
+}
+
 void TdSpiImpl::OnRspOrderInsert(CThostFtdcInputOrderField* input_order,
                                   CThostFtdcRspInfoField* rsp_info,
                                   int request_id, bool is_last) {
@@ -1527,6 +1638,56 @@ extern "C" std::int32_t repo_ctp_td_qry_account(void* handle) {
     copy_ctp_text(query.InvestorID, investor_id);
     copy_ctp_text(query.AccountID, investor_id);
     return api->ReqQryTradingAccount(&query, request_id);
+}
+
+extern "C" std::int32_t repo_ctp_td_qry_order(void* handle) {
+    auto* session = checked_handle<TdSession>(handle);
+    if (session == nullptr) {
+        return INVALID_HANDLE_CODE;
+    }
+    CThostFtdcTraderApi* api = nullptr;
+    std::string broker_id;
+    std::string investor_id;
+    std::int32_t request_id = 0;
+    {
+        std::scoped_lock lock(session->mutex);
+        if (session->api == nullptr || !session->logged_in) {
+            return -1;
+        }
+        api = session->api;
+        broker_id = session->broker_id;
+        investor_id = session->user_id;
+        request_id = session->next_request_id++;
+    }
+    CThostFtdcQryOrderField query{};
+    copy_ctp_text(query.BrokerID, broker_id);
+    copy_ctp_text(query.InvestorID, investor_id);
+    return api->ReqQryOrder(&query, request_id);
+}
+
+extern "C" std::int32_t repo_ctp_td_qry_trade(void* handle) {
+    auto* session = checked_handle<TdSession>(handle);
+    if (session == nullptr) {
+        return INVALID_HANDLE_CODE;
+    }
+    CThostFtdcTraderApi* api = nullptr;
+    std::string broker_id;
+    std::string investor_id;
+    std::int32_t request_id = 0;
+    {
+        std::scoped_lock lock(session->mutex);
+        if (session->api == nullptr || !session->logged_in) {
+            return -1;
+        }
+        api = session->api;
+        broker_id = session->broker_id;
+        investor_id = session->user_id;
+        request_id = session->next_request_id++;
+    }
+    CThostFtdcQryTradeField query{};
+    copy_ctp_text(query.BrokerID, broker_id);
+    copy_ctp_text(query.InvestorID, investor_id);
+    return api->ReqQryTrade(&query, request_id);
 }
 
 extern "C" void repo_ctp_td_set_callback(void* handle, TdOnExecCallback callback) {
