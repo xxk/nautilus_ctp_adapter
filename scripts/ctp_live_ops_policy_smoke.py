@@ -12,10 +12,6 @@ if str(SRC_ROOT) not in sys.path:
 
 from nautilus_ctp_adapter.adapters.ctp.config import CtpAdapterConfig
 from nautilus_ctp_adapter.adapters.ctp.factory import build_ctp_stack
-from nautilus_ctp_adapter.diagnostics.evidence_payloads import (
-    LIVE_OPS_POLICY_BASELINE,
-    build_live_ops_policy_payload,
-)
 from nautilus_ctp_adapter.devtools.offhours_cli import (
     build_export_metadata,
     resolve_export_path,
@@ -25,7 +21,7 @@ from nautilus_ctp_adapter.devtools.offhours_cli import (
 )
 
 
-BASELINE = LIVE_OPS_POLICY_BASELINE
+BASELINE = "live-ops-policy-v1"
 
 
 def _emit_payload(payload: dict[str, object]) -> None:
@@ -107,19 +103,62 @@ def main() -> int:
     except Exception as exc:
         return _emit_exception(stage="run_smoke", exc=exc)
 
-    payload = build_live_ops_policy_payload(
-        result,
-        flow_mode=flow_mode,
-        session_label=session_label,
-        export=build_export_metadata(
+    failure_reason = None
+    if result.summary.account_id is None:
+        failure_reason = "account_id_missing"
+    elif result.summary.symbol is None:
+        failure_reason = "symbol_missing"
+    elif result.disposition not in {
+        "clear",
+        "manual_review_required",
+        "rebuild_required",
+        "restore_required",
+        "boundary_required",
+        "evidence_only",
+    }:
+        failure_reason = "unexpected_disposition"
+
+    payload = {
+        "baseline": BASELINE,
+        "success": failure_reason is None,
+        "failure_reason": failure_reason,
+        "flow_mode": flow_mode,
+        "session_label": session_label,
+        "account_id": result.summary.account_id,
+        "symbol": result.summary.symbol,
+        "disposition": result.disposition,
+        "requires_manual_review": result.disposition == "manual_review_required",
+        "finding_count": len(result.findings),
+        "startup_disposition": result.summary.startup_disposition,
+        "md_disposition": result.summary.md_disposition,
+        "td_disposition": result.summary.td_disposition,
+        "reconciliation_disposition": result.summary.reconciliation_disposition,
+        "manual_review_codes": list(result.summary.manual_review_codes),
+        "rebuild_required_codes": list(result.summary.rebuild_required_codes),
+        "restore_required_codes": list(result.summary.restore_required_codes),
+        "boundary_codes": list(result.summary.boundary_codes),
+        "evidence_only_codes": list(result.summary.evidence_only_codes),
+        "findings": [
+            {
+                "code": finding.code,
+                "severity": finding.severity,
+                "action": finding.action,
+                "metric": finding.metric,
+                "metric_value": finding.metric_value,
+                "threshold": finding.threshold,
+                "message": finding.message,
+            }
+            for finding in result.findings
+        ],
+        "export": build_export_metadata(
             export_path=export_path,
             evidence_root=args.evidence_root,
             session_label=session_label,
             explicit_path=args.output_json is not None,
         ),
-        bridge_commands=commands,
-        bridge_events=events,
-    )
+        "bridge_command_kinds": [command.kind.value for command in commands],
+        "bridge_event_kinds": [event.kind.value for event in events],
+    }
 
     if export_path is not None:
         try:
@@ -129,7 +168,7 @@ def main() -> int:
 
     _emit_payload(payload)
 
-    return 0 if payload["failure_reason"] is None else 1
+    return 0 if failure_reason is None else 1
 
 
 if __name__ == "__main__":

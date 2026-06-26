@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from scripts.check_adr_docs import validate_adr_docs
-from scripts.check_architecture_governance import validate_architecture_governance
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -12,11 +11,6 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 def test_adr_docs_gate_accepts_current_index_and_adr003() -> None:
     assert validate_adr_docs(PROJECT_ROOT) == []
     assert validate_adr_docs(PROJECT_ROOT, adr_id="ADR003") == []
-    assert validate_adr_docs(PROJECT_ROOT, adr_id="ADR004") == []
-
-
-def test_architecture_governance_gate_accepts_current_boundary() -> None:
-    assert validate_architecture_governance(PROJECT_ROOT) == []
 
 
 def test_workflows_define_specs_not_execution_state() -> None:

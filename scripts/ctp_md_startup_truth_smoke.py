@@ -19,13 +19,9 @@ from nautilus_ctp_adapter.devtools.offhours_cli import (
     resolve_session_label,
     write_json_payload,
 )
-from nautilus_ctp_adapter.diagnostics.evidence_payloads import (
-    MD_STARTUP_TRUTH_BASELINE,
-    build_md_startup_truth_payload,
-)
 
 
-BASELINE = MD_STARTUP_TRUTH_BASELINE
+BASELINE = "md-startup-truth-v1"
 
 
 def _emit_payload(payload: dict[str, object]) -> None:
@@ -87,19 +83,44 @@ def main() -> int:
     except Exception as exc:
         return _emit_exception(stage="run_smoke", exc=exc)
 
-    payload = build_md_startup_truth_payload(
-        evidence,
-        flow_mode=flow_mode,
-        session_label=session_label,
-        export=build_export_metadata(
+    failure_reason = None
+    if not evidence.ready:
+        failure_reason = "bootstrap_not_ready"
+    elif evidence.login_success is not True:
+        failure_reason = "login_failed"
+    elif evidence.subscribe_code != 0:
+        failure_reason = "subscribe_failed"
+    elif evidence.first_tick_symbol is None:
+        failure_reason = "first_tick_missing"
+
+    payload = {
+        "baseline": BASELINE,
+        "success": failure_reason is None,
+        "failure_reason": failure_reason,
+        "flow_mode": flow_mode,
+        "session_label": session_label,
+        "flow_path": evidence.flow_path,
+        "selected_symbols": list(evidence.selected_symbols),
+        "ready": evidence.ready,
+        "login_success": evidence.login_success,
+        "login_error_id": evidence.login_error_id,
+        "subscribe_code": evidence.subscribe_code,
+        "first_tick_symbol": evidence.first_tick_symbol,
+        "first_tick_last": evidence.first_tick_last,
+        "first_tick_bid": evidence.first_tick_bid,
+        "first_tick_ask": evidence.first_tick_ask,
+        "first_tick_ts_epoch_us": evidence.first_tick_ts_epoch_us,
+        "disconnect_count": evidence.disconnect_count,
+        "disconnect_reasons": list(evidence.disconnect_reasons),
+        "export": build_export_metadata(
             export_path=export_path,
             evidence_root=args.evidence_root,
             session_label=session_label,
             explicit_path=args.output_json is not None,
         ),
-        bridge_commands=commands,
-        bridge_events=events,
-    )
+        "bridge_command_kinds": [command.kind.value for command in commands],
+        "bridge_event_kinds": [event.kind.value for event in events],
+    }
 
     if export_path is not None:
         try:
@@ -109,7 +130,7 @@ def main() -> int:
 
     _emit_payload(payload)
 
-    return 0 if payload["success"] else 1
+    return 0 if failure_reason is None else 1
 
 
 if __name__ == "__main__":

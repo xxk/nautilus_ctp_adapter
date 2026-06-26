@@ -12,10 +12,6 @@ if str(SRC_ROOT) not in sys.path:
 
 from nautilus_ctp_adapter.adapters.ctp.config import CtpAdapterConfig
 from nautilus_ctp_adapter.adapters.ctp.factory import build_ctp_stack
-from nautilus_ctp_adapter.diagnostics.evidence_payloads import (
-    TD_SESSION_REBUILD_POLICY_BASELINE,
-    build_session_rebuild_policy_payload,
-)
 from nautilus_ctp_adapter.devtools.offhours_cli import (
     build_export_metadata,
     resolve_export_path,
@@ -25,7 +21,7 @@ from nautilus_ctp_adapter.devtools.offhours_cli import (
 )
 
 
-BASELINE = TD_SESSION_REBUILD_POLICY_BASELINE
+BASELINE = "td-session-rebuild-policy-v1"
 
 
 def _emit_payload(payload: dict[str, object]) -> None:
@@ -90,19 +86,74 @@ def main() -> int:
     except Exception as exc:
         return _emit_exception(stage="run_smoke", exc=exc)
 
-    payload = build_session_rebuild_policy_payload(
-        result,
-        flow_mode=flow_mode,
-        session_label=session_label,
-        export=build_export_metadata(
+    failure_reason = None
+    if not result.shared_truth.ready:
+        failure_reason = "shared_bootstrap_not_ready"
+    elif not result.isolated_truth.ready:
+        failure_reason = "isolated_bootstrap_not_ready"
+    elif len(result.findings) == 0:
+        failure_reason = "findings_missing"
+    elif result.disposition not in {
+        "clear",
+        "manual_review_required",
+        "rebuild_required",
+        "evidence_only",
+    }:
+        failure_reason = "unexpected_disposition"
+
+    payload = {
+        "baseline": BASELINE,
+        "success": failure_reason is None,
+        "failure_reason": failure_reason,
+        "flow_mode": flow_mode,
+        "session_label": session_label,
+        "disposition": result.disposition,
+        "shared_flow_reuse_allowed": result.shared_flow_reuse_allowed,
+        "session_rotated": result.session_rotated,
+        "max_order_ref_reset": result.max_order_ref_reset,
+        "shared_truth": {
+            "flow_path": result.shared_truth.flow_path,
+            "flow_mode": result.shared_truth.flow_mode,
+            "ready": result.shared_truth.ready,
+            "login_success": result.shared_truth.login_success,
+            "settlement_code": result.shared_truth.settlement_code,
+            "front_id": result.shared_truth.front_id,
+            "session_id": result.shared_truth.session_id,
+            "max_order_ref": result.shared_truth.max_order_ref,
+            "disconnect_count": result.shared_truth.disconnect_count,
+        },
+        "isolated_truth": {
+            "flow_path": result.isolated_truth.flow_path,
+            "flow_mode": result.isolated_truth.flow_mode,
+            "ready": result.isolated_truth.ready,
+            "login_success": result.isolated_truth.login_success,
+            "settlement_code": result.isolated_truth.settlement_code,
+            "front_id": result.isolated_truth.front_id,
+            "session_id": result.isolated_truth.session_id,
+            "max_order_ref": result.isolated_truth.max_order_ref,
+            "disconnect_count": result.isolated_truth.disconnect_count,
+        },
+        "findings": [
+            {
+                "code": finding.code,
+                "severity": finding.severity,
+                "action": finding.action,
+                "metric": finding.metric,
+                "metric_value": finding.metric_value,
+                "threshold": finding.threshold,
+                "message": finding.message,
+            }
+            for finding in result.findings
+        ],
+        "export": build_export_metadata(
             export_path=export_path,
             evidence_root=args.evidence_root,
             session_label=session_label,
             explicit_path=args.output_json is not None,
         ),
-        bridge_commands=commands,
-        bridge_events=events,
-    )
+        "bridge_command_kinds": [command.kind.value for command in commands],
+        "bridge_event_kinds": [event.kind.value for event in events],
+    }
 
     if export_path is not None:
         try:
@@ -112,7 +163,7 @@ def main() -> int:
 
     _emit_payload(payload)
 
-    return 0 if payload["failure_reason"] is None else 1
+    return 0 if failure_reason is None else 1
 
 
 if __name__ == "__main__":

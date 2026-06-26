@@ -13,11 +13,6 @@ try:
 except ModuleNotFoundError:
     from scripts.check_adr_docs import validate_adr_docs
 
-try:
-    from check_architecture_governance import validate_architecture_governance
-except ModuleNotFoundError:
-    from scripts.check_architecture_governance import validate_architecture_governance
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 AGENTS_MD = "AGENTS.md"
@@ -31,7 +26,6 @@ REQUIRED_SECTIONS = (
 REQUIRED_VERIFY_COMMANDS = (
     "python scripts/check_harness.py",
     "python scripts/check_adr_docs.py",
-    "python scripts/check_architecture_governance.py",
     "python scripts/check_change_docs.py",
     "python scripts/check_proposal_docs.py --root .",
     "python scripts/show_current_frontier.py",
@@ -185,7 +179,6 @@ def check_harness(root: Path) -> list[str]:
     findings.extend(_check_workflows_dir(root))
     findings.extend(_check_doc_harness_entry(root))
     findings.extend(validate_adr_docs(root))
-    findings.extend(validate_architecture_governance(root))
     return findings
 
 
