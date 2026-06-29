@@ -31,3 +31,5 @@ output/openctp/
 output/debug/
 output/account-console-ctp19053-readback/
 output/pytest-tmp/
+var/
+pytest_tmp/
