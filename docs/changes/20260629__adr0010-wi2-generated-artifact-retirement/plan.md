@@ -1,6 +1,6 @@
 ---
 change-id: 20260629__adr0010-wi2-generated-artifact-retirement
-status: in_progress
+status: completed
 topic-id: adr0010-wi2
 ---
 
@@ -21,3 +21,7 @@ See `acceptance.md`.
 
 This change is limited to `.gitignore`, this change bundle, guards, and index retirement of generated runtime outputs.
 It is independent from the WI-5 SendMode safety proposal.
+
+## Completed Notes
+
+- Tracked `var/**`, `pytest_tmp/**`, and residual `output/debug/**` generated artifacts are retired from the index and guarded by `tests/test_adr0010_wi2_generated_artifact_retirement.py`.
