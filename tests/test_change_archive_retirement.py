@@ -20,9 +20,17 @@ def _change_status(change_dir: Path) -> str:
                 f"\nstatus: {status}" in text
                 or f'\nstatus: "{status}"' in text
                 or f"\nstatus: '{status}'" in text
+                or f"**状态**：{status}" in text
             ):
                 return status
-        if "\nconclusion: passed" in text and "\nallow_declare_pass: true" in text:
+        if (
+            "\nconclusion: passed" in text
+            or "\nconclusion: pass" in text
+            or "\nconclusion: pass_" in text
+            or "**状态**：✅ 已验收" in text
+            or "**状态**：✅ 已通过" in text
+            or "**状态**：✅ 已执行" in text
+        ) and "\nallow_declare_pass: true" in text:
             return "verified"
     return "unknown"
 
