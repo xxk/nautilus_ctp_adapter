@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from nautilus_ctp_adapter.diagnostics.send_mode import SendMode, resolve_send_mode
+
 
 def build_callback_source_observability(
     *,
@@ -54,10 +56,17 @@ def finalize_order_lifecycle_payload(
     order_contract: dict[str, Any],
     lifecycle_verdict: dict[str, Any],
     reconciliation: dict[str, Any] | None,
-    arm_paper_send: bool,
-    dry_run: bool,
-    live_send_armed: bool,
+    send_mode: SendMode | str | None = None,
+    arm_paper_send: bool | None = None,
+    dry_run: bool | None = None,
+    live_send_armed: bool | None = None,
 ) -> dict[str, Any]:
+    send_mode_resolution = resolve_send_mode(
+        send_mode,
+        dry_run=dry_run,
+        arm_paper_send=arm_paper_send,
+        live_send_armed=live_send_armed,
+    )
     success = (
         bootstrap_ready
         and mapped_error is None
@@ -67,10 +76,18 @@ def finalize_order_lifecycle_payload(
     )
     if reconciliation is not None:
         success = success and reconciliation["accepted"]
-    if not arm_paper_send:
-        success = success and dry_run and live_send_armed is False
-    else:
-        success = success and live_send_armed
+    success = success and (
+        (
+            send_mode_resolution.send_mode is SendMode.DRY_RUN
+            and send_mode_resolution.dry_run
+            and send_mode_resolution.live_send_armed is False
+        )
+        or (
+            send_mode_resolution.send_mode in {SendMode.ARMED_PAPER, SendMode.ARMED_LIVE}
+            and not send_mode_resolution.dry_run
+            and send_mode_resolution.live_send_armed
+        )
+    )
     payload["success"] = success
     payload["status"] = "passed" if success else "blocked"
     payload["failure_reason"] = None if success else "order_lifecycle_not_ready"
