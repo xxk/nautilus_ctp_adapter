@@ -22,6 +22,10 @@ def test_adr0010_wi2_generated_runtime_outputs_are_not_tracked() -> None:
     assert _tracked("output/debug/**", "var/**", "pytest_tmp/**") == []
 
 
+def test_adr0010_wi2_output_artifacts_are_not_tracked() -> None:
+    assert _tracked("output/**") == []
+
+
 def test_adr0010_wi2_generated_runtime_outputs_are_ignored() -> None:
     result = subprocess.run(
         [
