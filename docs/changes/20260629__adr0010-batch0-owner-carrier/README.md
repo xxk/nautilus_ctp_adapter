@@ -1,10 +1,14 @@
 ---
 change-id: 20260629__adr0010-batch0-owner-carrier
-status: draft
+status: superseded
 work_item_layer: change_stub
 ---
 
 # ADR-0010 Batch 0 Owner Carrier - nautilus_ctp_adapter
+
+## Superseded / Closure
+
+This Batch 0 bootstrap carrier is closed and superseded by the completed ADR-0010 landing matrix plus the repo-local WI-2 and P005/WI-5 carriers. Do not treat these bootstrap slots as current pending work.
 
 ## Owner / Scope
 
@@ -36,11 +40,11 @@ Sample paths:
 
 | Scenario | red command | green command | fresh-clone command | Status |
 | --- | --- | --- | --- | --- |
-| RC-1 Batch entry gate | pending | pending | pending | slot-created |
-| RC-2 WI-2 inventory classification | inventory above | pending | pending | slot-created |
-| RC-3 WI-2 post-retirement guard | pending | pending | pending | slot-created |
+| RC-1 Batch entry gate | superseded by ADR-0010 accepted/completed ledger | WI-2/WI-5 carrier gates landed | ADR-0010 landing matrix is current source of truth | superseded |
+| RC-2 WI-2 inventory classification | inventory above | `20260629__adr0010-wi2-generated-artifact-retirement` | ADR-0010 landing matrix is current source of truth | superseded |
+| RC-3 WI-2 post-retirement guard | superseded by WI-2 carrier | `20260629__adr0010-wi2-generated-artifact-retirement` | ADR-0010 landing matrix is current source of truth | superseded |
 | RC-4 WI-5 safety matrix | see proposal stub | see proposal stub | see proposal stub | delegated |
-| RC-6 Evidence replay | pending | pending | pending | slot-created |
+| RC-6 Evidence replay | superseded by P005/WI-5 carrier | `docs/proposals/p005-adr0010-sendmode-safety-hardening/` | ADR-0010 landing matrix is current source of truth | superseded |
 
 ## Rollback Boundary
 
