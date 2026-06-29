@@ -40,3 +40,18 @@ def test_adr0010_wi2_generated_runtime_outputs_are_ignored() -> None:
         capture_output=True,
     )
     assert result.returncode == 0
+
+
+def test_adr0010_active_governance_docs_use_canonical_dslresearch_spelling() -> None:
+    active_docs = [
+        ROOT / "AGENTS.md",
+        ROOT / "docs" / "topics" / "repo-governance-hardening.md",
+    ]
+
+    offenders = [
+        str(path.relative_to(ROOT))
+        for path in active_docs
+        if "DSLReserach" in path.read_text(encoding="utf-8")
+    ]
+
+    assert offenders == []

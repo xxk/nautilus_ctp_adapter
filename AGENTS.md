@@ -124,7 +124,7 @@ This repository adopts the `Doc Harness Kit` at:
 
 1. [docs/doc_harness_kit/README.md](/D:/Nautilus/nautilus_ctp_adapter/docs/doc_harness_kit/README.md)
 
-Governance layout is aligned toward `DSLReserach`:
+Governance layout is aligned toward `DSLResearch`:
 
 1. ADR records live under `docs/adr/`
 2. Proposal containers live under `docs/proposals/<proposal-id>/`
