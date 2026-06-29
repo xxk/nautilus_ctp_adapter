@@ -1,5 +1,0 @@
-{
-  "alert_active": true,
-  "alert_state": "new",
-  "fingerprint": "{\"domain\":\"www.google.com\",\"anomaly_samples\":1,\"last_seen\":\"2026-04-11 15:20:00\",\"last_bad_ips\":\"157.240.7.20\"}"
-}

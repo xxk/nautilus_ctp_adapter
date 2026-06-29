@@ -8,7 +8,7 @@ topic-id: adr0010-wi2
 
 ## Scope
 
-- Retire tracked generated artifacts under `var/**` and `pytest_tmp/**` from source control.
+- Retire tracked generated artifacts under `var/**`, `pytest_tmp/**`, and `output/debug/**` from source control.
 - Add broad ignore rules so local runtime, pytest, and vendor-sync outputs cannot return to the index.
 - Do not delete files from the working tree.
 - Do not alter SendMode proposal files or runtime behavior in this change.
@@ -19,5 +19,5 @@ See `acceptance.md`.
 
 ## Rollback Boundary
 
-This change is limited to `.gitignore`, this change bundle, and index retirement of `var/**` and `pytest_tmp/**`.
+This change is limited to `.gitignore`, this change bundle, guards, and index retirement of generated runtime outputs.
 It is independent from the WI-5 SendMode safety proposal.
