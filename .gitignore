@@ -25,9 +25,6 @@ src/**/*.egg-info/
 .autopilot_trajectory.jsonl
 
 # Local downloaded inputs / cloned references
-output/sdk_download/
-output/vnpy_ctp_clone/
-output/openctp/
-output/debug/
-output/account-console-ctp19053-readback/
-output/pytest-tmp/
+output/
+var/
+pytest_tmp/

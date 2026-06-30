@@ -1,1 +1,0 @@
-{"BrokerID": "0155", "UserID": "025292", "Password": "secret-password", "AuthCode": "secret-auth", "AppID": "secret-app", "Host": "tcp://secret-host", "Pricer": "tcp://secret-md", "NativePackDir": "", "Instruments": ["rb2610"]}

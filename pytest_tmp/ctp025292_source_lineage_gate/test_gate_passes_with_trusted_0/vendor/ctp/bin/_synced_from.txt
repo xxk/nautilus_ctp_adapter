@@ -1,4 +1,0 @@
-profile=auto
-pack_kind=runtime
-ctp_api=D:/trusted/ctp025292/runtime-pack
-managed=
