@@ -6,6 +6,9 @@ topic-id: adr0010-wi2
 
 # ADR-0010 WI-2 Generated Artifact Retirement - nautilus_ctp_adapter
 
+**状态**：completed
+**topic-id**：adr0010-wi2
+
 ## Scope
 
 - Retire tracked generated artifacts under `var/**`, `pytest_tmp/**`, and `output/debug/**` from source control.
