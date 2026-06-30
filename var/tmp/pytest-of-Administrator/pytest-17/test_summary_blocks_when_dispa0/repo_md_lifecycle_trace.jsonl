@@ -1,9 +1,0 @@
-{"ts_epoch_us": 900, "event": "md_register_front", "front_present": true, "front_len": 19, "front_tcp_scheme": true, "raw_values_recorded": false}
-{"ts_epoch_us": 950, "event": "md_init_call", "already_initialized": false}
-{"ts_epoch_us": 960, "event": "md_init_return", "call_completed": true}
-{"ts_epoch_us": 1000, "event": "front_connected", "login_requested": true, "login_dispatched": false}
-{"ts_epoch_us": 1100, "event": "md_login_payload_shape", "request_id": 1, "broker_id_present": true, "broker_id_len": 4, "user_id_present": true, "user_id_len": 6, "password_present": true, "password_len": 8, "user_product_info_present": true, "user_product_info_len": 6, "interface_product_info_present": false, "interface_product_info_len": 0, "protocol_info_present": false, "protocol_info_len": 0, "mac_address_present": false, "mac_address_len": 0, "client_ip_address_present": false, "client_ip_address_len": 0, "login_remark_present": false, "login_remark_len": 0, "raw_values_recorded": false}
-{"ts_epoch_us": 1200, "event": "md_login_dispatch_return", "request_id": 1, "return_code": 0}
-{"ts_epoch_us": 2200, "event": "front_disconnected", "reason": 0, "login_requested": true, "login_dispatched_before_disconnect": true, "connected_before_disconnect": true, "pending_login_request_id": 1, "dispatch_to_disconnect_us": 1000, "connected_to_disconnect_us": 1200, "last_login_return_code": 0}
-{"ts_epoch_us": 2300, "event": "md_rsp_error", "request_id": 1, "is_last": true, "error_id": 3, "error_message_present": true, "error_message_len": 12, "raw_values_recorded": false}
-{"ts_epoch_us": 2400, "event": "md_heartbeat_warning", "time_lapse": 9}

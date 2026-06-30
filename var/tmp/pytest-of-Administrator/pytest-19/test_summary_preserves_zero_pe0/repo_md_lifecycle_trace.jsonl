@@ -1,3 +1,0 @@
-{"ts_epoch_us": 1000, "event": "md_login_payload_shape", "request_id": 0, "request_id_zero_override": true, "raw_values_recorded": false}
-{"ts_epoch_us": 1100, "event": "md_login_dispatch_return", "request_id": 0, "request_id_zero_override": true, "return_code": 0}
-{"ts_epoch_us": 1200, "event": "front_disconnected", "reason": 0, "login_dispatched_before_disconnect": true, "pending_login_request_id": 0}
