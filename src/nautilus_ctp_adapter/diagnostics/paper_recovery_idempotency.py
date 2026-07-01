@@ -6,11 +6,10 @@ from typing import Any
 
 BASELINE = "ctp-paper-recovery-idempotency-v1"
 OPENCTP_TTS_7X24_PROFILE = "openctp-tts-7x24-simulation"
-OPENCTP_TTS_7X24_PROFILE_ALIASES = {OPENCTP_TTS_7X24_PROFILE, "openctp-paper"}
 
 
 def _canonical_profile(profile: str | None) -> str:
-    if profile in OPENCTP_TTS_7X24_PROFILE_ALIASES:
+    if profile == OPENCTP_TTS_7X24_PROFILE:
         return OPENCTP_TTS_7X24_PROFILE
     return str(profile or "")
 

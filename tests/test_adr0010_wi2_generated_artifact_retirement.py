@@ -26,6 +26,10 @@ def test_adr0010_wi2_output_artifacts_are_not_tracked() -> None:
     assert _tracked("output/**") == []
 
 
+def test_adr0010_wi2_root_ctp_flow_files_are_not_tracked() -> None:
+    assert _tracked("*.con") == []
+
+
 def test_adr0010_wi2_generated_runtime_outputs_are_ignored() -> None:
     result = subprocess.run(
         [

@@ -19,10 +19,8 @@ DEFAULT_ENV_DIR = REPO_ROOT / ".env.d"
 DEFAULT_TEMPLATE_PATH = REPO_ROOT / "cfgs" / "ctp.openctp.tts.7x24.example.json"
 DEFAULT_OUTPUT_PATH = REPO_ROOT / "cfgs" / "local" / "ctp.openctp.tts.7x24.local.json"
 OPENCTP_TTS_7X24_PROFILE = "openctp-tts-7x24-simulation"
-OPENCTP_TTS_7X24_PROFILE_ALIASES = {"openctp-paper", OPENCTP_TTS_7X24_PROFILE}
 OPENCTP_TTS_7X24_ENV_FILES = (
     "openctp-tts-7x24-simulation.env",
-    "openctp-paper.env",
 )
 
 
@@ -50,11 +48,11 @@ def merge_env_file(values: dict[str, str], path: Path) -> None:
 def canonical_account_profile(profile: str) -> str:
     if not profile:
         return OPENCTP_TTS_7X24_PROFILE
-    if profile in OPENCTP_TTS_7X24_PROFILE_ALIASES:
+    if profile == OPENCTP_TTS_7X24_PROFILE:
         return OPENCTP_TTS_7X24_PROFILE
     raise ValueError(
         "CTP_ACCOUNT_PROFILE must be openctp-tts-7x24-simulation for this helper "
-        f"(openctp-paper is accepted as a legacy alias), got {profile!r}"
+        f"got {profile!r}"
     )
 
 
@@ -136,7 +134,6 @@ def main() -> int:
         json.dumps(
             {
                 "account_profile": account_profile,
-                "profile_aliases": sorted(OPENCTP_TTS_7X24_PROFILE_ALIASES - {account_profile}),
                 "path": str(output_path.relative_to(REPO_ROOT)),
                 "user_id": config.user_id,
                 "password_present": bool(config.password),

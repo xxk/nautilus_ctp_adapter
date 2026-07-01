@@ -34,7 +34,6 @@ from scripts.ctp_paper_session_preflight import paper_config_issues
 BASELINE = "ctp-guarded-paper-order-loop-v1"
 DEFAULT_CONFIG = REPO_ROOT / "cfgs" / "local" / "ctp.openctp.tts.7x24.local.json"
 OPENCTP_TTS_7X24_PROFILE = "openctp-tts-7x24-simulation"
-OPENCTP_TTS_7X24_PROFILE_ALIASES = {OPENCTP_TTS_7X24_PROFILE, "openctp-paper"}
 OPENCTP_TTS_7X24_EVIDENCE_CLASS = "openctp-tts-7x24-simulation"
 OPENCTP_TTS_7X24_EVIDENCE_ALIASES = {OPENCTP_TTS_7X24_EVIDENCE_CLASS, "paper-simulation"}
 
@@ -65,7 +64,7 @@ def validate_pre_order_snapshot(path: Path) -> dict[str, Any]:
     schema = payload.get("schema") if isinstance(payload, dict) else {}
     if not payload.get("success"):
         issues.append("pre_snapshot_not_success")
-    if schema.get("account_profile") not in OPENCTP_TTS_7X24_PROFILE_ALIASES:
+    if schema.get("account_profile") != OPENCTP_TTS_7X24_PROFILE:
         issues.append("pre_snapshot_account_profile")
     if schema.get("evidence_class") not in OPENCTP_TTS_7X24_EVIDENCE_ALIASES:
         issues.append("pre_snapshot_evidence_class")
@@ -93,7 +92,7 @@ def select_close_candidate_from_snapshot(
         issues.append("pre_snapshot_run_id_mismatch")
     if not snapshot_payload.get("success"):
         issues.append("pre_snapshot_not_success")
-    if schema.get("account_profile") not in OPENCTP_TTS_7X24_PROFILE_ALIASES:
+    if schema.get("account_profile") != OPENCTP_TTS_7X24_PROFILE:
         issues.append("pre_snapshot_account_profile")
     if schema.get("evidence_class") not in OPENCTP_TTS_7X24_EVIDENCE_ALIASES:
         issues.append("pre_snapshot_evidence_class")

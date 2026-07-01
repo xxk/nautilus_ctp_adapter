@@ -10,6 +10,7 @@ __pycache__/
 *.pyd
 *.pyd.*.bak
 *.dll.*.bak
+/*.con
 
 cfgs/local/
 vendor/ctp/bin/

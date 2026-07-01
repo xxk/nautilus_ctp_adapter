@@ -12,7 +12,6 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 BASELINE = "ctp-paper-session-preflight-v1"
 DEFAULT_CONFIG = REPO_ROOT / "cfgs" / "local" / "ctp.openctp.tts.7x24.local.json"
 OPENCTP_TTS_7X24_PROFILE = "openctp-tts-7x24-simulation"
-OPENCTP_TTS_7X24_PROFILE_ALIASES = {OPENCTP_TTS_7X24_PROFILE, "openctp-paper"}
 
 
 def _stable_fingerprint(value: str) -> str:
@@ -188,7 +187,6 @@ __all__ = [
     "BASELINE",
     "DEFAULT_CONFIG",
     "OPENCTP_TTS_7X24_PROFILE",
-    "OPENCTP_TTS_7X24_PROFILE_ALIASES",
     "build_preflight_summary",
     "paper_config_issues",
     "redacted_config_summary",
