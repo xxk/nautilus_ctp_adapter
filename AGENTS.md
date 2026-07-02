@@ -226,3 +226,16 @@ python D:/Nautilus/global_docs/scripts/check_test_contract_authority_adoption.py
 ```
 
 AI must not self-approve protected test contract changes.
+## Required Skills Preflight
+
+本仓继承 `D:/Nautilus/global_docs/AGENTS.md` 的 Required Skills Preflight。
+
+```powershell
+python D:/Nautilus/global_docs/scripts/check_required_skills.py
+```
+
+若输出 `[BLOCKER: REQUIRED_SKILL_MISSING]` 或 `[BLOCKER: REQUIRED_SKILL_CONTRACT_DRIFT]`，必须先按输出的 repair command 修复，不得继续依赖缺失 skill 或声明 pass。
+
+P04 skill usage announcement：若本轮任务触发 P04 / 代码固化 / `solidify-code-constraints` skill，会话必须先输出：`Using solidify-code-constraints skill for P04 code solidification. by xxk`
+
+P02 skill usage announcement：若本轮任务触发 P02 / bug 驱动架构 review / `bug-architecture-review` skill，会话必须先输出：`Using bug-architecture-review skill for P02 bug-driven architecture review. by xxk`
