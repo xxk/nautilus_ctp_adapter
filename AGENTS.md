@@ -239,3 +239,15 @@ python D:/Nautilus/global_docs/scripts/check_required_skills.py
 P04 skill usage announcement：若本轮任务触发 P04 / 代码固化 / `solidify-code-constraints` skill，会话必须先输出：`Using solidify-code-constraints skill for P04 code solidification. by xxk`
 
 P02 skill usage announcement：若本轮任务触发 P02 / bug 驱动架构 review / `bug-architecture-review` skill，会话必须先输出：`Using bug-architecture-review skill for P02 bug-driven architecture review. by xxk`
+
+## Worktree Skill / ADR-a020
+
+本仓继承 `D:/Nautilus/global_docs/AGENTS.md` 的 Worktree Skill / ADR-a020 规则。任何涉及 `D:/Nautilus/_worktrees*`、`D:/Nautilus/_worktrees56`、all repo 状态检查、多仓 worktree 创建或 worktree 合并规划的会话，必须先输出：`Using worktree skill for Nautilus multi-repo worktree workflow.`
+
+执行前必须读取 `D:/Nautilus/global_docs/skills/worktree/SKILL.md`，并运行：
+
+```powershell
+python D:/Nautilus/global_docs/scripts/check_worktree_skill_gate.py
+```
+
+worktree skill 不进入 installed required-skill gate；它采用 use-time session elevation。合并路径必须保持 `status -> plan -> prepare-manifest -> execute`，且不得在 topic container root 执行 git merge、git commit 或 git push。
