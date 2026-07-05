@@ -238,7 +238,7 @@ python D:/Nautilus/global_docs/scripts/check_required_skills.py
 
 P04 skill usage announcement：若本轮任务触发 P04 / 代码固化 / `solidify-code-constraints` skill，会话必须先输出：`Using solidify-code-constraints skill for P04 code solidification. by xxk`
 
-P02 skill usage announcement：若本轮任务触发 P02 / bug 驱动架构 review / `bug-architecture-review` skill，会话必须先输出：`Using bug-architecture-review skill for P02 bug-driven architecture review. by xxk`
+P02/A14 skill usage announcement：若本轮任务触发 P02 / A14 / bug 驱动架构 review / `bug-architecture-review` skill，会话必须先输出：`Using bug-architecture-review skill for P02/A14 bug-driven architecture review. triggered_by="<trigger keyword>". by xxk`；其中 `<trigger keyword>` 必须是用户消息中触发 skill 加载的原始关键词或短语。
 
 ## Worktree Skill / ADR-a020
 
