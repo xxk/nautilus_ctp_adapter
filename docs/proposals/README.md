@@ -1,7 +1,7 @@
 # Proposal Index / 提案目录索引
 
 **创建日期**：2026-05-26
-**最后更新**：2026-06-29
+**最后更新**：2026-06-08
 **状态**：生效
 
 ---
@@ -18,7 +18,6 @@
 | p002 | [p002-nautilus-provider-production-readiness](./p002-nautilus-provider-production-readiness/) | completed | CTP provider paper/repo development baseline；以 IB provider parity 为能力参照，补齐 Nautilus provider/cache/data/execution/report/live-capable evidence |
 | p003 | [p003-ctp-live-trading-provider-readiness](./p003-ctp-live-trading-provider-readiness/) | completed | CTP OpenCTP TTS 7x24 simulation paper-first capability readiness；session truth、read-only snapshot、guarded paper order loop、recovery/idempotency 与 ops closeout 已完成，暂不推进 Live |
 | p004 | [p004-openctp-tts-simulation-provider-completeness](./p004-openctp-tts-simulation-provider-completeness/) | completed | P003 successor；已补齐 OpenCTP TTS 7x24 simulation provider 的撤单、平仓、post-order 对账、订单类型、风控、controlled reconnect evidence 与 Nautilus engine harness |
-| p005 | [p005-adr0010-sendmode-safety-hardening](./p005-adr0010-sendmode-safety-hardening/) | implemented | ADR-0010 WI-5；SendMode enum 成为 guarded paper order send semantics authority，旧 bool 入口仅保留兼容转换 |
 
 ---
 
@@ -112,3 +111,4 @@ python scripts/check_proposal_docs.py --root . --proposal-id <proposal-id>
 6. 任何需要 CTP 外部账号或 live front 的 proposal 必须显式声明 `ctp_account_profile`，取值只能是 `openctp-tts-7x24-simulation`、`formal-trading` 或 `repo-only`。未声明 profile 时，proposal 只能使用 repo-only/mock/dry-run 证据。
 7. `openctp-tts-7x24-simulation` 只能形成 simulation evidence，不得关闭 formal broker/trading acceptance；`openctp-paper` 只允许作为历史 alias 出现在兼容说明或旧证据引用中；`formal-trading` 只能在 proposal/change 明确要求正式交易账号证据时使用。
 8. CTP 账号 profile 的具体 runbook authority 是 `docs/changes/20260607__openctp-tts__test-baseline/runbook.md`；proposal 只引用 profile 和 config path，不复制 secret。
+

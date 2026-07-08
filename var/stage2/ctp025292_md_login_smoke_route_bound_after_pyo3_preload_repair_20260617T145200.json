@@ -1,0 +1,27 @@
+{
+  "baseline": "md-login-smoke-v1",
+  "success": false,
+  "failure_reason": "exception",
+  "runtime_pack_override": {
+    "enabled": true,
+    "path": "output\\runtime_packs\\ctp-live-025292-md\\bin",
+    "strict_runtime_pack": true
+  },
+  "error_stage": "run_smoke",
+  "error_type": "OSError",
+  "error_message": "<redacted; see error_message_shape>",
+  "error_message_shape": {
+    "present": true,
+    "length": 69,
+    "sha256": "c584c691da06b2345691a82b4b1a795e587c19aabc8be26e4d2b8e4ef9178801",
+    "raw_value_recorded": false
+  },
+  "raw_secret_values_recorded": false,
+  "raw_front_values_recorded": false,
+  "exception_export": {
+    "attempted": true,
+    "written": true,
+    "path": "var\\stage2\\ctp025292_md_login_smoke_route_bound_after_pyo3_preload_repair_20260617T145200.json",
+    "raw_error_message_recorded": false
+  }
+}

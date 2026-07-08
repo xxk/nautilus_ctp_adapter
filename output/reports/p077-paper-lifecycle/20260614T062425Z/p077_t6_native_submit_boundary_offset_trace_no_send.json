@@ -1,0 +1,119 @@
+{
+  "schema_version": "p077.t6.native_submit_boundary_offset_trace.v1",
+  "artifact_id": "p077_t6_native_submit_boundary_offset_trace_no_send",
+  "created_at_local": "2026-06-14T14:24:25+08:00",
+  "owner_repo": "D:/Nautilus/nautilus_ctp_adapter",
+  "source_change_repo": "D:/Nautilus/nautilus_strategies",
+  "proposal_id": "p077-p076-timed-paper-loop-workflow",
+  "change_id": "20260614__paper__p077-safer-retry-lane",
+  "lane": "P077-T6",
+  "action_class": "no_send_owner_side_repair",
+  "paper_order_actions_submitted": 0,
+  "live_order_actions_submitted": 0,
+  "bounded_paper_authorization_consumed": false,
+  "problem_statement": {
+    "prior_evidence": "20260614T045227Z/p077_t6_authorized_callback_source_insufficient_position_closeout.json",
+    "observed_submit_native_comb_offset": "3",
+    "observed_callback_source": "OnRspOrderInsert",
+    "observed_callback_offset_flag": "1",
+    "observed_decoded_rejection": "持仓不足",
+    "remaining_question": "Whether the canonical native ReqOrderInsert boundary actually sent CThostFtdcInputOrderField.CombOffsetFlag[0]=3 before the broker/front returned OnRspOrderInsert with offset 1."
+  },
+  "owner_repair": {
+    "native_boundary_added": true,
+    "native_boundary_source": "repo_ctp_td_order_send.CThostFtdcInputOrderField.CombOffsetFlag[0]",
+    "native_exec_fields_added": [
+      "submit_request_offset_flag",
+      "submit_request_offset_source"
+    ],
+    "python_event_fields_added": [
+      "submit_request_offset_flag",
+      "submit_request_offset_source"
+    ],
+    "guarded_loop_semantics_added": [
+      "native_submit_boundary_offset_flags",
+      "native_submit_boundary_offset_source",
+      "native_submit_boundary_matches_command_payload"
+    ],
+    "writes_truth": false,
+    "creates_second_runtime": false,
+    "creates_second_ledger_truth": false,
+    "creates_second_artifact_root": false
+  },
+  "changed_files_relevant_to_this_artifact": [
+    "rust/ctp_runtime_core/native/ctp_bridge.hpp",
+    "rust/ctp_runtime_core/native/ctp_vendor_bridge.cpp",
+    "rust/ctp_runtime_core/src/ffi.rs",
+    "rust/ctp_py/src/lib.rs",
+    "src/nautilus_ctp_adapter/native/td_ctypes.py",
+    "src/nautilus_ctp_adapter/adapters/ctp/execution_client.py",
+    "scripts/ctp_guarded_paper_order_loop.py",
+    "scripts/check_rust_gate.py",
+    "tests/test_guarded_paper_order_loop.py",
+    "tests/test_nautilus_integration.py",
+    "tests/test_smoke_import.py"
+  ],
+  "gates": [
+    {
+      "command": "python -m pytest tests/test_guarded_paper_order_loop.py -q -p no:cacheprovider --basetemp output/pytest-tmp/p077-062425-loop",
+      "status": "passed",
+      "summary": "46 passed"
+    },
+    {
+      "command": "python -m pytest tests/test_nautilus_integration.py::TestCtpClosePositionSemantics::test_submit_payload_carries_native_offset_request_field_provenance tests/test_nautilus_integration.py::TestCtpClosePositionSemantics::test_exec_callback_preserves_native_submit_offset_boundary tests/test_nautilus_integration.py::TestCtpClosePositionSemantics::test_native_offset_mapping_supports_close_variants_without_fallback -q -p no:cacheprovider --basetemp output/pytest-tmp/p077-062425-ni",
+      "status": "passed",
+      "summary": "3 passed"
+    },
+    {
+      "command": "python -m pytest tests/test_smoke_import.py -q -p no:cacheprovider --basetemp output/pytest-tmp/p077-062425-rustgate -k \"check_rust_gate_syncs_repo_native_dll_to_cargo_test_deps or check_rust_gate_syncs_vendor_runtime_dlls_to_cargo_target\"",
+      "status": "passed",
+      "summary": "2 passed, 212 deselected"
+    },
+    {
+      "command": "python scripts/check_rust_gate.py",
+      "status": "blocked",
+      "passed_before_blocker": [
+        "cargo-found",
+        "workspace-members=2",
+        "cargo-check",
+        "cargo-build artifact=rust/target/debug/ctp_native.dll",
+        "ctp_vendor_bridge-ready sdk_dir=vendor/ctp/sdk",
+        "ctp_py-build extension=rust/target/debug/_ctp_runtime.dll"
+      ],
+      "blocker": {
+        "type": "external_runtime_loader_blocker",
+        "failing_step": "cargo-test",
+        "failure_code": "0xc0000139",
+        "failure_symbol_class": "STATUS_ENTRYPOINT_NOT_FOUND",
+        "diagnosis": "Cargo test executables fail during process load before Rust tests run. Repo-built ctp_native.dll is present under target/debug and target/debug/deps; vendor runtime DLLs are present, but SDK import libs and runtime DLLs appear to be externally supplied binary inputs and may not match.",
+        "retry_conditions": [
+          "Align vendor/ctp/sdk import libraries with the runtime DLLs used by vendor/ctp/bin, or point the gate to a matched SDK/runtime pack.",
+          "Rerun python scripts/check_rust_gate.py.",
+          "Do not treat this as Paper-ready or Live-ready evidence."
+        ]
+      }
+    },
+    {
+      "command": "cargo test -p ctp_runtime_core --manifest-path rust/Cargo.toml",
+      "status": "blocked",
+      "summary": "same STATUS_ENTRYPOINT_NOT_FOUND during test executable load"
+    }
+  ],
+  "typed_blockers": [
+    {
+      "id": "p077_t6_ctp_native_cargo_test_loader_blocked",
+      "owner_repo": "D:/Nautilus/nautilus_ctp_adapter",
+      "type": "external_runtime_loader_blocker",
+      "status": "active",
+      "retry_when": "matched CTP SDK import libraries and runtime DLLs are available to the Rust gate"
+    }
+  ],
+  "acceptance_implication": {
+    "native_submit_boundary_trace_ready_for_next_paper_slice": false,
+    "paper_ready": false,
+    "live_ready": false,
+    "fill_or_closeout_truth": false,
+    "requires_owner_resolution_before_retry": true
+  },
+  "next_recommendation": "Resolve the CTP owner Rust gate loader blocker or provide a matched SDK/runtime pack, then rerun the same no-send native submit-boundary trace gates before considering another bounded Paper close-only retry."
+}

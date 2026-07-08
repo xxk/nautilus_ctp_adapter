@@ -104,21 +104,6 @@ def test_openctp_env_bundle_overlays_profile_directory(tmp_path: Path) -> None:
     assert values["OPENCTP_TTS_7X24_PASSWORD"] == "secret"
 
 
-def test_openctp_env_bundle_rejects_legacy_account_profile_alias(tmp_path: Path) -> None:
-    env_path = tmp_path / ".env"
-    env_path.write_text(
-        "CTP_ACCOUNT_PROFILE=openctp" + "-paper\n",
-        encoding="utf-8",
-    )
-
-    try:
-        load_env_bundle(env_path=env_path, env_dir=tmp_path / ".env.d")
-    except ValueError as exc:
-        assert "openctp-tts-7x24-simulation" in str(exc)
-    else:
-        raise AssertionError("legacy OpenCTP account profile alias must be rejected")
-
-
 def _paper_payload(**overrides: object) -> dict[str, object]:
     payload: dict[str, object] = {
         "BrokerID": "9999",

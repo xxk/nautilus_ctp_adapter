@@ -1,0 +1,71 @@
+{
+  "schema": "p077_t6_order_insert_offset_source_rule_no_send.v1",
+  "created_at": "2026-06-14T05:41:19.356Z",
+  "owner_repo": "D:/Nautilus/nautilus_ctp_adapter",
+  "selected_lane": "ctp_adapter_owner_side_order_insert_offset_source_rule",
+  "no_send": true,
+  "order_actions": 0,
+  "source_evidence": {
+    "authorized_closeout_artifact": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T045227Z/p077_t6_authorized_callback_source_insufficient_position_closeout.json",
+    "authorized_closeout_sha256": "9523c4083141ea57bacfa5b2e659fe6b8f0b9130f4ea381350b6bed3e033397b",
+    "source_bearing_next_evidence_artifact": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T053549Z/p077_t6_source_bearing_close_rule_next_evidence_no_send.json",
+    "source_bearing_next_evidence_sha256": "3de0d676ac8e093632709d2641b3f60ecaaec4188b04a8135de3ab57ce23cddd",
+    "callback_source": "OnRspOrderInsert",
+    "decoded_error_text": "持仓不足",
+    "submit_native_comb_offset": "3",
+    "callback_offset_flag": "1",
+    "fill_volume": 0,
+    "post_snapshot_position_unchanged": true
+  },
+  "repair": {
+    "changed_files": [
+      "scripts/ctp_guarded_paper_order_loop.py",
+      "tests/test_guarded_paper_order_loop.py"
+    ],
+    "owner_boundary": "nautilus_ctp_adapter owns native offset source-field diagnostics for CTP callback events",
+    "semantic_rule": {
+      "when": "native_offset_semantics sees submit native_comb_offset 3 and callback offset 1 from callback_source OnRspOrderInsert",
+      "disposition": "order_insert_response_offset_differs_from_submit_native_comb_offset",
+      "callback_offset_source_field": "CThostFtdcInputOrderField.CombOffsetFlag[0]",
+      "source_rule": "OnRspOrderInsert offset is an input-order response field, not a trade fill offset and not UI/proposal truth",
+      "diagnostic_conclusion": "adapter source-field diagnostics now distinguish source-bearing insert response mismatch from generic order/trade callback mismatch",
+      "acceptance_implication": "typed_blocker_only_not_fill_or_closeout_truth"
+    },
+    "remaining_edge": [
+      "explain why broker/front returned InputOrder.CombOffsetFlag[0]=1 for a request whose mapped submit native_comb_offset was 3",
+      "or repair adapter/native submit offset propagation if a focused source-level defect is found",
+      "new formal retry authorization before any future send"
+    ],
+    "forbidden_inferences": [
+      "fill-producing acceptance",
+      "closeout truth",
+      "broker tradability",
+      "Paper readiness",
+      "Account Console runtime truth",
+      "UI inference",
+      "second runtime or second classifier outside ctp_adapter"
+    ]
+  },
+  "focused_gates": [
+    {
+      "command": "python -m pytest tests/test_guarded_paper_order_loop.py -q -p no:cacheprovider --basetemp output/pytest-tmp/p077-054119",
+      "result": "46 passed"
+    }
+  ],
+  "typed_outcome": "passed_no_send_order_insert_offset_source_rule_still_blocked",
+  "blocker": {
+    "blocker_type": "broker-or-adapter-close-position-semantics",
+    "wait_only": false,
+    "retry_condition": "Owner-side explanation or repair for why OnRspOrderInsert InputOrder.CombOffsetFlag[0] returned 1 while mapped submit native_comb_offset was 3; new formal authorization required before any future send."
+  },
+  "formal_acceptance": {
+    "allow_authorize_retry": false,
+    "paper_ready": false,
+    "live_ready": false,
+    "broker_tradable": false,
+    "t6_pass": false,
+    "fill_producing_acceptance_satisfied": false,
+    "runtime_truth_created": false,
+    "account_console_truth_created": false
+  }
+}

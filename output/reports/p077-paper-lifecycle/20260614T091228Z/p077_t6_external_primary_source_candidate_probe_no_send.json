@@ -1,0 +1,98 @@
+{
+  "schema_version": "p077.t6.external_primary_source_candidate_probe.v1",
+  "artifact_kind": "p077_t6_external_primary_source_candidate_probe_no_send",
+  "created_at_utc": "2026-06-14T09:12:28.364Z",
+  "selected_lane": "P077-T6",
+  "owner_repo": "D:/Nautilus/nautilus_ctp_adapter",
+  "truth_owner": "ctp_paper_lifecycle_owner",
+  "consumes": [
+    {
+      "name": "E68_source_exhaustion_negative_contract",
+      "artifact": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T090658Z/p077_t6_source_exhaustion_negative_contract_no_send.json",
+      "sha256": "sha256:8a944a50d651b9de96d580407345117029f882f1d6c03f5b926f29813137ca85"
+    }
+  ],
+  "probe_scope": {
+    "query_class": "external_primary_or_primary-candidate_source_probe",
+    "target_semantics": "broker/front close-rejection response semantics for OnRspOrderInsert insufficient-position response offset after submitted CLOSETODAY",
+    "target_observed_shape": {
+      "submitted_position_effect": "CLOSETODAY",
+      "submitted_native_offset": "3",
+      "response_source": "OnRspOrderInsert",
+      "response_input_order_offset": "1",
+      "decoded_error": "持仓不足",
+      "fill_volume": 0
+    }
+  },
+  "external_sources": [
+    {
+      "source_id": "ctp_api_doc_mirror_onrsporderinsert",
+      "url": "https://documentation.help/CTP-API-cn/ONRSPORDERINSERT.html",
+      "source_class": "ctp_api_documentation_mirror",
+      "observed_claims": [
+        "OnRspOrderInsert is the error response callback for ReqOrderInsert field-fill and CTP errors.",
+        "The callback receives pInputOrder, pRspInfo, nRequestID and bIsLast.",
+        "The documented pInputOrder field list includes CombOffsetFlag, InstrumentID, Direction, LimitPrice and VolumeTotalOriginal.",
+        "The documented pRspInfo fields include ErrorID and ErrorMsg."
+      ],
+      "usefulness": "confirms callback shape and source field boundary",
+      "closure_sufficient": false,
+      "closure_gap": "does not explain why a close-today submit can produce a response input-order offset value of generic close, or how the broker/front should semantically interpret that mismatch"
+    },
+    {
+      "source_id": "ctp_client_development_guide_pdf",
+      "url": "https://www.eastmoneyfutures.com/software/9809db08-c8cb-4cc4-b631-8a16f0c2dfb9/0f757a06-10a5-48c2-817e-362b42202b51/f3ec4355-a448-45d7-bd51-3124d046092a/CTPcdg_ch.pdf",
+      "source_class": "ctp_client_development_guide_primary_candidate",
+      "observed_claims": [
+        "The guide identifies Shanghai Futures Information Technology Co., Ltd. as document source.",
+        "SHFE position calculation distinguishes today and yesterday position quantities.",
+        "ReqOrderInsert uses CThostFtdcInputOrderField and assigns CombOffsetFlag for offset intent.",
+        "Trading core error responses are returned through OnRspOrderInsert, while order-state and trade-state callbacks have separate roles."
+      ],
+      "usefulness": "stronger source candidate for position model and callback path",
+      "closure_sufficient": false,
+      "closure_gap": "does not provide a broker/front rule proving the observed response offset value is a valid semantic closeout, nor an adapter-native repair beyond local diagnostics"
+    }
+  ],
+  "typed_outcome": {
+    "status": "blocked_external_primary_source_candidate_partial_not_semantic_closure_no_send",
+    "blocker_type": "primary-broker-front-close-rejection-rule-source-or-stronger-adapter-native-semantic-repair-missing",
+    "local_diagnostics_sufficient_to_close": false,
+    "primary_or_official_source_found": false,
+    "primary_candidate_source_found": true,
+    "adapter_native_repair_beyond_local_diagnostics_present": false,
+    "next_required_evidence": [
+      "primary_or_official_broker_front_close_rejection_rule_source",
+      "or adapter_native_semantic_repair_beyond_local_diagnostics",
+      "plus separate formal bounded Paper authorization before any future send"
+    ]
+  },
+  "authority": {
+    "paper_send_attempted": false,
+    "native_send_attempted": false,
+    "submit_attempted": false,
+    "retry_authorized_by_this_artifact": false,
+    "formal_authorization_created": false,
+    "post_snapshot_created": false,
+    "reconciliation_created": false,
+    "runtime_truth_created": false,
+    "account_console_truth_created": false
+  },
+  "readiness_claims": {
+    "paper_ready": false,
+    "live_ready": false,
+    "production_ready": false,
+    "admission_approved": false,
+    "capital_allocated": false,
+    "broker_tradable": false,
+    "account_console_runtime_truth": false
+  },
+  "forbidden_truth_sources_rejected": [
+    "web source as order lifecycle truth",
+    "web source as Paper readiness truth",
+    "UI or screenshot as order truth",
+    "terminal stdout as lifecycle truth",
+    "chat authorization as result truth",
+    "second runtime or second ledger truth"
+  ]
+}

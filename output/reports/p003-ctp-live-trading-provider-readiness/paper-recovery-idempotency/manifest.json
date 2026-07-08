@@ -1,0 +1,11 @@
+{
+  "baseline": "ctp-paper-recovery-idempotency-v1",
+  "attempts": [
+    {
+      "attempt": 1,
+      "path": "D:\\Nautilus\\nautilus_ctp_adapter\\output\\reports\\p003-ctp-live-trading-provider-readiness\\paper-recovery-idempotency\\attempt-001.json",
+      "run_id": "paper-recovery-acceptance",
+      "disposition": "passed"
+    }
+  ]
+}

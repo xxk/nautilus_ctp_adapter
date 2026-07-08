@@ -1,0 +1,142 @@
+{
+  "schema": "p077.t6.ctp-paper-armed-repaired-projection-closeout.v1",
+  "created_at_utc": "2026-06-14T02:08:30Z",
+  "owner_repo": "nautilus_ctp_adapter",
+  "calling_repo": "nautilus_strategies",
+  "proposal_id": "p077-p076-timed-paper-loop-workflow",
+  "change_ids": [
+    "20260614__paper__p077-safer-retry-lane",
+    "20260613__paper__p077-real-paper-node-capability-runway"
+  ],
+  "account": "19053",
+  "route": "real_ctp_paper",
+  "instrument": "rb2610",
+  "exchange_id": "SHFE",
+  "paper_send_attempted": true,
+  "paper_send_armed": true,
+  "native_send_allowed": true,
+  "verified_exposure_reduction": true,
+  "no_second_runtime_created": true,
+  "no_second_scheduler_created": true,
+  "no_second_matching_engine_created": true,
+  "no_second_ledger_truth_created": true,
+  "no_second_artifact_root_created": true,
+  "source_artifacts": {
+    "market_freshness": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T020238Z/fresh_market_freshness.json",
+      "sha256": "sha256:6dadfe95a8fedcce7174cf7e881bccdd8f9afdbc476085eabb7082832182ba58"
+    },
+    "pre_snapshot": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T020238Z/fresh_pre_snapshot.json",
+      "sha256": "sha256:6b2003057597e323ed989a2213b47dc32b58f913fb1d250e0b1257e1f6f50252"
+    },
+    "armed_lifecycle": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T020238Z/armed_repaired_projection_boundary.json",
+      "sha256": "sha256:11c1285dba8e04a510e0aadff8ed6eb2b0c746e89021010f951756c5ee3209f5"
+    },
+    "post_snapshot": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T020238Z/fresh_post_snapshot.json",
+      "sha256": "sha256:c461c26c6449d8b694b685510531c354149486301ccdd34b3d81f35f5add7196"
+    }
+  },
+  "market_freshness": {
+    "status": "passed",
+    "success": true,
+    "freshness_basis": "received_at",
+    "first_tick_instrument_id": "rb2610",
+    "first_tick_bid_price1": 3162.0,
+    "first_tick_ask_price1": 3163.0,
+    "first_tick_last_price": 3163.0,
+    "first_tick_exchange_utc": "2026-06-11T23:00:00Z",
+    "first_tick_received_at_utc": "2026-06-14T02:03:18Z",
+    "warnings": [
+      "first_tick_exchange_timestamp_stale"
+    ]
+  },
+  "pre_snapshot_position": {
+    "long_total": 5,
+    "long_today": 5,
+    "long_yesterday": 0,
+    "source": "fresh_pre_snapshot.json"
+  },
+  "post_snapshot_position": {
+    "long_total": 5,
+    "long_today": 5,
+    "long_yesterday": 0,
+    "source": "fresh_post_snapshot.json"
+  },
+  "intent": {
+    "side": "SELL",
+    "position_effect": "CLOSETODAY",
+    "quantity": 1,
+    "limit_price": 3162.0,
+    "client_order_id": "p077-t6-rb2610-close1-repaired-20260614T020238Z",
+    "close_from_pre_snapshot": true,
+    "selected_bucket": "today"
+  },
+  "mapped_submit": {
+    "error": null,
+    "client_order_id": "p077-t6-rb2610-close1-repaired-20260614T020238Z",
+    "order_ref": 2,
+    "front_id": 1,
+    "session_id": 201327182,
+    "order_ref_present": true,
+    "front_id_present": true,
+    "session_id_present": true,
+    "command_kind": "submit_order"
+  },
+  "lifecycle_summary": {
+    "client_order_id": "p077-t6-rb2610-close1-repaired-20260614T020238Z",
+    "status": "cancelled",
+    "cancelled": true,
+    "fill_volume": 0,
+    "unique_fill_count": 0,
+    "leaves_qty": 0,
+    "matched_exec_count": 1,
+    "matched_event_count": 1,
+    "matched_order_events": 1,
+    "matched_trade_events": 0
+  },
+  "repaired_projection_diagnostics": {
+    "side": "1",
+    "direction": "1",
+    "offset_flag": "1",
+    "hedge_flag": "1",
+    "status": "53",
+    "native_order_ref": "2",
+    "payload_error_msg": "�ֲֲ���",
+    "error_message": "�ֲֲ���",
+    "error_text_contains_replacement_char": true
+  },
+  "pre_post_reconciliation": {
+    "accepted": true,
+    "disposition": "cancelled_reconciled",
+    "position_count_before": 5,
+    "position_count_after": 5,
+    "position_count_delta": 0,
+    "target_position_key": {
+      "venue_symbol": "rb2610",
+      "direction": "LONG"
+    },
+    "target_position_delta": 0,
+    "expected_position_delta": 0,
+    "requires_followup": false,
+    "issues": []
+  },
+  "typed_outcome": "armed_repaired_projection_cancelled_no_fill_closeout",
+  "fill_producing_acceptance_satisfied": false,
+  "business_acceptance_satisfied": false,
+  "paper_ready_claimed": false,
+  "live_ready_claimed": false,
+  "admission_claimed": false,
+  "capital_allocated_claimed": false,
+  "broker_tradable_claimed": false,
+  "account_console_runtime_truth_claimed": false,
+  "next_retry_authorized_by_artifact": false,
+  "blocker": {
+    "type": "typed_runtime_blocker",
+    "owner": "nautilus_ctp_adapter",
+    "summary": "Guarded Paper send reached native order callback with repaired projection fields, but CTP returned cancellation/no-fill and position snapshot stayed unchanged.",
+    "retry_condition": "A future owner lane must identify whether the cancellation reason is due to close offset/position semantics, account-side close permissions, or decoded CTP response text, then produce a new guarded Paper artifact with non-zero fill or an owner-side typed blocker."
+  }
+}

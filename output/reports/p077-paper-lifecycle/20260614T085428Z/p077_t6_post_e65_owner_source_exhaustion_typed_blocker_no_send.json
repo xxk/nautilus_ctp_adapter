@@ -1,0 +1,72 @@
+{
+  "schema_version": "p077.paper_lifecycle.typed_blocker.v1",
+  "artifact_id": "p077_t6_post_e65_owner_source_exhaustion_typed_blocker_no_send",
+  "created_at": "2026-06-14T08:54:28.107Z",
+  "owner_repo": "D:/Nautilus/nautilus_ctp_adapter",
+  "selected_lane": "P077-T6-REAL-PAPER-NODE-CAPABILITY-RUNWAY",
+  "classification": "typed_blocker",
+  "paper_send_armed": false,
+  "paper_order_sent": false,
+  "native_submit_attempted": false,
+  "retry_authorized": false,
+  "live_route_allowed": false,
+  "account_console_mutated": false,
+  "consumes_prior_artifact": {
+    "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T084928Z/p077_t6_response_identity_guarded_semantics_repair_no_send.json",
+    "sha256": "1b0591d913976d6e68a2365b06020367e6282bc2ed98b09d6e9b1fda6e88cf0d"
+  },
+  "source_audit": {
+    "scope": "local owner repository after E65 response-identity guarded semantics repair",
+    "commands": [
+      "rg -n \"持仓不足|OnRspOrderInsert|CombOffsetFlag|CloseToday|今日|平今|NoTrading|ErrorID|ReqOrderInsert\" D:/Nautilus/nautilus_ctp_adapter"
+    ],
+    "observed_source_classes": [
+      "owner code and focused tests",
+      "previous typed P077/CTP artifacts",
+      "local CTP vendor header constants for offset, date, hedge and direction values",
+      "adapter/native response provenance fields: OnRspOrderInsert.nRequestID, OnRspOrderInsert.bIsLast and RspInfo.ErrorID"
+    ],
+    "missing_source_class": "primary-or-official broker/front rule source for interpreting OnRspOrderInsert insufficient-position response offset 1 after submitted CLOSETODAY offset 3",
+    "local_diagnostics_sufficient_to_close": false
+  },
+  "blocker": {
+    "type": "primary-broker-front-close-rejection-rule-source-or-stronger-adapter-native-semantic-repair-missing",
+    "reason": "E65 preserves response identity in guarded lifecycle and semantic verdicts, but it still does not explain the broker/front close-rejection rule for the source-bearing insufficient-position response. Local diagnostics, tests, rejected callback echo and vendor constants cannot be promoted to broker/front semantic truth.",
+    "owner": "nautilus_ctp_adapter",
+    "wait_only": false,
+    "blocks_fill_producing_acceptance": true,
+    "blocks_future_retry_authorization": true
+  },
+  "truth_boundaries": {
+    "ctp_owner_truth": "market/account/preflight/lifecycle/post-snapshot/reconcile artifacts remain owned by nautilus_ctp_adapter",
+    "p077_truth": "workflow state and bounded Paper authorization truth remain owned by nautilus_strategies P077 change evidence",
+    "adr0045_truth": "Account Console remains read-only projection and cannot close runtime or broker semantics",
+    "forbidden_truth_sources": [
+      "UI text",
+      "screenshots",
+      "stdout",
+      "terminal scrollback",
+      "latest/debug paths",
+      "chat",
+      "local tests without typed owner evidence",
+      "rejected callback echo alone"
+    ]
+  },
+  "retry_conditions": [
+    "Obtain a primary/official-grade broker/front rule source that explains the close-rejection response semantics, or land a stronger adapter/native semantic repair beyond local diagnostics.",
+    "Record the new rule or repair in a typed owner artifact with refs/checksums.",
+    "Create a separate formal bounded Paper authorization artifact before any future send.",
+    "Collect fresh same-slice market/account/preflight evidence before arming Paper send.",
+    "If a send occurs, return lifecycle, post-snapshot and reconcile evidence or another typed blocker."
+  ],
+  "negative_assertions": {
+    "paper_ready": false,
+    "live_ready": false,
+    "production_ready": false,
+    "admitted": false,
+    "capital_allocated": false,
+    "broker_tradable": false,
+    "account_console_runtime_truth": false,
+    "loop_complete": false
+  }
+}

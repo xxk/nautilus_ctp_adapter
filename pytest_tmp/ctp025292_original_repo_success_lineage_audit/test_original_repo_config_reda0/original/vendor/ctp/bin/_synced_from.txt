@@ -1,0 +1,2 @@
+profile=auto
+ctp_api=output/openctp/tts-sdk/tts_6.6.9-win64-combined

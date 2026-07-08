@@ -8,9 +8,6 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
-*.pyd.*.bak
-*.dll.*.bak
-/*.con
 
 cfgs/local/
 vendor/ctp/bin/
@@ -26,6 +23,8 @@ src/**/*.egg-info/
 .autopilot_trajectory.jsonl
 
 # Local downloaded inputs / cloned references
-output/
-var/
-pytest_tmp/
+output/sdk_download/
+output/vnpy_ctp_clone/
+output/openctp/
+output/debug/
+output/pytest-tmp/

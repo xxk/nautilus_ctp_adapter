@@ -1,0 +1,47 @@
+{
+  "baseline": "instrument-query-smoke-v1",
+  "success": false,
+  "failure_reason": "instrument_query_incomplete",
+  "flow_path": "output\\ctp-flow\\p004-instrument-debug",
+  "flow_mode": "explicit_override",
+  "session_label": "p004-instrument-debug",
+  "requested_symbol": "c2609",
+  "request_id": "instrument-query-1",
+  "loaded": false,
+  "instrument_count": 0,
+  "symbols": [],
+  "matched_symbols": [],
+  "exact_symbol_found": false,
+  "export": {
+    "path": "output\\reports\\p004-openctp-tts-simulation-provider-completeness\\cancel-lifecycle\\p004-instrument-debug\\instrument_query.json",
+    "written": true,
+    "session_label": "p004-instrument-debug",
+    "evidence_root": "output\\reports\\p004-openctp-tts-simulation-provider-completeness\\cancel-lifecycle",
+    "explicit_path": false
+  },
+  "bridge_command_kinds": [
+    "query_instruments"
+  ],
+  "bridge_event_kinds": [
+    "disconnected",
+    "disconnected",
+    "disconnected",
+    "disconnected",
+    "disconnected",
+    "disconnected",
+    "disconnected",
+    "disconnected",
+    "disconnected",
+    "disconnected",
+    "disconnected",
+    "disconnected",
+    "disconnected",
+    "disconnected",
+    "disconnected",
+    "disconnected",
+    "disconnected",
+    "disconnected",
+    "disconnected"
+  ],
+  "first_instrument": null
+}

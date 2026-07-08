@@ -1,0 +1,41 @@
+{
+  "baseline": "instrument-query-smoke-v1",
+  "success": true,
+  "failure_reason": null,
+  "flow_path": "output\\ctp-flow\\p004-instrument-tts669-test",
+  "flow_mode": "explicit_override",
+  "session_label": "p004-instrument-tts669-test",
+  "requested_symbol": "TEST",
+  "request_id": "instrument-query-1",
+  "loaded": true,
+  "instrument_count": 1,
+  "symbols": [
+    "TEST.TEST"
+  ],
+  "matched_symbols": [
+    "TEST.TEST"
+  ],
+  "exact_symbol_found": true,
+  "export": {
+    "path": "output\\reports\\p004-openctp-tts-simulation-provider-completeness\\cancel-lifecycle\\p004-instrument-tts669-test\\instrument_query.json",
+    "written": true,
+    "session_label": "p004-instrument-tts669-test",
+    "evidence_root": "output\\reports\\p004-openctp-tts-simulation-provider-completeness\\cancel-lifecycle",
+    "explicit_path": false
+  },
+  "bridge_command_kinds": [
+    "query_instruments"
+  ],
+  "bridge_event_kinds": [
+    "instrument",
+    "instrument_end"
+  ],
+  "first_instrument": {
+    "display_symbol": "TEST.TEST",
+    "underlying": null,
+    "contract_month": null,
+    "product_kind": "futures",
+    "price_tick": 1.0,
+    "volume_multiple": 10
+  }
+}

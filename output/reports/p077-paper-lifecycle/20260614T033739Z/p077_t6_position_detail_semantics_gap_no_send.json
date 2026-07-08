@@ -1,0 +1,79 @@
+{
+  "schema_version": "p077.t6.position-detail-semantics-gap.v1",
+  "artifact_kind": "p077_t6_position_detail_semantics_gap_no_send",
+  "created_at_utc": "2026-06-14T03:37:39Z",
+  "owner": "owner://nautilus_ctp_adapter",
+  "truth_owner": "owner://nautilus_ctp_adapter/ctp-paper-19053",
+  "source_artifacts": [
+    {
+      "artifact": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T030139Z/authorized_retry_pre_snapshot.json",
+      "checksum": "sha256:d1c859eca085764bed79d96542285348b76021aede4141d159285207df83c6d9",
+      "role": "position_snapshot_source"
+    },
+    {
+      "artifact": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T033309Z/p077_t6_decoded_insufficient_position_semantics_blocker_no_send.json",
+      "checksum": "sha256:ce28ff3cb1119825d0d0816bcd0fe3cd0c2900f201901bc45a4fecab28cba417",
+      "role": "decoded_broker_rejection_semantics_source"
+    }
+  ],
+  "observed_position_detail": {
+    "account_alias": "19053",
+    "instrument": "rb2610",
+    "position_record": {
+      "exchange_id": null,
+      "direction": "LONG",
+      "position_qty": 5,
+      "td_position_qty": 5,
+      "yd_position_qty": 0,
+      "raw_position_date_type_present": false,
+      "raw_position_hedge_flag_present": false
+    },
+    "instrument_record": {
+      "exchange_id": "SHFE",
+      "completeness_status": "partial"
+    }
+  },
+  "code_change": {
+    "file": "D:/Nautilus/nautilus_ctp_adapter/scripts/ctp_guarded_paper_order_loop.py",
+    "function": "build_position_detail_semantics",
+    "added_payload_field": "position_detail_semantics",
+    "rule": "position snapshot bucket fields are diagnostic-only unless native position exchange/date/hedge detail is sufficient to explain broker close rejection semantics"
+  },
+  "contract_lock": {
+    "test_file": "D:/Nautilus/nautilus_ctp_adapter/tests/test_guarded_paper_order_loop.py",
+    "test": "test_position_detail_semantics_flags_missing_raw_owner_fields",
+    "expected_disposition": "position_detail_gap_requires_owner_resolution",
+    "expected_issues": [
+      "position_exchange_id_missing",
+      "raw_position_date_type_missing",
+      "raw_position_hedge_flag_missing"
+    ],
+    "expected_acceptance_implication": "diagnostic_only_not_position_or_fill_truth",
+    "expected_fill_producing_acceptance_satisfied": false,
+    "expected_requires_owner_resolution_before_retry": true,
+    "expected_writes_truth": false
+  },
+  "verification": {
+    "focused_gate": "python -m pytest tests/test_guarded_paper_order_loop.py -q -p no:cacheprovider",
+    "result": "40 passed"
+  },
+  "owner_boundary": {
+    "sent_order": false,
+    "native_send_attempted": false,
+    "submit_attempted": false,
+    "retry_authorized_by_this_artifact": false,
+    "fill_producing_acceptance_satisfied": false,
+    "runtime_truth_created": false,
+    "account_console_truth_created": false,
+    "paper_ready_claimed": false,
+    "live_ready_claimed": false,
+    "broker_tradable_claimed": false,
+    "capital_allocated_claimed": false
+  },
+  "typed_outcome": "blocked_position_detail_semantics_gap_no_send",
+  "remaining_blocker": {
+    "blocker_type": "broker-or-adapter-close-position-semantics",
+    "wait_only": false,
+    "retry_condition": "Owner must capture or preserve enough native position detail, including position exchange/date/hedge detail, to explain why the broker rejected the guarded CLOSETODAY close as 持仓不足 before any further send is treated as eligible."
+  }
+}

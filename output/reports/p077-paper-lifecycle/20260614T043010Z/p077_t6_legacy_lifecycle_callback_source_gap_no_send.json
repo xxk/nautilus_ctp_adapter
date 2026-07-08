@@ -1,0 +1,56 @@
+{
+  "schema": "p077_t6_legacy_lifecycle_callback_source_gap_no_send.v1",
+  "created_at": "2026-06-14T04:30:10.665Z",
+  "owner_repo": "D:/Nautilus/nautilus_ctp_adapter",
+  "selected_lane": "ctp_adapter_owner_side_blocker_repair",
+  "prior_authorized_retry_closeout_artifact": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T030139Z/p077_t6_authorized_retry_cancelled_insufficient_position_closeout.json",
+  "prior_authorized_retry_closeout_sha256": "8b4c38f4fc95f43ba9ee944766cee806c1cb9c4c2178b933debbb0296e834500",
+  "prior_lifecycle_artifact": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T030139Z/authorized_retry_armed_lifecycle.json",
+  "prior_lifecycle_sha256": "3a078c2841d73e3d823c5e29c585240887a1c0b136b2e72572ddb3603a380ecd",
+  "legacy_lifecycle_recheck": {
+    "paper_send_already_consumed": true,
+    "no_new_send": true,
+    "order_actions": 0,
+    "event_count": 1,
+    "callback_source_keys_present": [
+      false
+    ],
+    "callback_sources": [],
+    "zero_fill_rejection": true,
+    "callback_source_observability": {
+      "accepted": false,
+      "disposition": "missing_callback_source_for_zero_fill_rejection",
+      "callback_sources": [],
+      "zero_fill_rejection": true,
+      "acceptance_implication": "diagnostic_only_not_fill_or_closeout_truth",
+      "fill_producing_acceptance_satisfied": false,
+      "requires_owner_resolution_before_retry": true,
+      "writes_truth": false
+    }
+  },
+  "typed_blocker": {
+    "blocker_type": "broker-or-adapter-close-position-semantics",
+    "status": "active_legacy_lifecycle_missing_callback_source",
+    "reason": "Prior authorized retry lifecycle predates callback_source projection; decoded broker text and callback offset cannot be upgraded into a broker/exchange close-offset rule without callback-source provenance.",
+    "allow_authorize_retry": false
+  },
+  "architecture_governance_analysis": {
+    "owner": "nautilus_ctp_adapter owns lifecycle callback provenance and legacy artifact recheck",
+    "no_owner_gap": "legacy lifecycle artifacts without callback_source remain typed blockers instead of strategies/account_console conclusions",
+    "second_implementation_risk": "reduced: recheck uses the existing guarded-loop callback_source_observability contract",
+    "no_ui_truth": "terminal/UI/screenshot text cannot fill the missing callback_source gap"
+  },
+  "formal_acceptance": {
+    "paper_ready": false,
+    "live_ready": false,
+    "broker_tradable": false,
+    "t6_pass": false,
+    "fill_producing_acceptance_satisfied": false,
+    "reason": "No fresh source-bearing lifecycle callback or owner-maintained close-offset rule exists."
+  },
+  "next_required_evidence": [
+    "fresh guarded Paper lifecycle callback carrying callback_source for close rejection path, only with formal authorization artifact",
+    "or owner-maintained broker/exchange close offset rule tied to callback fields",
+    "post-snapshot/reconcile only if a future formally authorized send occurs"
+  ]
+}

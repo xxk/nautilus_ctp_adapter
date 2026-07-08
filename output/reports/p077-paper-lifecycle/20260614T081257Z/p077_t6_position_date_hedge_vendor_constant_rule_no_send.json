@@ -1,0 +1,117 @@
+{
+  "schema": "p077.t6.position-date-hedge-vendor-constant-rule-no-send.v1",
+  "artifact_id": "p077_t6_position_date_hedge_vendor_constant_rule_no_send",
+  "created_at": "2026-06-14T08:12:57Z",
+  "owner_repo": "D:/Nautilus/nautilus_ctp_adapter",
+  "selected_lane": "ctp_owner_position_date_hedge_constant_semantics_no_send",
+  "action_mode": "no_send_semantic_evidence",
+  "authorization": {
+    "formal_authorization_present": false,
+    "active_bounded_authorization": false,
+    "previous_authorization_consumed": {
+      "artifact": "D:/Nautilus/nautilus_strategies/docs/changes/20260614__paper__p077-safer-retry-lane/evidence/20260614T080427Z_formal_bounded_paper_close_authorization.json",
+      "checksum": "sha256:46047d3a44532cffaa97a3dc5e942f69e59220e02a6764620116a37be8635413",
+      "consumed_by": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T080757Z/p077_t6_e56_authorized_close_slice_insufficient_position_closeout.json",
+      "remaining_authorized_slices": 0
+    },
+    "paper_only": true,
+    "live_forbidden": true,
+    "paper_send_armed": false,
+    "native_send_attempted": false,
+    "submit_attempted": false
+  },
+  "source_artifacts": {
+    "latest_source_bearing_closeout": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T080757Z/p077_t6_e56_authorized_close_slice_insufficient_position_closeout.json",
+      "checksum": "sha256:2082ad92ee674460e99ca35d5fdf18ec6424e903e10ff3eaf97800ba10a9e0ff"
+    },
+    "fresh_pre_snapshot": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T080757Z/fresh_pre_snapshot.json",
+      "checksum": "sha256:8bc6dca0b759911096f49f7a5d960458189215b05be38e0faaadff72be3194af"
+    },
+    "fresh_dry_run_preflight": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T080757Z/fresh_guarded_dry_run_preflight.json",
+      "checksum": "sha256:2b7963ce09836ffd0d5bdf3cab572ae1e2d9457d9bdc656f27af9be525d345bd"
+    },
+    "vendor_header": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/vendor/ctp/sdk/ThostFtdcUserApiDataType.h",
+      "checksum": "sha256:0e83c85a4e1a6660f707f82666d565cb026c1c0971c31f0c78676b8b28bcb4e4"
+    }
+  },
+  "observed_position_detail": {
+    "source": "fresh_pre_snapshot",
+    "account_alias": "19053",
+    "instrument": "rb2610",
+    "exchange_id": "SHFE",
+    "direction": "LONG",
+    "position_qty": 5,
+    "td_position_qty": 5,
+    "yd_position_qty": 0,
+    "date_type": "1",
+    "hedge_flag": "1"
+  },
+  "observed_guarded_request": {
+    "source": "fresh_dry_run_preflight",
+    "instrument": "rb2610",
+    "side": "SELL",
+    "quantity": 1,
+    "position_effect": "CLOSETODAY",
+    "time_in_force": "GFD",
+    "limit_price": 3180.0,
+    "native_comb_offset": "3",
+    "native_comb_offset_source_field": "CtpExecutionClient._native_comb_offset_value(position_effect) -> TdOrderSend.comb_offset -> CThostFtdcInputOrderField.CombOffsetFlag[0]",
+    "projected_net_position": 4
+  },
+  "vendor_constant_rule": {
+    "header": "vendor/ctp/sdk/ThostFtdcUserApiDataType.h",
+    "line_refs": {
+      "THOST_FTDC_PSD_Today": 613,
+      "THOST_FTDC_PSD_History": 615,
+      "THOST_FTDC_PD_Long": 725,
+      "THOST_FTDC_HF_Speculation": 761,
+      "THOST_FTDC_OF_Close": 845,
+      "THOST_FTDC_OF_CloseToday": 849,
+      "THOST_FTDC_OF_CloseYesterday": 851
+    },
+    "constants": {
+      "THOST_FTDC_PSD_Today": "1",
+      "THOST_FTDC_PSD_History": "2",
+      "THOST_FTDC_PD_Long": "2",
+      "THOST_FTDC_HF_Speculation": "1",
+      "THOST_FTDC_OF_Close": "1",
+      "THOST_FTDC_OF_CloseToday": "3",
+      "THOST_FTDC_OF_CloseYesterday": "4"
+    }
+  },
+  "semantic_interpretation": {
+    "position_date_matches_today_bucket": true,
+    "hedge_flag_matches_speculation_bucket": true,
+    "direction_matches_close_side": true,
+    "submit_offset_matches_closetoday_constant": true,
+    "missing_local_position_date_or_hedge_constant_ruled_out": true,
+    "missing_local_close_today_constant_ruled_out": true,
+    "callback_offset_rewrites_submit_truth": false,
+    "auto_downgrade_to_generic_close_allowed": false,
+    "fill_producing_acceptance_satisfied": false,
+    "acceptance_implication": "typed_blocker_only_not_fill_or_closeout_truth"
+  },
+  "typed_blocker": {
+    "active": true,
+    "blocker_type": "broker-or-adapter-close-position-semantics",
+    "reason": "Fresh position detail and the local CTP vendor header constants agree with a SHFE LONG today/speculation bucket and a CLOSETODAY submit offset. The E57 source-bearing OnRspOrderInsert insufficient-position rejection is therefore not explained by a missing local position-date, hedge, direction or CloseToday constant.",
+    "retry_condition": "Do not submit again until the CTP owner records independent broker/front close rejection semantics or an adapter/native repair beyond constant mapping, then P077 records a new formal bounded Paper authorization and the owner collects fresh same-slice market/account/preflight evidence."
+  },
+  "truth_boundaries": {
+    "paper_ready": false,
+    "live_ready": false,
+    "production_ready": false,
+    "capital_allocated": false,
+    "broker_tradable": false,
+    "runtime_truth_created": false,
+    "account_console_runtime_truth": false,
+    "ui_truth_created": false,
+    "china_s2_pass": false,
+    "hft_s3_pass": false,
+    "loop_complete": false
+  }
+}

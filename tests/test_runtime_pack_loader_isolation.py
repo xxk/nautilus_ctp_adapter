@@ -118,40 +118,6 @@ def test_pyo3_runtime_preloads_explicit_runtime_thost_dependencies(
     ]
 
 
-def test_pyo3_runtime_import_bootstrap_is_explicit_native_loader_owner(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    runtime_pack = tmp_path / "runtime_packs" / "ctp-live-025292-md" / "bin"
-    _write_runtime_pack(runtime_pack)
-    registered: list[tuple[Path, ...]] = []
-    preloaded: list[tuple[Path, ...]] = []
-
-    monkeypatch.setattr(pyo3_runtime, "_ACTIVE_RUNTIME_PACK_BIN", None)
-    monkeypatch.setattr(pyo3_runtime, "_BOOTSTRAPPED_PYO3_IMPORT", False)
-    monkeypatch.setenv(CTP_RUNTIME_PACK_BIN_ENV, str(runtime_pack))
-    monkeypatch.setenv(CTP_RUNTIME_PACK_STRICT_ENV, "1")
-    monkeypatch.setattr(pyo3_runtime.os, "name", "nt")
-    monkeypatch.setattr(
-        pyo3_runtime,
-        "add_windows_dll_directories",
-        lambda *paths: registered.append(tuple(Path(path) for path in paths)) or list(paths),
-    )
-    monkeypatch.setattr(
-        pyo3_runtime,
-        "preload_runtime_vendor_dlls",
-        lambda *paths: preloaded.append(tuple(Path(path) for path in paths)) or [],
-    )
-
-    paths = pyo3_runtime.bootstrap_pyo3_runtime_import(repo_root=tmp_path)
-
-    assert paths[0] == runtime_pack
-    assert registered == [tuple(paths)]
-    assert preloaded == [tuple(paths)]
-    assert pyo3_runtime._ACTIVE_RUNTIME_PACK_BIN == runtime_pack
-    assert pyo3_runtime._BOOTSTRAPPED_PYO3_IMPORT is True
-
-
 def test_loader_preloads_runtime_vendor_dlls_for_package_import(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

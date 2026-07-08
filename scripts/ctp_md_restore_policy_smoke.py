@@ -12,10 +12,6 @@ if str(SRC_ROOT) not in sys.path:
 
 from nautilus_ctp_adapter.adapters.ctp.config import CtpAdapterConfig
 from nautilus_ctp_adapter.adapters.ctp.factory import build_ctp_stack
-from nautilus_ctp_adapter.diagnostics.evidence_payloads import (
-    MD_RESTORE_POLICY_BASELINE,
-    build_md_restore_policy_payload,
-)
 from nautilus_ctp_adapter.devtools.offhours_cli import (
     build_export_metadata,
     resolve_export_path,
@@ -25,7 +21,7 @@ from nautilus_ctp_adapter.devtools.offhours_cli import (
 )
 
 
-BASELINE = MD_RESTORE_POLICY_BASELINE
+BASELINE = "md-restore-policy-v1"
 
 
 def _emit_payload(payload: dict[str, object]) -> None:
@@ -87,19 +83,70 @@ def main() -> int:
     except Exception as exc:
         return _emit_exception(stage="run_smoke", exc=exc)
 
-    payload = build_md_restore_policy_payload(
-        result,
-        flow_mode=flow_mode,
-        session_label=session_label,
-        export=build_export_metadata(
+    failure_reason = None
+    if not result.startup_truth.ready:
+        failure_reason = "startup_not_ready"
+    elif not result.restore_result.triggered:
+        failure_reason = "restore_not_triggered"
+    elif not result.restore_succeeded:
+        failure_reason = "restore_not_succeeded"
+    elif result.restored_truth.first_tick_symbol is None:
+        failure_reason = "restored_tick_missing"
+    elif result.disposition not in {
+        "clear",
+        "manual_review_required",
+        "restore_required",
+        "evidence_only",
+    }:
+        failure_reason = "unexpected_disposition"
+
+    payload = {
+        "baseline": BASELINE,
+        "success": failure_reason is None,
+        "failure_reason": failure_reason,
+        "flow_mode": flow_mode,
+        "session_label": session_label,
+        "disposition": result.disposition,
+        "restore_triggered": result.restore_result.triggered,
+        "restore_succeeded": result.restore_succeeded,
+        "startup_truth": {
+            "flow_path": result.startup_truth.flow_path,
+            "flow_mode": result.startup_truth.flow_mode,
+            "selected_symbols": list(result.startup_truth.selected_symbols),
+            "ready": result.startup_truth.ready,
+            "first_tick_symbol": result.startup_truth.first_tick_symbol,
+            "first_tick_ts_epoch_us": result.startup_truth.first_tick_ts_epoch_us,
+        },
+        "restored_truth": {
+            "flow_path": result.restored_truth.flow_path,
+            "flow_mode": result.restored_truth.flow_mode,
+            "selected_symbols": list(result.restored_truth.selected_symbols),
+            "ready": result.restored_truth.ready,
+            "first_tick_symbol": result.restored_truth.first_tick_symbol,
+            "first_tick_ts_epoch_us": result.restored_truth.first_tick_ts_epoch_us,
+        },
+        "restored_symbols": list(result.restore_result.restored_symbols),
+        "findings": [
+            {
+                "code": finding.code,
+                "severity": finding.severity,
+                "action": finding.action,
+                "metric": finding.metric,
+                "metric_value": finding.metric_value,
+                "threshold": finding.threshold,
+                "message": finding.message,
+            }
+            for finding in result.findings
+        ],
+        "export": build_export_metadata(
             export_path=export_path,
             evidence_root=args.evidence_root,
             session_label=session_label,
             explicit_path=args.output_json is not None,
         ),
-        bridge_commands=commands,
-        bridge_events=events,
-    )
+        "bridge_command_kinds": [command.kind.value for command in commands],
+        "bridge_event_kinds": [event.kind.value for event in events],
+    }
 
     if export_path is not None:
         try:
@@ -109,7 +156,7 @@ def main() -> int:
 
     _emit_payload(payload)
 
-    return 0 if payload["failure_reason"] is None else 1
+    return 0 if failure_reason is None else 1
 
 
 if __name__ == "__main__":

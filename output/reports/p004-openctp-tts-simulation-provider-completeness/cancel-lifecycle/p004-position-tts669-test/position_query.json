@@ -1,0 +1,77 @@
+{
+  "baseline": "position-query-smoke-v1",
+  "success": true,
+  "failure_reason": null,
+  "flow_path": "output\\ctp-flow\\p004-position-tts669-test",
+  "flow_mode": "explicit_override",
+  "session_label": "p004-position-tts669-test",
+  "query_request_id": "query-positions-2",
+  "query_code": 0,
+  "completed": true,
+  "timed_out": false,
+  "no_positions": false,
+  "position_count": 4,
+  "positions": [
+    {
+      "venue_symbol": "c2609",
+      "exchange_id": null,
+      "direction": "SHORT",
+      "position_qty": 3,
+      "yd_position_qty": 3,
+      "td_position_qty": 0,
+      "position_cost": 69510.0
+    },
+    {
+      "venue_symbol": "rb2609",
+      "exchange_id": null,
+      "direction": "LONG",
+      "position_qty": 0,
+      "yd_position_qty": 0,
+      "td_position_qty": 0,
+      "position_cost": 0.0
+    },
+    {
+      "venue_symbol": "rb2609",
+      "exchange_id": null,
+      "direction": "LONG",
+      "position_qty": 4,
+      "yd_position_qty": 4,
+      "td_position_qty": 0,
+      "position_cost": 126200.0
+    },
+    {
+      "venue_symbol": "zn2610",
+      "exchange_id": null,
+      "direction": "LONG",
+      "position_qty": 2,
+      "yd_position_qty": 2,
+      "td_position_qty": 0,
+      "position_cost": 251000.0
+    }
+  ],
+  "bootstrap_ready": true,
+  "td_login_success": true,
+  "td_settlement_code": 0,
+  "disconnects": [],
+  "export": {
+    "path": "output\\reports\\p004-openctp-tts-simulation-provider-completeness\\cancel-lifecycle\\p004-position-tts669-test\\position_query.json",
+    "written": true,
+    "session_label": "p004-position-tts669-test",
+    "evidence_root": "output\\reports\\p004-openctp-tts-simulation-provider-completeness\\cancel-lifecycle",
+    "explicit_path": false
+  },
+  "bridge_command_kinds": [
+    "connect",
+    "query_positions"
+  ],
+  "bridge_event_kinds": [
+    "login_succeeded",
+    "settlement_confirmed",
+    "login_succeeded",
+    "position",
+    "position",
+    "position",
+    "position",
+    "position"
+  ]
+}

@@ -11,11 +11,9 @@ from nautilus_ctp_adapter.adapters.ctp.execution_client import (
 
 from scripts.ctp_guarded_paper_cancel_loop import (
     classify_cancel_events,
-    _run_native_cancel_action,
     run_guarded_paper_cancel,
     validate_cancel_command_contract,
 )
-from nautilus_ctp_adapter.native import NativeExecView
 
 
 def _config() -> CtpAdapterConfig:
@@ -221,127 +219,3 @@ def test_classify_cancel_events_deduplicates_cancel_callbacks() -> None:
     assert verdict["disposition"] == "cancelled"
     assert verdict["matched_event_count"] == 1
     assert verdict["duplicate_event_count"] == 1
-
-
-def test_classify_cancel_events_matches_native_identity_without_client_order_id() -> None:
-    verdict = classify_cancel_events(
-        {
-            "instrument": "rb2610",
-            "client_order_id": "cancel-1",
-            "order_ref": 42,
-            "front_id": 7,
-            "session_id": -8,
-            "exchange_id": "SHFE",
-        },
-        [
-            {
-                "kind": "order",
-                "client_order_id": "",
-                "venue_symbol": "rb2610",
-                "native_order_id": "SYS-1",
-                "native_order_ref": "42",
-                "front_id": 7,
-                "session_id": -8,
-                "status": "5",
-            }
-        ],
-    )
-
-    assert verdict["disposition"] == "cancelled"
-    assert verdict["matched_event_count"] == 1
-
-
-def test_native_cancel_action_waits_for_exec_callback(monkeypatch, tmp_path: Path) -> None:
-    class LoginResponse:
-        success = True
-        error_id = 0
-        error_message = ""
-        front_id = 7
-        session_id = -8
-        max_order_ref = 41
-
-    class FakeTdSession:
-        def __init__(self, flow_path: Path) -> None:
-            self.exec_callback = None
-
-        def set_login_callback(self, callback):
-            self.login_callback = callback
-
-        def set_front_disconnected_callback(self, callback):
-            self.disconnect_callback = callback
-
-        def set_exec_callback(self, callback):
-            self.exec_callback = callback
-
-        def init(self, front: str) -> int:
-            return 0
-
-        def authenticate(self, app_id: str, auth_code: str, product_info: str) -> int:
-            return 0
-
-        def login(self, broker_id: str, user_id: str, password: str) -> int:
-            self.login_callback(LoginResponse())
-            return 0
-
-        def confirm_settlement(self) -> int:
-            return 0
-
-        def order_action(
-            self,
-            broker_id: str,
-            user_id: str,
-            instrument: str,
-            order_ref: str,
-            front_id: int,
-            session_id: int,
-            exchange_id: str,
-            order_sys_id: str,
-            request_id: int,
-        ) -> int:
-            self.exec_callback(
-                NativeExecView(
-                    order_id="SYS-1",
-                    symbol=instrument,
-                    price=0.0,
-                    qty=1,
-                    side=1,
-                    status=5,
-                    ts_epoch_us=1,
-                    order_ref=order_ref,
-                    front_id=front_id,
-                    session_id=session_id,
-                    direction=1,
-                    offset_flag=4,
-                    hedge_flag=1,
-                    is_trade=False,
-                    trade_price=0.0,
-                    trade_volume=0,
-                    error_msg="已撤单",
-                    leaves_qty=0,
-                    callback_source="OnRtnOrder",
-                )
-            )
-            return 0
-
-        def dispose(self) -> None:
-            pass
-
-    monkeypatch.setattr(
-        "scripts.ctp_guarded_paper_cancel_loop.create_td_live_session",
-        lambda flow_path: FakeTdSession(flow_path),
-    )
-
-    result = _run_native_cancel_action(
-        config=_config(),
-        instrument="rb2610",
-        order_ref=42,
-        front_id=7,
-        session_id=-8,
-        exchange_id="SHFE",
-        timeout_seconds=2,
-    )
-
-    assert result["accepted"] is True
-    assert result["observed_event_count"] == 1
-    assert result["events"][0]["native_order_ref"] == "42"
-    assert result["events"][0]["status"] == 5

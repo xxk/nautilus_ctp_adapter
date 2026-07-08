@@ -1,0 +1,75 @@
+{
+  "baseline": "ctp025292-account-console-runtime-lineage-audit-v1",
+  "route_scenario": "ctp025292_marketdata_sandbox_paper_simulated_001",
+  "runtime_pack_id": "ctp-live-025292-md",
+  "market_source": "CTP 025292 official market data only",
+  "market_data_account_id": "025292",
+  "broker_order_submission": false,
+  "trading_adapter": "disabled",
+  "success": false,
+  "status": "blocked",
+  "blocker_id": "ctp025292_account_console_runtime_lineage_unready",
+  "issues": [
+    "account_console_source_package_missing",
+    "account_console_acceptance_evidence_blocked"
+  ],
+  "account_console_source_package": {
+    "artifact_ref": "D:\\Nautilus\\_worktrees\\r1-heartbeat-driver-contract\\nautilus_ctp_adapter\\pytest_tmp\\ctp025292_source_package_build_closeout\\test_cli_writes_blocker_json_a0\\missing\\source-package.json",
+    "exists": false
+  },
+  "account_console_acceptance_evidence": {
+    "artifact_ref": "D:\\Nautilus\\_worktrees\\r1-heartbeat-driver-contract\\nautilus_ctp_adapter\\pytest_tmp\\ctp025292_source_package_build_closeout\\test_cli_writes_blocker_json_a0\\acceptance.json",
+    "exists": true,
+    "sha256": "FA6EB7EDD3B1AC32FF36A3714D3E5586985DBAF235AE225ADE896680ADDE571C",
+    "schema_version": "account-console.ctp025292-real-login-ui-acceptance-evidence.v1",
+    "account_id": "acct.ctp.live.025292",
+    "account_uid": null,
+    "display_alias": null,
+    "source_kind": null,
+    "source_mode": null,
+    "status": "blocked_waiting_for_real_login_source_package",
+    "verdict": "blocked",
+    "blocker_id": null,
+    "source_ref": "output/account_capability/ctp-live-025292/source-package.json",
+    "source_checksum": "sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+  },
+  "account_console_template_source_package": {
+    "artifact_ref": "D:\\Nautilus\\_worktrees\\r1-heartbeat-driver-contract\\nautilus_ctp_adapter\\pytest_tmp\\ctp025292_source_package_build_closeout\\test_cli_writes_blocker_json_a0\\template.json",
+    "exists": true,
+    "sha256": "D9EAD074C8498C25A87420A667FAF3551D0D24305814C653C83C3A2A8B18E3C2",
+    "schema_version": "account_source_artifact.v1",
+    "account_id": "acct.ctp.live.025292",
+    "account_uid": null,
+    "display_alias": null,
+    "source_kind": "ctp_trader_api",
+    "source_mode": null,
+    "status": null,
+    "verdict": null,
+    "blocker_id": null,
+    "source_ref": null,
+    "source_checksum": null
+  },
+  "runtime_lineage": {
+    "runtime_pack_present": false,
+    "runtime_pack_id": "",
+    "runtime_ref_present": false,
+    "runtime_hash_count": 0,
+    "required_dll_hashes_present": false,
+    "required_dll_hashes": {},
+    "sha256_like_token_count": 0
+  },
+  "source_package_satisfies_runtime_lineage": false,
+  "account_console_acceptance_passed": false,
+  "diagnostic_value": "Account Console account/source artifacts may prove account projection, but they cannot unlock S2-G2 market-data preflight unless they also carry route-bound runtime_pack_id, runtime ref, and required CTP DLL hashes.",
+  "negative_assertions": {
+    "did_not_open_trading_channel": true,
+    "did_not_submit_broker_order": true,
+    "did_not_use_025292_as_trading_account": true,
+    "did_not_generate_or_consume_paper_request": true,
+    "did_not_claim_market_data_ready": true,
+    "did_not_claim_paper_ready": true,
+    "did_not_claim_live_ready": true,
+    "did_not_enter_stage3": true
+  },
+  "next_action": "Build or restore output/account_capability/ctp-live-025292/source-package.json with route-bound runtime_pack_id, runtime ref, and required DLL hashes, then rerun the source-lineage gate before MD smoke."
+}

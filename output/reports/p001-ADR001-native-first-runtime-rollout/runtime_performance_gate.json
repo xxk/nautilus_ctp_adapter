@@ -1,0 +1,12 @@
+{
+  "daemon_trigger_policy": "daemon proposal remains forbidden unless this gate is replaced by a live/formal benchmark showing the in-process batch bridge is the bottleneck",
+  "drained": 5000,
+  "elapsed_sec": 0.00045819999650120735,
+  "events": 5000,
+  "events_per_sec": 10912265.469619717,
+  "gate": "runtime_bridge_batch_drain",
+  "limit": 1000,
+  "min_events_per_sec": 1000.0,
+  "passed": true,
+  "proposal_id": "p001-ADR001-native-first-runtime-rollout"
+}

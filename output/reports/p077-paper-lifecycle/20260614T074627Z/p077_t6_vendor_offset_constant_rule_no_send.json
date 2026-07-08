@@ -1,0 +1,97 @@
+{
+  "schema": "p077.t6.vendor-offset-constant-rule-no-send.v1",
+  "artifact_id": "p077_t6_vendor_offset_constant_rule_no_send",
+  "created_at": "2026-06-14T07:46:27Z",
+  "owner_repo": "D:/Nautilus/nautilus_ctp_adapter",
+  "selected_lane": "ctp_owner_vendor_close_offset_rule_evidence",
+  "send_actions": {
+    "paper_send_attempted": false,
+    "native_send_attempted": false,
+    "submit_attempted": false,
+    "authorization_consumed": false,
+    "new_authorization_created": false
+  },
+  "source_blocker": {
+    "prior_rule_artifact": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T073756Z/p077_t6_close_offset_owner_rule_repair_no_send.json",
+    "prior_rule_checksum": "sha256:fed4e66887cb5d2bd0c604686872fe5972f6f8cf57433e6ed13dbe6454f60378",
+    "prior_closeout_artifact": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T072956Z/p077_t6_e50_authorized_close_slice_insufficient_position_closeout.json",
+    "prior_closeout_checksum": "sha256:1b51a3da95ba63884f99b705d55ae0fa44d3f00bbef54968396f97016c556737",
+    "blocker_type": "broker-or-adapter-close-position-semantics"
+  },
+  "independent_rule_evidence": {
+    "vendor_header": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/vendor/ctp/sdk/ThostFtdcUserApiDataType.h",
+      "checksum": "sha256:0e83c85a4e1a6660f707f82666d565cb026c1c0971c31f0c78676b8b28bcb4e4",
+      "constants": {
+        "THOST_FTDC_OF_Open": "0",
+        "THOST_FTDC_OF_Close": "1",
+        "THOST_FTDC_OF_CloseToday": "3",
+        "THOST_FTDC_OF_CloseYesterday": "4"
+      },
+      "authority": "local CTP SDK vendor header; independent of rejected callback echo"
+    },
+    "owner_mapping": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/src/nautilus_ctp_adapter/adapters/ctp/execution_client.py",
+      "checksum": "sha256:13aeca399dc5d6b224e40f6aae0eb4020d4c1d0f20a12d4eb597b5f2912b375c",
+      "mapping": {
+        "OPEN": "0",
+        "CLOSE": "1",
+        "CLOSETODAY": "3",
+        "CLOSEYESTERDAY": "4"
+      },
+      "source_field": "CtpExecutionClient._native_comb_offset_value(position_effect)"
+    },
+    "native_submit_boundary": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/rust/ctp_runtime_core/native/ctp_vendor_bridge.cpp",
+      "checksum": "sha256:dd281d142f6032bb729dc564506c87bfaa32634b22330a6dfca36ca11fd822d8",
+      "source_field": "CThostFtdcInputOrderField.CombOffsetFlag[0]",
+      "provenance_label": "repo_ctp_td_order_send.CThostFtdcInputOrderField.CombOffsetFlag[0]"
+    }
+  },
+  "owner_rule": {
+    "disposition": "vendor_constant_rule_confirms_close_today_offset_3",
+    "close_today_offset": "3",
+    "generic_close_offset": "1",
+    "callback_offset_1_interpretation": "generic close constant only when it is submit-boundary input; on a rejected OnRspOrderInsert callback it remains diagnostic response evidence and does not override submit-boundary provenance",
+    "retry_authorization_implication": "no_retry_authorized_by_rule_evidence_only"
+  },
+  "verification": {
+    "vendor_mapping_gate": {
+      "command": "python -m pytest tests/test_nautilus_integration.py::TestCtpClosePositionSemantics::test_native_offset_mapping_matches_vendor_ctp_constants tests/test_nautilus_integration.py::TestCtpClosePositionSemantics::test_native_offset_mapping_supports_close_variants_without_fallback tests/test_nautilus_integration.py::TestCtpClosePositionSemantics::test_submit_payload_carries_native_offset_request_field_provenance -q -p no:cacheprovider",
+      "result": "3 passed",
+      "test_file_checksum": "sha256:63316dffd284c9fd0b002556789718349fe4679a5558137d67ad1e093b6e7803"
+    },
+    "guarded_loop_gate": {
+      "command": "$env:TMP=$repo/output/tmp/pytest-p077-074627; $env:TEMP=$repo/output/tmp/pytest-p077-074627; python -m pytest tests/test_guarded_paper_order_loop.py -q -p no:cacheprovider",
+      "result": "48 passed",
+      "script_checksum": "sha256:82fb5e266f1a38a4254574ad318fe4c9243629c9cc86625a66479130de89ca93"
+    },
+    "owner_docs_gate": {
+      "command": "python scripts/check_change_docs.py --root .",
+      "result": "CHANGE_DOCS_CHECK_OK: changes=94"
+    },
+    "owner_harness_gate": {
+      "command": "python scripts/check_harness.py --root .",
+      "result": "HARNESS_CHECK_OK"
+    }
+  },
+  "retry_condition": {
+    "allow_retry_from_this_artifact": false,
+    "required_before_future_send": [
+      "new_formal_bounded_paper_authorization",
+      "fresh_same_slice_market_account_preflight_evidence",
+      "guarded_owner_runtime_path_with_session_send_budget_1"
+    ]
+  },
+  "truth_boundaries": {
+    "paper_ready": false,
+    "live_ready": false,
+    "production_ready": false,
+    "capital_allocated": false,
+    "broker_tradable": false,
+    "runtime_truth_created": false,
+    "account_console_runtime_truth": false,
+    "ui_truth_created": false,
+    "fill_producing_acceptance_satisfied": false
+  }
+}

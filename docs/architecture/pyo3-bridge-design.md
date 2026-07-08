@@ -56,7 +56,7 @@ module-name = "ctp_runtime._ctp_runtime"
 ```
 
 `module-name = "ctp_runtime._ctp_runtime"` 使 `.pyd` 落在 `src/ctp_runtime/` 内；
-`src/ctp_runtime/__init__.py` 仅作为 import shim，委托到 `nautilus_ctp_adapter.native.pyo3_runtime.bootstrap_pyo3_runtime_import()` 准备 Windows DLL 搜索与 vendor preload，再从 `._ctp_runtime` 重导出公共符号。DLL search/preload 的 canonical owner 是 `nautilus_ctp_adapter.native`，不是 import shim。
+`src/ctp_runtime/__init__.py` 先注册 `vendor/ctp/bin` 的 Windows DLL 搜索目录，再从 `._ctp_runtime` 重导出公共符号。
 
 ---
 
@@ -190,7 +190,7 @@ python -m pytest tests/test_smoke_import.py -k "pyo3_bridge or run_live_md_smoke
 2. **maturin 不删 setuptools pip-installable 路径**：`pip install -e .` 改走 maturin backend，需要 Rust toolchain，这是已知的接受权衡。
 3. **-9000/-9001 与 ctypes manifest 对齐**：确保 Python layer 代码在 C4 迁移前不因错误码语义差异出现两种行为。
 4. **无宿主逻辑入 Rust**：所有 Python 侧策略（重连、日志、timeout）仍在 Python adapter 层完成，Rust 只暴露最薄的 session 接口。
-5. **Windows import bootstrap 是正式链路的一部分**：`src/ctp_runtime/__init__.py` 必须先委托 `nautilus_ctp_adapter.native.pyo3_runtime.bootstrap_pyo3_runtime_import()`，由 native loader owner 注册 DLL 搜索目录并 preload vendor DLL，再导入 `_ctp_runtime.pyd`；import shim 不得复制 DLL search/preload 逻辑。
+5. **Windows import bootstrap 是正式链路的一部分**：`src/ctp_runtime/__init__.py` 必须先注册 `vendor/ctp/bin` DLL 目录，再导入 `_ctp_runtime.pyd`，否则 `.pyd` 的 vendor 依赖无法解析。
 
 ## 9. C2-C4 Closeout / C2-C4 收口
 

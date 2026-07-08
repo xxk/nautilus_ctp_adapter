@@ -1,0 +1,68 @@
+{
+  "schema_version": "p077.t6.ctp-paper-native-diagnostic-repair.v1",
+  "artifact_kind": "p077_t6_ctp_paper_native_diagnostic_projection_repair_no_send",
+  "created_at_utc": "2026-06-14T01:44:17Z",
+  "owner": "owner://nautilus_ctp_adapter.guarded_paper_order_loop",
+  "truth_owner": "ctp_paper_lifecycle_owner",
+  "route_id": "ctp-paper-19053",
+  "account_alias": "19053",
+  "source_blocker": {
+    "artifact": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T013407Z/p077_t6_close_position_semantics_diagnosis_no_send.json",
+    "sha256": "sha256:cf77c6ef1ca151f11932ffae0e8abdf1d2e6b43d484fca4d09771b82e820eb90",
+    "blocker_type": "paper-broker-close-position-semantics"
+  },
+  "repair_scope": {
+    "paper_send_attempted": false,
+    "native_send_attempted": false,
+    "runtime_truth_created": false,
+    "account_console_truth_created": false,
+    "retry_authorized_by_this_artifact": false,
+    "changed_behavior": "evidence_projection_only",
+    "fields_added_to_guarded_lifecycle_events": [
+      "side",
+      "direction",
+      "offset_flag",
+      "hedge_flag",
+      "error_text_contains_replacement_char"
+    ]
+  },
+  "changed_files": [
+    {
+      "path": "scripts/ctp_guarded_paper_order_loop.py",
+      "sha256": "sha256:75db7fa6940e41b7d2260a313103330553a10aaf05212b2b3c1725906fcb4a29"
+    },
+    {
+      "path": "tests/test_guarded_paper_order_loop.py",
+      "sha256": "sha256:5c39d49827ad58d31233af5afaf3437a717ead99a66753947d6e00a5fa1c7a4a"
+    }
+  ],
+  "verification": {
+    "focused_tests": [
+      {
+        "command": "python -m pytest tests/test_guarded_paper_order_loop.py tests/test_native_ctp_text_decode.py -q -p no:cacheprovider",
+        "result": "39 passed"
+      }
+    ],
+    "new_contract_lock": "test_guarded_loop_lifecycle_events_preserve_native_diagnostic_fields"
+  },
+  "diagnostic_result": {
+    "status": "repair_landed_no_send",
+    "safe_next_owner_action": "Use a future fresh guarded owner artifact to capture side/direction/offset/hedge and replacement-char diagnostics in lifecycle events before interpreting close-position rejection semantics or selecting any new retry offset."
+  },
+  "readiness_claims": {
+    "paper_ready": false,
+    "live_ready": false,
+    "production_ready": false,
+    "admission_approved": false,
+    "capital_allocated": false,
+    "broker_tradable": false,
+    "account_console_runtime_truth": false
+  },
+  "forbidden_truth_sources": [
+    "terminal stdout as lifecycle truth",
+    "UI screenshot as order/account truth",
+    "latest/debug path discovery",
+    "chat authorization as result truth",
+    "second runtime or second ledger truth"
+  ]
+}

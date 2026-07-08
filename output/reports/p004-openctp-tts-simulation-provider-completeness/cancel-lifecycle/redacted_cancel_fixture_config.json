@@ -1,0 +1,19 @@
+{
+  "BrokerID": "9999",
+  "UserID": "redacted-user",
+  "Password": "redacted-password",
+  "Pricer": "tcp://trading.openctp.cn:30011",
+  "Host": "tcp://trading.openctp.cn:30001",
+  "AppID": "client_test",
+  "AuthCode": "redacted-auth",
+  "ProductInfo": "nautilus-ctp-adapter-test",
+  "Instruments": ["rb2610"],
+  "ExecutionGuardrails": {
+    "Enabled": true,
+    "AllowedInstruments": ["rb2610"],
+    "MaxOrderQty": 3,
+    "MaxNetPosition": 3,
+    "MaxSubmitPerMinute": 5,
+    "AllowLiveOrderSmoke": false
+  }
+}

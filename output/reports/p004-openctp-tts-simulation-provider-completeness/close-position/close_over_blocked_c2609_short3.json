@@ -1,0 +1,50 @@
+{
+  "baseline": "ctp-guarded-paper-order-loop-v1",
+  "account_profile": "openctp-tts-7x24-simulation",
+  "evidence_class": "openctp-tts-7x24-simulation",
+  "success": false,
+  "status": "blocked",
+  "failure_reason": "close_intent_rejected",
+  "blocker_type": "paper-safety",
+  "action_mode": "dry_run",
+  "paper_send_armed": false,
+  "pre_snapshot": {
+    "accepted": true,
+    "issues": []
+  },
+  "close_intent": {
+    "accepted": false,
+    "disposition": "close_intent_failed",
+    "candidate": {
+      "venue_symbol": "c2609",
+      "exchange_id": "DCE",
+      "direction": "SHORT",
+      "position_qty": 2,
+      "td_position_qty": 0,
+      "yd_position_qty": 3,
+      "closable_quantity": 2
+    },
+    "selected_bucket": null,
+    "submit_intent": null,
+    "issues": [
+      "insufficient_closable_position"
+    ]
+  },
+  "intent_contract": {
+    "instrument": "c2609",
+    "side": "BUY",
+    "quantity": 3,
+    "limit_price": 2300.0,
+    "position_effect": "CLOSE",
+    "price_mode": "snapshot_close",
+    "client_order_id": "p004-close-over-c2609-short-20260608-01"
+  },
+  "order_contract": null,
+  "mapped_submit": null,
+  "order_lifecycle": null,
+  "post_snapshot": null,
+  "reconciliation": null,
+  "issues": [
+    "insufficient_closable_position"
+  ]
+}

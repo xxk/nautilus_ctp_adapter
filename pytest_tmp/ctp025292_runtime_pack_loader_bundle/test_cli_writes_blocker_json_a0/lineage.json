@@ -1,0 +1,82 @@
+{
+  "baseline": "ctp025292-source-lineage-gate-v1",
+  "route_scenario": "ctp025292_marketdata_sandbox_paper_simulated_001",
+  "market_source": "CTP 025292 official market data only",
+  "market_data_account_id": "025292",
+  "broker_order_submission": false,
+  "trading_adapter": "disabled",
+  "execution_target": "Nautilus Sandbox Paper account sandbox-paper.simulated-001",
+  "success": false,
+  "status": "blocked",
+  "blocker_id": "ctp025292_source_lineage_unready",
+  "issues": [
+    "source_package_missing",
+    "runtime_manifest_openctp_tts_for_025292",
+    "runtime_manifest.runtime_pack_id_missing",
+    "runtime_manifest.profile_auto_not_allowed_for_025292",
+    "runtime_dll_missing:thostmduserapi_se.dll",
+    "runtime_dll_missing:thosttraderapi_se.dll"
+  ],
+  "paths": {
+    "config": "pytest_tmp\\ctp025292_runtime_pack_loader_bundle\\test_cli_writes_blocker_json_a0\\cfgs\\local\\ctp.live.025292.local.json",
+    "source_package": "pytest_tmp\\ctp025292_runtime_pack_loader_bundle\\test_cli_writes_blocker_json_a0\\missing\\source-package.json",
+    "runtime_bin": "pytest_tmp\\ctp025292_runtime_pack_loader_bundle\\test_cli_writes_blocker_json_a0\\vendor\\ctp\\bin",
+    "runtime_manifest": "pytest_tmp\\ctp025292_runtime_pack_loader_bundle\\test_cli_writes_blocker_json_a0\\vendor\\ctp\\bin\\_synced_from.txt"
+  },
+  "config": {
+    "broker_id": "0155",
+    "user_id_present": true,
+    "user_id_fingerprint": "d200e60910f3",
+    "password_present": true,
+    "auth_code_present": true,
+    "app_id_present": true,
+    "product_info_present": true,
+    "md_front_present": true,
+    "md_front_fingerprint": "5c46a4ae25d0",
+    "td_front_present": true,
+    "td_front_fingerprint": "a13fab032bd4",
+    "provider_id": 45,
+    "instruments": [
+      "ag2612"
+    ],
+    "native_pack_dir_present": false,
+    "managed_assembly_dir_present": false
+  },
+  "source_package": {
+    "exists": false,
+    "summary": null
+  },
+  "runtime_manifest": {
+    "exists": true,
+    "values": {
+      "profile": "auto",
+      "pack_kind": "runtime",
+      "ctp_api": "output/openctp/tts-sdk/tts_6.6.9-win64-combined",
+      "managed": ""
+    }
+  },
+  "runtime_dlls": {
+    "thostmduserapi_se.dll": {
+      "exists": false,
+      "sha256": null,
+      "length": null,
+      "path": "pytest_tmp\\ctp025292_runtime_pack_loader_bundle\\test_cli_writes_blocker_json_a0\\vendor\\ctp\\bin\\thostmduserapi_se.dll"
+    },
+    "thosttraderapi_se.dll": {
+      "exists": false,
+      "sha256": null,
+      "length": null,
+      "path": "pytest_tmp\\ctp025292_runtime_pack_loader_bundle\\test_cli_writes_blocker_json_a0\\vendor\\ctp\\bin\\thosttraderapi_se.dll"
+    }
+  },
+  "loader_isolation": {
+    "required_mode": "fresh_worker_process_per_runtime_pack",
+    "reason": "Windows caches loaded DLLs by module name; same-name CTP DLL families must not be switched inside one process."
+  },
+  "negative_assertions": {
+    "did_not_open_trading_channel": true,
+    "did_not_submit_broker_order": true,
+    "did_not_generate_or_consume_paper_request": true,
+    "did_not_claim_market_data_ready": true
+  }
+}

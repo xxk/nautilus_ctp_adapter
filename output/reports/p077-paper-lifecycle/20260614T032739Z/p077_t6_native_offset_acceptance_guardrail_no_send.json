@@ -1,0 +1,73 @@
+{
+  "schema_version": "p077.t6.native-offset-acceptance-guardrail.v1",
+  "artifact_kind": "p077_t6_native_offset_acceptance_guardrail_no_send",
+  "created_at_utc": "2026-06-14T03:27:39Z",
+  "owner": "owner://nautilus_ctp_adapter",
+  "truth_owner": "owner://nautilus_ctp_adapter/ctp-paper-19053",
+  "source_artifacts": [
+    {
+      "artifact": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T030139Z/p077_t6_authorized_retry_cancelled_insufficient_position_closeout.json",
+      "checksum": "sha256:8b4c38f4fc95f43ba9ee944766cee806c1cb9c4c2178b933debbb0296e834500",
+      "role": "cancelled_no_fill_source_blocker"
+    },
+    {
+      "artifact": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T031939Z/p077_t6_close_today_offset_mismatch_regression_no_send.json",
+      "checksum": "sha256:13cc4cce85e212ebfe2a18d283030587bd0e9644bca8e4eeded508530484c83f",
+      "role": "submit_callback_offset_mismatch_regression"
+    },
+    {
+      "artifact": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T032309Z/p077_t6_native_offset_source_trace_no_send.json",
+      "checksum": "sha256:438bfab14a2a87edfde1ffc3925080b7386182bb32793e82d2f13046a54deef4",
+      "role": "native_offset_source_trace"
+    }
+  ],
+  "code_change": {
+    "file": "D:/Nautilus/nautilus_ctp_adapter/scripts/ctp_guarded_paper_order_loop.py",
+    "function": "build_native_offset_semantics",
+    "added_fields": [
+      "acceptance_implication",
+      "fill_producing_acceptance_satisfied",
+      "requires_owner_resolution_before_retry"
+    ],
+    "rule": "native offset semantics are diagnostic only and cannot create fill, closeout, runtime, Account Console, readiness, admission, capital or broker-tradability truth"
+  },
+  "contract_lock": {
+    "test_file": "D:/Nautilus/nautilus_ctp_adapter/tests/test_guarded_paper_order_loop.py",
+    "test": "test_native_offset_semantics_flags_close_today_submit_callback_mismatch",
+    "locked_case": {
+      "position_effect": "CLOSETODAY",
+      "submit_native_comb_offset": "3",
+      "callback_offset_flags": [
+        "1"
+      ],
+      "expected_disposition": "callback_offset_differs_from_submit_native_comb_offset",
+      "expected_acceptance_implication": "diagnostic_only_not_fill_or_closeout_truth",
+      "expected_fill_producing_acceptance_satisfied": false,
+      "expected_requires_owner_resolution_before_retry": true,
+      "expected_writes_truth": false
+    }
+  },
+  "verification": {
+    "focused_gate": "python -m pytest tests/test_guarded_paper_order_loop.py -q -p no:cacheprovider",
+    "result": "38 passed"
+  },
+  "owner_boundary": {
+    "sent_order": false,
+    "native_send_attempted": false,
+    "submit_attempted": false,
+    "retry_authorized_by_this_artifact": false,
+    "fill_producing_acceptance_satisfied": false,
+    "runtime_truth_created": false,
+    "account_console_truth_created": false,
+    "paper_ready_claimed": false,
+    "live_ready_claimed": false,
+    "broker_tradable_claimed": false,
+    "capital_allocated_claimed": false
+  },
+  "typed_outcome": "passed_no_send_acceptance_guardrail_still_blocked",
+  "remaining_blocker": {
+    "blocker_type": "broker-or-adapter-close-position-semantics",
+    "wait_only": false,
+    "retry_condition": "Resolve the CLOSETODAY submit/native/callback semantic mismatch through an owner-side rule or a fresh formally authorized guarded lifecycle artifact; this artifact does not authorize another send."
+  }
+}

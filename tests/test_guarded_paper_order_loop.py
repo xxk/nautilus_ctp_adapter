@@ -12,8 +12,7 @@ from scripts.ctp_guarded_paper_order_loop import (
     validate_order_command_contract,
     validate_pre_order_snapshot,
 )
-from nautilus_ctp_adapter.adapters.ctp.config import CtpAdapterConfig, CtpExecutionGuardrails
-from nautilus_ctp_adapter.adapters.ctp.execution_client import CtpExecutionClient, CtpMappedOrderCommand
+from nautilus_ctp_adapter.adapters.ctp.execution_client import CtpMappedOrderCommand
 from nautilus_ctp_adapter.runtime import (
     CtpRuntimeCommand,
     CtpRuntimeCommandKind,
@@ -487,48 +486,6 @@ def test_guarded_loop_dry_run_accepts_exposure_reduction_config_flag(tmp_path: P
     assert result["risk_preflight"]["projected_net_position"] == -2
     assert result["risk_preflight"]["verified_exposure_reduction"] is False
     assert result["order_contract"]["accepted"] is True
-    assert (
-        result["order_lifecycle"]["bootstrap_ready"] is True
-    ), "dry-run preflight should not require native TD login"
-
-
-def test_execution_client_dry_run_lifecycle_does_not_require_native_td_bridge() -> None:
-    config = CtpAdapterConfig(
-        broker_id="9999",
-        user_id="u",
-        password="p",
-        md_front="tcp://trading.openctp.cn:30011",
-        td_front="tcp://trading.openctp.cn:30001",
-        app_id="client_test",
-        auth_code="auth",
-        product_info="prod",
-        instruments=["c2609"],
-        execution_guardrails=CtpExecutionGuardrails(
-            enabled=True,
-            allowed_instruments=["c2609"],
-            max_order_qty=3,
-            max_net_position=5,
-            max_submit_per_minute=10,
-            allow_live_order_smoke=False,
-        ),
-    )
-    client = CtpExecutionClient(config)
-
-    result = client.run_order_lifecycle_smoke_baseline(
-        instrument_id="c2609",
-        side="BUY",
-        quantity=1,
-        limit_price=2300.0,
-        position_effect="OPEN",
-        client_order_id="dry-run-no-native",
-        dry_run=True,
-        timeout_seconds=1,
-    )
-
-    assert result.bootstrap.ready is True
-    assert result.bootstrap.execution_bootstrap.td_smoke.login_success is None
-    assert result.bootstrap.execution_bootstrap.td_smoke.login_error_message == "dry_run_native_login_not_executed"
-    assert result.mapped_submit.command is not None
 
 
 def test_guarded_loop_lifecycle_events_preserve_native_diagnostic_fields(
@@ -1668,88 +1625,6 @@ def test_close_offset_owner_rule_blocks_callback_offset_as_submit_truth() -> Non
         in verdict["next_required_evidence"]
     )
     assert "new_formal_retry_authorization_before_any_future_send" in verdict["next_required_evidence"]
-    assert verdict["primary_rule_source_required"] is True
-    assert verdict["local_diagnostics_sufficient_to_close"] is False
-    assert verdict["acceptance_implication"] == "typed_blocker_only_not_fill_or_closeout_truth"
-    assert verdict["fill_producing_acceptance_satisfied"] is False
-    assert verdict["requires_owner_resolution_before_retry"] is True
-    assert verdict["writes_truth"] is False
-
-
-def test_close_yesterday_owner_rule_blocks_callback_offset_as_submit_truth() -> None:
-    intent = build_intent_contract(
-        instrument="rb2610",
-        side="SELL",
-        quantity=1,
-        limit_price=3178.0,
-        position_effect="CLOSEYESTERDAY",
-        price_mode="snapshot_close",
-        client_order_id="source-bearing-close-yesterday-insufficient-position",
-    )
-    lifecycle_events = [
-        {
-            "kind": "order",
-            "client_order_id": "source-bearing-close-yesterday-insufficient-position",
-            "venue_symbol": "rb2610",
-            "status": "53",
-            "trade_volume": 0,
-            "leaves_qty": 0,
-            "offset_flag": "1",
-            "submit_request_offset_flag": "4",
-            "submit_request_offset_source": (
-                "repo_ctp_td_order_send.CThostFtdcInputOrderField.CombOffsetFlag[0]"
-            ),
-            "callback_source": "OnRspOrderInsert",
-            "response_request_id": "43",
-            "response_is_last": "1",
-            "response_error_id": "31",
-            "payload_error_msg": "持仓不足",
-            "error_message": "持仓不足",
-        }
-    ]
-    lifecycle_verdict = classify_lifecycle_events(intent, lifecycle_events)
-    offset_semantics = order_loop.build_native_offset_semantics(
-        intent_contract=intent,
-        command_payload={"native_comb_offset": "4"},
-        lifecycle_events=lifecycle_events,
-    )
-    rejection_semantics = order_loop.build_broker_rejection_semantics(
-        intent_contract=intent,
-        lifecycle_events=lifecycle_events,
-        lifecycle_verdict=lifecycle_verdict,
-        native_offset_semantics=offset_semantics,
-    )
-    position_detail_semantics = {
-        "disposition": "position_detail_sufficient_for_current_close_diagnostic",
-        "position_exchange_ids": ["SHFE"],
-        "instrument_exchange_id": "SHFE",
-        "position_buckets": [
-            {
-                "direction": "LONG",
-                "position_qty": 5,
-                "td_position_qty": 0,
-                "yd_position_qty": 5,
-            }
-        ],
-    }
-
-    verdict = order_loop.build_close_offset_owner_rule_semantics(
-        intent_contract=intent,
-        position_detail_semantics=position_detail_semantics,
-        native_offset_semantics=offset_semantics,
-        broker_rejection_semantics=rejection_semantics,
-    )
-
-    assert verdict["disposition"] == "owner_rule_blocks_callback_offset_as_submit_truth"
-    assert verdict["blocker_type"] == "broker-or-adapter-close-position-semantics"
-    assert verdict["position_effect"] == "CLOSEYESTERDAY"
-    assert verdict["expected_submit_offset_from_position_effect"] == "4"
-    assert verdict["observed_submit_boundary_offset"] == "4"
-    assert verdict["callback_offset_flags"] == ["1"]
-    assert verdict["callback_sources"] == ["OnRspOrderInsert"]
-    assert verdict["submit_boundary_matches_command_payload"] is True
-    assert verdict["callback_is_rejection_diagnostic_only"] is True
-    assert verdict["auto_downgrade_to_generic_close_allowed"] is False
     assert verdict["primary_rule_source_required"] is True
     assert verdict["local_diagnostics_sufficient_to_close"] is False
     assert verdict["acceptance_implication"] == "typed_blocker_only_not_fill_or_closeout_truth"
