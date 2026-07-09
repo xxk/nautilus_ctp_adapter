@@ -12,6 +12,10 @@ if str(SRC_ROOT) not in sys.path:
 
 from nautilus_ctp_adapter.adapters.ctp.config import CtpAdapterConfig
 from nautilus_ctp_adapter.adapters.ctp.factory import build_ctp_stack
+from nautilus_ctp_adapter.diagnostics.evidence_payloads import (
+    LIVE_OPS_EVIDENCE_MATRIX_BASELINE,
+    build_live_ops_evidence_matrix_payload,
+)
 from nautilus_ctp_adapter.devtools.offhours_cli import (
     build_export_metadata,
     resolve_export_path,
@@ -21,7 +25,7 @@ from nautilus_ctp_adapter.devtools.offhours_cli import (
 )
 
 
-BASELINE = "live-ops-evidence-matrix-v1"
+BASELINE = LIVE_OPS_EVIDENCE_MATRIX_BASELINE
 
 
 def _emit_payload(payload: dict[str, object]) -> None:
@@ -103,59 +107,19 @@ def main() -> int:
     except Exception as exc:
         return _emit_exception(stage="run_smoke", exc=exc)
 
-    failure_reason = None
-    if evidence.account_id is None:
-        failure_reason = "account_id_missing"
-    elif evidence.symbol is None:
-        failure_reason = "symbol_missing"
-    elif evidence.disposition not in {
-        "clear",
-        "manual_review_required",
-        "rebuild_required",
-        "restore_required",
-        "boundary_required",
-        "evidence_only",
-    }:
-        failure_reason = "unexpected_disposition"
-
-    payload = {
-        "baseline": BASELINE,
-        "success": failure_reason is None,
-        "failure_reason": failure_reason,
-        "evidence_version": evidence.evidence_version,
-        "flow_mode": flow_mode,
-        "session_label": session_label,
-        "account_id": evidence.account_id,
-        "symbol": evidence.symbol,
-        "disposition": evidence.disposition,
-        "requires_manual_review": evidence.disposition == "manual_review_required",
-        "startup_disposition": evidence.startup_disposition,
-        "md_disposition": evidence.md_disposition,
-        "td_disposition": evidence.td_disposition,
-        "reconciliation_disposition": evidence.reconciliation_disposition,
-        "startup_shared_flow_reuse_allowed": evidence.startup_shared_flow_reuse_allowed,
-        "startup_session_rotated": evidence.startup_session_rotated,
-        "md_restore_succeeded": evidence.md_restore_succeeded,
-        "position_count": evidence.position_count,
-        "observed_callback_count": evidence.observed_callback_count,
-        "historical_callback_count": evidence.historical_callback_count,
-        "current_session_callback_count": evidence.current_session_callback_count,
-        "available_ratio": evidence.available_ratio,
-        "margin_ratio": evidence.margin_ratio,
-        "manual_review_codes": list(evidence.manual_review_codes),
-        "rebuild_required_codes": list(evidence.rebuild_required_codes),
-        "restore_required_codes": list(evidence.restore_required_codes),
-        "boundary_codes": list(evidence.boundary_codes),
-        "evidence_only_codes": list(evidence.evidence_only_codes),
-        "export": build_export_metadata(
+    payload = build_live_ops_evidence_matrix_payload(
+        evidence,
+        flow_mode=flow_mode,
+        session_label=session_label,
+        export=build_export_metadata(
             export_path=export_path,
             evidence_root=args.evidence_root,
             session_label=session_label,
             explicit_path=args.output_json is not None,
         ),
-        "bridge_command_kinds": [command.kind.value for command in commands],
-        "bridge_event_kinds": [event.kind.value for event in events],
-    }
+        bridge_commands=commands,
+        bridge_events=events,
+    )
 
     if export_path is not None:
         try:
@@ -165,7 +129,7 @@ def main() -> int:
 
     _emit_payload(payload)
 
-    return 0 if failure_reason is None else 1
+    return 0 if payload["failure_reason"] is None else 1
 
 
 if __name__ == "__main__":

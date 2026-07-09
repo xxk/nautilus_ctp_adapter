@@ -12,6 +12,10 @@ if str(SRC_ROOT) not in sys.path:
 
 from nautilus_ctp_adapter.adapters.ctp.config import CtpAdapterConfig
 from nautilus_ctp_adapter.adapters.ctp.factory import build_ctp_stack
+from nautilus_ctp_adapter.diagnostics.evidence_payloads import (
+    LIVE_OPS_SNAPSHOT_BASELINE,
+    build_live_ops_snapshot_payload,
+)
 from nautilus_ctp_adapter.devtools.offhours_cli import (
     build_export_metadata,
     resolve_export_path,
@@ -21,7 +25,7 @@ from nautilus_ctp_adapter.devtools.offhours_cli import (
 )
 
 
-BASELINE = "live-ops-snapshot-v1"
+BASELINE = LIVE_OPS_SNAPSHOT_BASELINE
 
 
 def _emit_payload(payload: dict[str, object]) -> None:
@@ -104,117 +108,21 @@ def main() -> int:
     except Exception as exc:
         return _emit_exception(stage="run_smoke", exc=exc)
 
-    failure_reason = None
-    if summary.account_id is None:
-        failure_reason = "account_id_missing"
-    elif summary.symbol is None:
-        failure_reason = "symbol_missing"
-    elif policy_result.disposition not in {
-        "clear",
-        "manual_review_required",
-        "rebuild_required",
-        "restore_required",
-        "boundary_required",
-        "evidence_only",
-    }:
-        failure_reason = "unexpected_disposition"
-
-    payload = {
-        "baseline": BASELINE,
-        "success": failure_reason is None,
-        "failure_reason": failure_reason,
-        "flow_mode": flow_mode,
-        "session_label": session_label,
-        "account_id": summary.account_id,
-        "symbol": summary.symbol,
-        "startup": {
-            "account_id": snapshot.startup_truth.account_id,
-            "disposition": snapshot.startup_truth.disposition,
-            "shared_flow_reuse_allowed": snapshot.startup_truth.shared_flow_reuse_allowed,
-            "session_rotated": snapshot.startup_truth.session_rotated,
-            "manual_review_codes": list(snapshot.startup_truth.manual_review_codes),
-            "rebuild_required_codes": list(snapshot.startup_truth.rebuild_required_codes),
-            "evidence_only_codes": list(snapshot.startup_truth.evidence_only_codes),
-        },
-        "md": {
-            "account_id": snapshot.md_truth.account_id,
-            "symbol": snapshot.md_truth.symbol,
-            "disposition": snapshot.md_truth.disposition,
-            "startup_ready": snapshot.md_truth.startup_ready,
-            "restore_triggered": snapshot.md_truth.restore_triggered,
-            "restore_succeeded": snapshot.md_truth.restore_succeeded,
-            "manual_review_codes": list(snapshot.md_truth.manual_review_codes),
-            "restore_required_codes": list(snapshot.md_truth.restore_required_codes),
-            "evidence_only_codes": list(snapshot.md_truth.evidence_only_codes),
-        },
-        "td": {
-            "account_id": snapshot.td_truth.account_id,
-            "disposition": snapshot.td_truth.disposition,
-            "position_count": snapshot.td_truth.position_count,
-            "observed_callback_count": snapshot.td_truth.observed_callback_count,
-            "historical_callback_count": snapshot.td_truth.historical_callback_count,
-            "current_session_callback_count": snapshot.td_truth.current_session_callback_count,
-            "available_ratio": snapshot.td_truth.available_ratio,
-            "margin_ratio": snapshot.td_truth.margin_ratio,
-            "manual_review_codes": list(snapshot.td_truth.manual_review_codes),
-            "boundary_codes": list(snapshot.td_truth.boundary_codes),
-            "evidence_only_codes": list(snapshot.td_truth.evidence_only_codes),
-        },
-        "reconciliation": {
-            "account_id": snapshot.reconciliation.account_id,
-            "disposition": snapshot.reconciliation.disposition,
-            "requires_manual_review": snapshot.reconciliation.requires_manual_review,
-            "finding_count": snapshot.reconciliation.finding_count,
-            "position_line_count": snapshot.reconciliation.position_line_count,
-            "symbol_count": snapshot.reconciliation.symbol_count,
-            "gross_position_qty": snapshot.reconciliation.gross_position_qty,
-            "available_ratio": snapshot.reconciliation.available_ratio,
-            "margin_ratio": snapshot.reconciliation.margin_ratio,
-            "manual_review_codes": list(snapshot.reconciliation.manual_review_codes),
-            "evidence_only_codes": list(snapshot.reconciliation.evidence_only_codes),
-        },
-        "startup_disposition": summary.startup_disposition,
-        "md_disposition": summary.md_disposition,
-        "td_disposition": summary.td_disposition,
-        "reconciliation_disposition": summary.reconciliation_disposition,
-        "disposition": policy_result.disposition,
-        "requires_manual_review": policy_result.disposition == "manual_review_required",
-        "finding_count": len(policy_result.findings),
-        "startup_shared_flow_reuse_allowed": summary.startup_shared_flow_reuse_allowed,
-        "startup_session_rotated": summary.startup_session_rotated,
-        "md_restore_succeeded": summary.md_restore_succeeded,
-        "position_count": summary.position_count,
-        "observed_callback_count": summary.observed_callback_count,
-        "historical_callback_count": summary.historical_callback_count,
-        "current_session_callback_count": summary.current_session_callback_count,
-        "available_ratio": summary.available_ratio,
-        "margin_ratio": summary.margin_ratio,
-        "manual_review_codes": list(summary.manual_review_codes),
-        "rebuild_required_codes": list(summary.rebuild_required_codes),
-        "restore_required_codes": list(summary.restore_required_codes),
-        "boundary_codes": list(summary.boundary_codes),
-        "evidence_only_codes": list(summary.evidence_only_codes),
-        "findings": [
-            {
-                "code": finding.code,
-                "severity": finding.severity,
-                "action": finding.action,
-                "metric": finding.metric,
-                "metric_value": finding.metric_value,
-                "threshold": finding.threshold,
-                "message": finding.message,
-            }
-            for finding in policy_result.findings
-        ],
-        "export": build_export_metadata(
+    payload = build_live_ops_snapshot_payload(
+        snapshot=snapshot,
+        summary=summary,
+        policy_result=policy_result,
+        flow_mode=flow_mode,
+        session_label=session_label,
+        export=build_export_metadata(
             export_path=export_path,
             evidence_root=args.evidence_root,
             session_label=session_label,
             explicit_path=args.output_json is not None,
         ),
-        "bridge_command_kinds": [command.kind.value for command in commands],
-        "bridge_event_kinds": [event.kind.value for event in events],
-    }
+        bridge_commands=commands,
+        bridge_events=events,
+    )
 
     if export_path is not None:
         try:
@@ -224,7 +132,7 @@ def main() -> int:
 
     _emit_payload(payload)
 
-    return 0 if failure_reason is None else 1
+    return 0 if payload["failure_reason"] is None else 1
 
 
 if __name__ == "__main__":

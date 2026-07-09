@@ -241,6 +241,8 @@ extern "C" {
     fn repo_ctp_td_qry_instrument(handle: *mut c_void, symbol: *const c_char) -> i32;
     fn repo_ctp_td_qry_position(handle: *mut c_void) -> i32;
     fn repo_ctp_td_qry_account(handle: *mut c_void) -> i32;
+    fn repo_ctp_td_qry_order(handle: *mut c_void) -> i32;
+    fn repo_ctp_td_qry_trade(handle: *mut c_void) -> i32;
     fn repo_ctp_td_set_callback(handle: *mut c_void, callback: TdOnExecCallback);
     fn repo_ctp_td_set_login_callback(handle: *mut c_void, callback: TdOnLoginCallback);
     fn repo_ctp_td_set_front_disconnected_callback(
@@ -824,6 +826,36 @@ pub extern "C" fn TdQryAccount(handle: *mut c_void) -> i32 {
     NOT_IMPLEMENTED_CODE
 }
 
+#[cfg(ctp_vendor_bridge)]
+#[no_mangle]
+pub extern "C" fn TdQryOrder(handle: *mut c_void) -> i32 {
+    unsafe { repo_ctp_td_qry_order(handle) }
+}
+
+#[cfg(not(ctp_vendor_bridge))]
+#[no_mangle]
+pub extern "C" fn TdQryOrder(handle: *mut c_void) -> i32 {
+    if handle.is_null() {
+        return INVALID_HANDLE_CODE;
+    }
+    NOT_IMPLEMENTED_CODE
+}
+
+#[cfg(ctp_vendor_bridge)]
+#[no_mangle]
+pub extern "C" fn TdQryTrade(handle: *mut c_void) -> i32 {
+    unsafe { repo_ctp_td_qry_trade(handle) }
+}
+
+#[cfg(not(ctp_vendor_bridge))]
+#[no_mangle]
+pub extern "C" fn TdQryTrade(handle: *mut c_void) -> i32 {
+    if handle.is_null() {
+        return INVALID_HANDLE_CODE;
+    }
+    NOT_IMPLEMENTED_CODE
+}
+
 #[no_mangle]
 pub extern "C" fn TdQryInstrumentStatus(handle: *mut c_void) -> i32 {
     if handle.is_null() {
@@ -1021,6 +1053,8 @@ mod tests {
         );
         assert_eq!(TdQryPosition(std::ptr::null_mut()), INVALID_HANDLE_CODE);
         assert_eq!(TdQryAccount(std::ptr::null_mut()), INVALID_HANDLE_CODE);
+        assert_eq!(TdQryOrder(std::ptr::null_mut()), INVALID_HANDLE_CODE);
+        assert_eq!(TdQryTrade(std::ptr::null_mut()), INVALID_HANDLE_CODE);
         assert_eq!(
             TdQryInstrumentStatus(std::ptr::null_mut()),
             INVALID_HANDLE_CODE
@@ -1119,6 +1153,8 @@ mod tests {
         assert_eq!(TdQryInstrument(handle, null()), NOT_IMPLEMENTED_CODE);
         assert_eq!(TdQryPosition(handle), NOT_IMPLEMENTED_CODE);
         assert_eq!(TdQryAccount(handle), NOT_IMPLEMENTED_CODE);
+        assert_eq!(TdQryOrder(handle), NOT_IMPLEMENTED_CODE);
+        assert_eq!(TdQryTrade(handle), NOT_IMPLEMENTED_CODE);
         assert_eq!(TdQryInstrumentStatus(handle), NOT_IMPLEMENTED_CODE);
         assert_eq!(
             TdLogin(handle, null(), null(), null()),

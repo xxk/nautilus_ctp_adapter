@@ -1,1 +1,0 @@
-{"schema_version": "account_source_artifact.v1", "account_id": "acct.ctp.live.025292", "source_kind": "ctp_trader_api", "source_mode": "live_observation", "source_health": {"state": "ready"}}

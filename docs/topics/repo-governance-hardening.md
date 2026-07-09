@@ -38,7 +38,7 @@ Topic 1 完成、Topic 2 完成、Topic 3 进入 `in_progress` 后，治理层�
 | C3 | `20260402__governance-harness__check-topic-docs-script` | 添加最小文档门禁脚本 `scripts/check_topic_docs.py` | ✅ 已完成 |
 | C4 | `20260402__governance-harness__harness-update-policy` | 在 `docs/doc_harness_kit/checks/` 补充显式 topic 切换 checklist 文档 | ✅ 已完成 |
 | C5 | `20260402__governance-harness__rust-validation-gate` | 把 Rust 校验从裸 `cargo check` 收敛为正式 gate 脚本与统一文档入口 | ✅ 已完成 |
-| C6 | `20260410__repo-governance-hardening__dslresearch-frontier-alignment` | 增加 topic state registry、topic index sync、current frontier 与 governance check 入口，使推进能力向 `DSLReserach` 对齐 | ✅ 已完成 |
+| C6 | `20260410__repo-governance-hardening__dslresearch-frontier-alignment` | 增加 topic state registry、topic index sync、current frontier 与 governance check 入口，使推进能力向 `DSLResearch` 对齐 | ✅ 已完成 |
 
 ## 五、AI-TASK-QUEUE
 

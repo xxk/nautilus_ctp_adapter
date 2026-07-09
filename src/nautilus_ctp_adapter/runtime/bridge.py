@@ -26,7 +26,7 @@ class CtpRuntimeBridge:
     _events: deque[CtpRuntimeEvent] = field(default_factory=deque)
 
     def healthy(self) -> bool:
-        return True
+        return self.session.is_connected
 
     @property
     def pending_command_count(self) -> int:
