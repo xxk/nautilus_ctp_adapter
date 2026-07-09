@@ -1,0 +1,61 @@
+{
+    "timestamp":  "2026-04-11 14:23:56",
+    "hostname":  "MY-56",
+    "repo_root":  "D:\\Nautilus\\nautilus_ctp_adapter",
+    "service":  {
+                    "ok":  true,
+                    "data":  {
+                                 "name":  "3proxy-egress",
+                                 "status":  "Running",
+                                 "start_type":  "Automatic",
+                                 "qc":  "[SC] QueryServiceConfig 成功\r\n\r\nSERVICE_NAME: 3proxy-egress\r\n        TYPE               : 10  WIN32_OWN_PROCESS \r\n        START_TYPE         : 2   AUTO_START  (DELAYED)\r\n        ERROR_CONTROL      : 1   NORMAL\r\n        BINARY_PATH_NAME   : C:\\opt\\nssm\\nssm.exe\r\n        LOAD_ORDER_GROUP   : \r\n        TAG                : 0\r\n        DISPLAY_NAME       : 3proxy-egress\r\n        DEPENDENCIES       : \r\n        SERVICE_START_NAME : LocalSystem",
+                                 "qfailure":  "[SC] QueryServiceConfig2 成功\r\n\r\nSERVICE_NAME: 3proxy-egress\r\n        RESET_PERIOD (以秒计)        : 86400\r\n        REBOOT_MESSAGE               : \r\n        COMMAND_LINE                 : \r\n        FAILURE_ACTIONS              : 重启动 -- 延迟 = 60000 微秒。\r\n                                       重启动 -- 延迟 = 60000 微秒。\r\n                                       重启动 -- 延迟 = 60000 微秒。"
+                             }
+                },
+    "listener":  {
+                     "ok":  true,
+                     "data":  [
+                                  {
+                                      "LocalAddress":  "10.168.80.56",
+                                      "LocalPort":  3128,
+                                      "OwningProcess":  127916
+                                  },
+                                  {
+                                      "LocalAddress":  "10.168.80.56",
+                                      "LocalPort":  1080,
+                                      "OwningProcess":  127916
+                                  }
+                              ]
+                 },
+    "nic":  {
+                "ok":  false,
+                "error":  "找不到接受实际参数“8056, 浠ュお缃?”的位置形式参数。"
+            },
+    "local_proxy":  {
+                        "ok":  true,
+                        "data":  {
+                                     "github_status":  200,
+                                     "egress_ip":  "69.63.198.154"
+                                 }
+                    },
+    "local_default":  {
+                          "ok":  true,
+                          "data":  {
+                                       "youtube_status":  200,
+                                       "google_status":  200
+                                   }
+                      },
+    "remote":  {
+                   "ok":  true,
+                   "data":  {
+                                "github_git_ok":  true,
+                                "proxy_port_ok":  true,
+                                "github_status":  200,
+                                "head":  "c677dd99d46da587a70362d6df5cf57787aa5210\tHEAD",
+                                "PSComputerName":  "10.168.80.58",
+                                "RunspaceId":  "0534a13f-f36a-48c4-9357-0610830e6059",
+                                "PSShowComputerName":  true
+                            }
+               },
+    "overall_ok":  true
+}

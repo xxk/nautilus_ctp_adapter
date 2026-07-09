@@ -1,0 +1,55 @@
+{
+  "schema_version": "p077.t6.native-offset-submit-callback-semantics-repair.v1",
+  "artifact_kind": "p077_t6_native_offset_submit_callback_semantics_repair_no_send",
+  "created_at_utc": "2026-06-14T03:13:39Z",
+  "owner": "owner://nautilus_ctp_adapter",
+  "truth_owner": "owner://nautilus_ctp_adapter/ctp-paper-19053",
+  "route_id": "ctp-paper-19053",
+  "source_blocker": {
+    "artifact": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T030139Z/p077_t6_authorized_retry_cancelled_insufficient_position_closeout.json",
+    "checksum": "sha256:8b4c38f4fc95f43ba9ee944766cee806c1cb9c4c2178b933debbb0296e834500",
+    "decoded_error_message": "持仓不足",
+    "observed_callback_offset_flag": "1",
+    "requested_position_effect": "CLOSETODAY"
+  },
+  "repair_summary": {
+    "sent_order": false,
+    "native_send_attempted": false,
+    "submit_attempted": false,
+    "changed_behavior": false,
+    "evidence_repair_only": true,
+    "description": "The guarded Paper order artifact now records the submit command payload separately from callback fields, including native_comb_offset/native_side/native_order_type/native_comb_hedge on the mapped submit command and a native_offset_semantics diagnostic comparing submit native_comb_offset with callback offset_flag values."
+  },
+  "owner_boundary": {
+    "does_not_create_runtime_truth": true,
+    "does_not_create_account_console_truth": true,
+    "does_not_authorize_retry": true,
+    "does_not_claim_fill_producing_acceptance": true,
+    "does_not_claim_paper_ready": true,
+    "does_not_claim_live_ready": true,
+    "does_not_claim_broker_tradable": true
+  },
+  "changed_files": [
+    "D:/Nautilus/nautilus_ctp_adapter/src/nautilus_ctp_adapter/adapters/ctp/execution_client.py",
+    "D:/Nautilus/nautilus_ctp_adapter/scripts/ctp_guarded_paper_order_loop.py",
+    "D:/Nautilus/nautilus_ctp_adapter/tests/test_guarded_paper_order_loop.py"
+  ],
+  "focused_gates": [
+    {
+      "command": "$env:PYTHONPATH='.;src'; pytest -q -p no:cacheprovider tests/test_nautilus_integration.py",
+      "status": "passed",
+      "result": "83 passed"
+    },
+    {
+      "command": "$env:PYTHONPATH='.;src'; $env:TMP=(Resolve-Path .tmp/pytest-tmp).Path; $env:TEMP=(Resolve-Path .tmp/pytest-tmp).Path; pytest -q -p no:cacheprovider --basetemp .tmp/pytest-tmp tests/test_guarded_paper_order_loop.py",
+      "status": "passed",
+      "result": "37 passed"
+    }
+  ],
+  "typed_outcome": "passed_no_send_evidence_repair_still_blocked_on_broker_or_adapter_close_position_semantics",
+  "remaining_blocker": {
+    "blocker_type": "broker-or-adapter-close-position-semantics",
+    "wait_only": false,
+    "retry_condition": "Run a future no-send or separately authorized owner slice that captures submit native_comb_offset and callback offset_flag in the same lifecycle artifact, then determine whether the rb2610 CLOSETODAY close rejection is caused by outbound native offset mapping, callback projection semantics, or broker/account position-detail rules."
+  }
+}

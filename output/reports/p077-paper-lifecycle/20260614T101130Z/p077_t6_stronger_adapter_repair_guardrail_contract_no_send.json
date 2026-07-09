@@ -1,0 +1,69 @@
+{
+  "schema_version": "p077.t6.stronger_adapter_repair_guardrail_contract.v1",
+  "artifact_id": "p077-t6-stronger-adapter-repair-guardrail-contract-no-send-20260614T101130Z",
+  "created_at_utc": "2026-06-14T10:11:30Z",
+  "created_by": "Codex",
+  "owner_repo": "D:/Nautilus/nautilus_ctp_adapter",
+  "selected_lane": "P077-T6-REAL-PAPER-NODE-CAPABILITY-RUNWAY",
+  "change_ref": "D:/Nautilus/nautilus_strategies/docs/changes/20260614__paper__p077-safer-retry-lane/",
+  "proposal_ref": "D:/Nautilus/nautilus_strategies/docs/proposals/p077-p076-timed-paper-loop-workflow/",
+  "basis_artifact": {
+    "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T100730Z/p077_t6_external_source_retry_audit_no_send.json",
+    "sha256": "ef5d134cea2bda6bfd6d890d8071db63af8505ebdb700f212b844fc38666fb8b"
+  },
+  "owner_repair": {
+    "kind": "stronger_adapter_native_repair_guardrail_contract_lock",
+    "description": "The source closure authority guardrail now has a focused contract test for the alternate resolution path: a future adapter/native semantic repair beyond local diagnostics may clear the partial-source blocker, but it still does not authorize retry, semantic closure, fill-producing acceptance, runtime truth, or Account Console truth by itself.",
+    "changed_files": [
+      {
+        "path": "tests/test_guarded_paper_order_loop.py",
+        "sha256": "df864e645f2fe3d9dc3ce2e75198e87cf695e3b4827b6d6796bb93d1bb554e7c"
+      }
+    ],
+    "unchanged_owner_runtime_file": {
+      "path": "scripts/ctp_guarded_paper_order_loop.py",
+      "sha256": "90e329ba50c5d75c0164b0acfb09d77595eb54b25b73969018de6f44f16d6932"
+    },
+    "contract_assertions": [
+      "adapter_native_repair_beyond_local_diagnostics_present_true_clears_partial_source_guardrail",
+      "cleared_partial_source_guardrail_does_not_authorize_retry",
+      "cleared_partial_source_guardrail_does_not_authorize_semantic_closure",
+      "cleared_partial_source_guardrail_does_not_create_fill_acceptance",
+      "cleared_partial_source_guardrail_does_not_create_runtime_truth",
+      "cleared_partial_source_guardrail_does_not_create_account_console_truth"
+    ]
+  },
+  "focused_gate": {
+    "command": "python -m pytest tests/test_guarded_paper_order_loop.py -q -p no:cacheprovider --basetemp output/pytest-tmp/p077-101130-stronger-repair-guardrail",
+    "result": "passed",
+    "summary": "54 passed in 1.05s"
+  },
+  "paper_order_action": {
+    "paper_account_authorization_prompt_present": true,
+    "paper_send_attempted": false,
+    "native_send_attempted": false,
+    "submit_attempted": false,
+    "cancel_attempted": false,
+    "retry_authorized_by_this_artifact": false,
+    "reason": "This owner slice is a no-send contract test repair. It creates no fresh same-slice market/account/preflight evidence, lifecycle evidence, post-snapshot evidence, reconcile evidence, or formal retry authorization."
+  },
+  "truth_boundaries": {
+    "runtime_truth_created": false,
+    "ledger_truth_created": false,
+    "account_console_truth_created": false,
+    "fill_producing_acceptance_satisfied": false,
+    "paper_ready_claimed": false,
+    "live_ready_claimed": false,
+    "broker_tradable_claimed": false
+  },
+  "active_blocker": {
+    "blocker_type": "primary-broker-front-close-rejection-rule-source-or-stronger-adapter-native-semantic-repair-missing",
+    "still_blocking": true,
+    "next_required_evidence": [
+      "primary_or_official_broker_front_close_rejection_rule_source_that_explains_observed_response_offset",
+      "adapter_native_semantic_repair_beyond_local_diagnostics",
+      "new_formal_retry_authorization_before_any_future_send"
+    ],
+    "retry_condition": "Only a future owner artifact that actually provides the stronger adapter/native semantic repair, followed by fresh same-slice market/account/preflight evidence and formal bounded Paper authorization, may attempt another guarded Paper send."
+  }
+}

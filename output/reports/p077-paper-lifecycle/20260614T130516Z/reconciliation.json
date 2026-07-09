@@ -1,0 +1,15 @@
+{
+  "accepted": true,
+  "disposition": "filled_reconciled",
+  "position_count_before": 5,
+  "position_count_after": 5,
+  "position_count_delta": 0,
+  "target_position_key": {
+    "venue_symbol": "rb2610",
+    "direction": "LONG"
+  },
+  "target_position_delta": -1,
+  "expected_position_delta": -1,
+  "requires_followup": false,
+  "issues": []
+}

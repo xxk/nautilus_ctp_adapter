@@ -1,0 +1,645 @@
+{
+  "baseline": "ctp025292-md-login-payload-lineage-compare-v1",
+  "route_scenario": "ctp025292_marketdata_sandbox_paper_simulated_001",
+  "runtime_pack_id": "ctp-live-025292-md",
+  "market_source": "CTP 025292 official market data only",
+  "market_data_account_id": "025292",
+  "broker_order_submission": false,
+  "trading_adapter": "disabled",
+  "success": false,
+  "status": "blocked",
+  "blocker_id": "ctp025292_md_login_payload_success_lineage_unavailable",
+  "issues": [
+    "known_success_payload_config_artifact_missing",
+    "historical_success_payload_values_unavailable",
+    "broker_side_login_rejection_detail_not_captured",
+    "current_config_native_pack_dir_empty_requires_runtime_pack_overlay"
+  ],
+  "current_config_summary": {
+    "artifact_ref": "D:\\Nautilus\\nautilus_ctp_adapter\\cfgs\\local\\ctp.live.025292.local.json",
+    "exists": true,
+    "sha256": "D39E0EEDF1A319E2345FC1034B1483F88CF4080CB95569D170351859EE610200",
+    "json_valid": true,
+    "broker_id": "0155",
+    "user_id": "025292",
+    "instruments": [
+      "rb2610"
+    ],
+    "secret_values_recorded": false,
+    "sensitive_fields": {
+      "password": {
+        "present": true,
+        "length": 8,
+        "sha256_prefix": "9C65D911F9956744",
+        "raw_value_recorded": false
+      },
+      "auth_code": {
+        "present": true,
+        "length": 16,
+        "sha256_prefix": "CE8ABF15BA9DDC6D",
+        "raw_value_recorded": false
+      },
+      "app_id": {
+        "present": true,
+        "length": 15,
+        "sha256_prefix": "043632C3F11E600D",
+        "raw_value_recorded": false
+      },
+      "md_front": {
+        "present": true,
+        "length": 25,
+        "sha256_prefix": "5C46A4AE25D0B488",
+        "raw_value_recorded": false
+      },
+      "td_front": {
+        "present": true,
+        "length": 25,
+        "sha256_prefix": "A13FAB032BD4CEA8",
+        "raw_value_recorded": false
+      }
+    },
+    "diagnostic_fields": {
+      "product_info": {
+        "present": true,
+        "length": 6,
+        "sha256_prefix": "90116BD1DFCE81A9",
+        "raw_value_recorded": false
+      },
+      "native_pack_dir": {
+        "present": false,
+        "length": 0,
+        "sha256_prefix": null,
+        "raw_value_recorded": false
+      },
+      "post_login_delay_seconds": {
+        "present": true,
+        "length": 2,
+        "sha256_prefix": "4A44DC15364204A8",
+        "raw_value_recorded": false,
+        "value": 10
+      }
+    },
+    "md_login_compatibility": {
+      "interface_product_info": {
+        "present": false,
+        "length": 0,
+        "sha256_prefix": null,
+        "raw_value_recorded": false
+      },
+      "protocol_info": {
+        "present": false,
+        "length": 0,
+        "sha256_prefix": null,
+        "raw_value_recorded": false
+      },
+      "mac_address": {
+        "present": false,
+        "length": 0,
+        "sha256_prefix": null,
+        "raw_value_recorded": false
+      },
+      "client_ip_address": {
+        "present": false,
+        "length": 0,
+        "sha256_prefix": null,
+        "raw_value_recorded": false
+      },
+      "login_remark": {
+        "present": false,
+        "length": 0,
+        "sha256_prefix": null,
+        "raw_value_recorded": false
+      }
+    }
+  },
+  "historical_scan_summary": {
+    "roots": [
+      "D:\\Nautilus\\nautilus_ctp_adapter\\docs",
+      "D:\\Nautilus\\nautilus_ctp_adapter\\output"
+    ],
+    "missing_roots": [],
+    "scanned_file_count": 906,
+    "historical_success_ref_count": 37,
+    "payload_hint_ref_count": 47,
+    "historical_config_candidate_count": 0
+  },
+  "historical_success_refs": [
+    {
+      "artifact_ref": "D:\\Nautilus\\nautilus_ctp_adapter\\docs\\changes\\20260401__ctp-live-connectivity__login-025292-and-subscribe-rb2610\\rb2610_md_smoke_20260401.log",
+      "sha256": "DB7BA6DC4384E4F8F5020E5505B4C457A52E3101A707DF46B712BC66B315A762",
+      "matched_patterns": [
+        "md_auto_login_025292",
+        "md_on_rsp_user_login"
+      ],
+      "line_numbers": {
+        "md_auto_login_025292": [
+          25
+        ],
+        "md_on_rsp_user_login": [
+          26
+        ]
+      },
+      "raw_lines_recorded": false
+    },
+    {
+      "artifact_ref": "D:\\Nautilus\\nautilus_ctp_adapter\\docs\\changes\\20260401__ctp-live-connectivity__nautilus-live-smoke-baseline\\evidence_20260402_nautilus_live_smoke_baseline.md",
+      "sha256": "AD624487021EF55006B7154F0BD4EDC3F538ADD6F06DA28923215075F04FB6C0",
+      "matched_patterns": [
+        "first_tick_rb2610",
+        "login_succeeded_event",
+        "login_success_true"
+      ],
+      "line_numbers": {
+        "login_success_true": [
+          36,
+          43,
+          59,
+          61
+        ],
+        "first_tick_rb2610": [
+          38
+        ],
+        "login_succeeded_event": [
+          47
+        ]
+      },
+      "raw_lines_recorded": false
+    },
+    {
+      "artifact_ref": "D:\\Nautilus\\nautilus_ctp_adapter\\docs\\changes\\20260401__ctp-live-connectivity__python-rust-md-login-path\\evidence_20260402_python_md_login_smoke.md",
+      "sha256": "D556E2BDF4CF04F3C80B3E861A5AEE67D7932697BAC6F976DD2458429A580E99",
+      "matched_patterns": [
+        "md_auto_login_025292",
+        "md_on_rsp_user_login"
+      ],
+      "line_numbers": {
+        "md_auto_login_025292": [
+          31
+        ],
+        "md_on_rsp_user_login": [
+          32
+        ]
+      },
+      "raw_lines_recorded": false
+    },
+    {
+      "artifact_ref": "D:\\Nautilus\\nautilus_ctp_adapter\\docs\\changes\\20260401__ctp-live-connectivity__python-rust-md-login-path\\evidence_20260402_python_md_subscribe_smoke.md",
+      "sha256": "B46C5053A401C5C90B7D4372A3F87DA64D18A09DA41C05B514161445681733A4",
+      "matched_patterns": [
+        "first_tick_rb2610",
+        "login_succeeded_event",
+        "login_success_true"
+      ],
+      "line_numbers": {
+        "login_success_true": [
+          17,
+          55
+        ],
+        "first_tick_rb2610": [
+          17
+        ],
+        "login_succeeded_event": [
+          18,
+          56
+        ]
+      },
+      "raw_lines_recorded": false
+    },
+    {
+      "artifact_ref": "D:\\Nautilus\\nautilus_ctp_adapter\\docs\\changes\\20260401__ctp-live-connectivity__python-rust-md-login-path\\plan.md",
+      "sha256": "EDED5367A32D54CEA42865D5AD968C2F812FDD21CFFC270D4ECCF9A26C5F115B",
+      "matched_patterns": [
+        "login_succeeded_event"
+      ],
+      "line_numbers": {
+        "login_succeeded_event": [
+          59
+        ]
+      },
+      "raw_lines_recorded": false
+    },
+    {
+      "artifact_ref": "D:\\Nautilus\\nautilus_ctp_adapter\\docs\\changes\\20260401__ctp-live-connectivity__td-auth-and-login-readiness\\evidence_20260402_td_login_readiness.md",
+      "sha256": "0264E4E92A44EA19BDDB9E26F20A8C667AD9A357B5428AF76DE3FA91CFE97CEA",
+      "matched_patterns": [
+        "login_success_true"
+      ],
+      "line_numbers": {
+        "login_success_true": [
+          40
+        ]
+      },
+      "raw_lines_recorded": false
+    },
+    {
+      "artifact_ref": "D:\\Nautilus\\nautilus_ctp_adapter\\docs\\changes\\20260402__nautilus-live-execution__order-lifecycle-smoke-baseline\\evidence_20260402_order_lifecycle_smoke_baseline.md",
+      "sha256": "7F1713EFCB0AB39CC60E5E01E533A6BCD921DFAB1D83524B3EFA7371BB66E557",
+      "matched_patterns": [
+        "login_succeeded_event"
+      ],
+      "line_numbers": {
+        "login_succeeded_event": [
+          36,
+          149
+        ]
+      },
+      "raw_lines_recorded": false
+    },
+    {
+      "artifact_ref": "D:\\Nautilus\\nautilus_ctp_adapter\\docs\\changes\\20260402__nautilus-live-execution__order-lifecycle-smoke-baseline\\order_lifecycle_dry_run_20260402.log",
+      "sha256": "368FA4CC8DD22AE177B44740AC3D28D2DB5A5ABC1D17BE6F62ABC2F9291758A5",
+      "matched_patterns": [
+        "login_succeeded_event"
+      ],
+      "line_numbers": {
+        "login_succeeded_event": [
+          1
+        ]
+      },
+      "raw_lines_recorded": false
+    },
+    {
+      "artifact_ref": "D:\\Nautilus\\nautilus_ctp_adapter\\docs\\changes\\20260402__nautilus-live-marketdata__nautilus-marketdata-smoke-baseline\\evidence_20260402_nautilus_marketdata_smoke_baseline.md",
+      "sha256": "C15E2A849A209A57E606019ABD739A551FDE229140239288B2425199986FAE59",
+      "matched_patterns": [
+        "first_tick_rb2610",
+        "login_succeeded_event",
+        "login_success_true"
+      ],
+      "line_numbers": {
+        "login_success_true": [
+          50
+        ],
+        "first_tick_rb2610": [
+          51
+        ],
+        "login_succeeded_event": [
+          54,
+          56
+        ]
+      },
+      "raw_lines_recorded": false
+    },
+    {
+      "artifact_ref": "D:\\Nautilus\\nautilus_ctp_adapter\\docs\\changes\\20260402__nautilus-live-marketdata__nautilus-marketdata-smoke-baseline\\marketdata_smoke_20260402.log",
+      "sha256": "1966FF3424F2F782996EF8E210A7EA1C57E6F51C0BCBA5204B8CFE667A42E1DB",
+      "matched_patterns": [
+        "first_tick_rb2610",
+        "login_succeeded_event",
+        "login_success_true",
+        "md_auto_login_025292",
+        "md_on_rsp_user_login"
+      ],
+      "line_numbers": {
+        "login_success_true": [
+          1
+        ],
+        "first_tick_rb2610": [
+          1
+        ],
+        "login_succeeded_event": [
+          1
+        ],
+        "md_auto_login_025292": [
+          10
+        ],
+        "md_on_rsp_user_login": [
+          11
+        ]
+      },
+      "raw_lines_recorded": false
+    },
+    {
+      "artifact_ref": "D:\\Nautilus\\nautilus_ctp_adapter\\docs\\changes\\20260403__full-reconciliation-automation__automated-reconciliation-evidence\\automated_reconciliation_evidence_20260403.log",
+      "sha256": "01DB85B579C9F911CE0B1E9AC30E53F756F34926D3BEB5767FB08BDF9B0B158A",
+      "matched_patterns": [
+        "login_succeeded_event"
+      ],
+      "line_numbers": {
+        "login_succeeded_event": [
+          1
+        ]
+      },
+      "raw_lines_recorded": false
+    },
+    {
+      "artifact_ref": "D:\\Nautilus\\nautilus_ctp_adapter\\docs\\changes\\20260403__full-reconciliation-automation__live-reconciliation-summary-smoke\\live_reconciliation_summary_20260402.log",
+      "sha256": "5D8FD134E214D218A9935CA915145B4071C3D98ADF14AE0089E15971F55EC29C",
+      "matched_patterns": [
+        "login_succeeded_event"
+      ],
+      "line_numbers": {
+        "login_succeeded_event": [
+          1
+        ]
+      },
+      "raw_lines_recorded": false
+    }
+  ],
+  "payload_hint_refs": [
+    {
+      "artifact_ref": "D:\\Nautilus\\nautilus_ctp_adapter\\docs\\architecture\\pyo3-bridge-design.md",
+      "sha256": "DD70EC3603F4D5A1ECE4DA555C4445743CF8D72E427CE13A04234EE13D6C9F92",
+      "matched_patterns": [
+        "appid_hint",
+        "authcode_hint",
+        "productinfo_hint"
+      ],
+      "line_numbers": {
+        "appid_hint": [
+          79
+        ],
+        "authcode_hint": [
+          79
+        ],
+        "productinfo_hint": [
+          127
+        ]
+      },
+      "raw_lines_recorded": false
+    },
+    {
+      "artifact_ref": "D:\\Nautilus\\nautilus_ctp_adapter\\docs\\changes\\20260401__ctp-live-connectivity__login-025292-and-subscribe-rb2610\\acceptance.md",
+      "sha256": "BB9F2AAEDC8412A4C22ED2D66E7985C4212AA992A63F28E64553568110B733F6",
+      "matched_patterns": [
+        "historical_config_ref",
+        "native_pack_hint"
+      ],
+      "line_numbers": {
+        "native_pack_hint": [
+          33
+        ],
+        "historical_config_ref": [
+          44
+        ]
+      },
+      "raw_lines_recorded": false
+    },
+    {
+      "artifact_ref": "D:\\Nautilus\\nautilus_ctp_adapter\\docs\\changes\\20260401__ctp-live-connectivity__login-025292-and-subscribe-rb2610\\evidence_20260401_rb2610_quote.md",
+      "sha256": "F743904CCB692B9013D1330F860BA6069320119E9B3B7317039DD804F834776D",
+      "matched_patterns": [
+        "appid_hint",
+        "authcode_hint",
+        "historical_config_ref",
+        "native_pack_hint",
+        "productinfo_hint"
+      ],
+      "line_numbers": {
+        "historical_config_ref": [
+          10,
+          29
+        ],
+        "appid_hint": [
+          36,
+          38,
+          39,
+          40,
+          82
+        ],
+        "authcode_hint": [
+          36
+        ],
+        "productinfo_hint": [
+          36,
+          39
+        ],
+        "native_pack_hint": [
+          51
+        ]
+      },
+      "raw_lines_recorded": false
+    },
+    {
+      "artifact_ref": "D:\\Nautilus\\nautilus_ctp_adapter\\docs\\changes\\20260401__ctp-live-connectivity__login-025292-and-subscribe-rb2610\\plan.md",
+      "sha256": "9A1F9D27486FF44AB610977FDF829F4EC48635730A00690B2002F6732C97AE45",
+      "matched_patterns": [
+        "appid_hint",
+        "authcode_hint",
+        "historical_config_ref",
+        "productinfo_hint"
+      ],
+      "line_numbers": {
+        "authcode_hint": [
+          59,
+          79
+        ],
+        "appid_hint": [
+          60,
+          74,
+          79,
+          81,
+          82
+        ],
+        "productinfo_hint": [
+          61,
+          79,
+          82
+        ],
+        "historical_config_ref": [
+          91
+        ]
+      },
+      "raw_lines_recorded": false
+    },
+    {
+      "artifact_ref": "D:\\Nautilus\\nautilus_ctp_adapter\\docs\\changes\\20260401__ctp-live-connectivity__nautilus-live-smoke-baseline\\evidence_20260402_nautilus_live_smoke_baseline.md",
+      "sha256": "AD624487021EF55006B7154F0BD4EDC3F538ADD6F06DA28923215075F04FB6C0",
+      "matched_patterns": [
+        "historical_config_ref"
+      ],
+      "line_numbers": {
+        "historical_config_ref": [
+          24
+        ]
+      },
+      "raw_lines_recorded": false
+    },
+    {
+      "artifact_ref": "D:\\Nautilus\\nautilus_ctp_adapter\\docs\\changes\\20260401__ctp-live-connectivity__nautilus-live-smoke-baseline\\plan.md",
+      "sha256": "88FA0B29E98EABD6222675E2DF6FF9965E387D2B04A1CFEA214B85BB051F781A",
+      "matched_patterns": [
+        "historical_config_ref"
+      ],
+      "line_numbers": {
+        "historical_config_ref": [
+          68
+        ]
+      },
+      "raw_lines_recorded": false
+    },
+    {
+      "artifact_ref": "D:\\Nautilus\\nautilus_ctp_adapter\\docs\\changes\\20260401__ctp-live-connectivity__python-rust-md-login-path\\evidence_20260402_python_md_login_smoke.md",
+      "sha256": "D556E2BDF4CF04F3C80B3E861A5AEE67D7932697BAC6F976DD2458429A580E99",
+      "matched_patterns": [
+        "historical_config_ref"
+      ],
+      "line_numbers": {
+        "historical_config_ref": [
+          9
+        ]
+      },
+      "raw_lines_recorded": false
+    },
+    {
+      "artifact_ref": "D:\\Nautilus\\nautilus_ctp_adapter\\docs\\changes\\20260401__ctp-live-connectivity__python-rust-md-login-path\\evidence_20260402_python_md_subscribe_smoke.md",
+      "sha256": "B46C5053A401C5C90B7D4372A3F87DA64D18A09DA41C05B514161445681733A4",
+      "matched_patterns": [
+        "historical_config_ref"
+      ],
+      "line_numbers": {
+        "historical_config_ref": [
+          9
+        ]
+      },
+      "raw_lines_recorded": false
+    },
+    {
+      "artifact_ref": "D:\\Nautilus\\nautilus_ctp_adapter\\docs\\changes\\20260401__ctp-live-connectivity__td-auth-and-login-readiness\\acceptance.md",
+      "sha256": "BEB308536D70955AD4E32C3019798F1D192EC5B914F1CCB0C1A35B181B289FE5",
+      "matched_patterns": [
+        "appid_hint",
+        "authcode_hint",
+        "productinfo_hint"
+      ],
+      "line_numbers": {
+        "appid_hint": [
+          54
+        ],
+        "authcode_hint": [
+          54
+        ],
+        "productinfo_hint": [
+          54
+        ]
+      },
+      "raw_lines_recorded": false
+    },
+    {
+      "artifact_ref": "D:\\Nautilus\\nautilus_ctp_adapter\\docs\\changes\\20260401__ctp-live-connectivity__td-auth-and-login-readiness\\evidence_20260402_td_login_readiness.md",
+      "sha256": "0264E4E92A44EA19BDDB9E26F20A8C667AD9A357B5428AF76DE3FA91CFE97CEA",
+      "matched_patterns": [
+        "appid_hint",
+        "authcode_hint",
+        "historical_config_ref",
+        "productinfo_hint"
+      ],
+      "line_numbers": {
+        "appid_hint": [
+          15,
+          21,
+          65
+        ],
+        "authcode_hint": [
+          15,
+          21,
+          65
+        ],
+        "productinfo_hint": [
+          15
+        ],
+        "historical_config_ref": [
+          29
+        ]
+      },
+      "raw_lines_recorded": false
+    },
+    {
+      "artifact_ref": "D:\\Nautilus\\nautilus_ctp_adapter\\docs\\changes\\20260401__ctp-live-connectivity__td-auth-and-login-readiness\\plan.md",
+      "sha256": "CF647C6AA9DC3E53895C6E7BBA7F96658978A89C12D0ABA281F3E73AAFC3EA22",
+      "matched_patterns": [
+        "appid_hint",
+        "authcode_hint",
+        "historical_config_ref",
+        "productinfo_hint"
+      ],
+      "line_numbers": {
+        "appid_hint": [
+          27,
+          50
+        ],
+        "authcode_hint": [
+          27,
+          50
+        ],
+        "productinfo_hint": [
+          27,
+          50
+        ],
+        "historical_config_ref": [
+          72
+        ]
+      },
+      "raw_lines_recorded": false
+    },
+    {
+      "artifact_ref": "D:\\Nautilus\\nautilus_ctp_adapter\\docs\\changes\\20260402__live-ops-and-reconciliation__live-startup-runbook\\live_startup_runbook.md",
+      "sha256": "CCDD6A91D89F13FDEDE2B02271C5D423D6C09B6044A9B4B302CE34F06A4EEBB8",
+      "matched_patterns": [
+        "appid_hint",
+        "authcode_hint",
+        "productinfo_hint"
+      ],
+      "line_numbers": {
+        "appid_hint": [
+          87
+        ],
+        "authcode_hint": [
+          87
+        ],
+        "productinfo_hint": [
+          87
+        ]
+      },
+      "raw_lines_recorded": false
+    }
+  ],
+  "historical_config_summaries": [],
+  "config_fingerprint_comparisons": [],
+  "lifecycle_summary": {
+    "artifact_ref": "var\\stage2\\ctp025292_md_lifecycle_trace_summary_ag2612_20260616T0919.json",
+    "exists": true,
+    "sha256": "1BD137C28E687B358A79D779D4A193277D0037DD1CE5F3D242339117AAD0CDA5",
+    "json_valid": true,
+    "blocker_id": "ctp025292_marketdata_login_response_missing_after_runtime_lineage",
+    "event_counts": {
+      "front_connected": 152,
+      "front_disconnected": 152,
+      "md_login_dispatch_return": 152
+    },
+    "login_response_count": 0,
+    "tick_count": 0,
+    "return_codes": [
+      0
+    ],
+    "disconnect_reasons": [
+      0
+    ],
+    "dispatch_to_disconnect_avg_ms": 100.814,
+    "signature": "front_connected -> md_login_dispatch_return(return_code=0) -> front_disconnected(reason=0), without md_login_response",
+    "broker_side_rejection_captured": false,
+    "raw_secret_values_recorded": false
+  },
+  "diagnosis": {
+    "current_config_loaded_with_secrets_redacted": true,
+    "historical_success_is_known": true,
+    "historical_success_payload_materialized": false,
+    "payload_delta_decidable": false,
+    "explicit_broker_rejection_captured": false,
+    "does_not_prove_credentials_valid_or_invalid": true,
+    "does_not_override_runtime_lineage_pass": true,
+    "does_not_satisfy_market_data_preflight": true
+  },
+  "negative_assertions": {
+    "did_not_open_trading_channel": true,
+    "did_not_submit_broker_order": true,
+    "did_not_use_025292_as_trading_account": true,
+    "did_not_generate_or_consume_paper_request": true,
+    "did_not_claim_market_data_ready": true,
+    "did_not_claim_paper_ready": true,
+    "did_not_claim_live_ready": true,
+    "did_not_enter_stage3": true,
+    "secret_values_recorded": false
+  },
+  "next_action": "Recover or provide the historical successful 025292 MD payload/config fingerprint (ctp.live.025292.rb2610.10675.json) or add native MD SPI/network-close detail that captures why the front closes after ReqUserLogin return_code=0; then retry only read-only 025292 MD smoke for ag2612 under ctp-live-025292-md."
+}

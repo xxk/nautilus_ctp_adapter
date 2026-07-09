@@ -19,14 +19,9 @@ from nautilus_ctp_adapter.devtools.offhours_cli import (
     resolve_session_label,
     write_json_payload,
 )
-from nautilus_ctp_adapter.diagnostics.evidence_payloads import (
-    MD_TRUTH_EVIDENCE_MATRIX_BASELINE,
-    build_md_truth_evidence_matrix_payload,
-    classify_md_truth_evidence_matrix_failure,
-)
 
 
-BASELINE = MD_TRUTH_EVIDENCE_MATRIX_BASELINE
+BASELINE = "md-truth-evidence-matrix-v1"
 
 
 def _emit_payload(payload: dict[str, object]) -> None:
@@ -88,20 +83,51 @@ def main() -> int:
     except Exception as exc:
         return _emit_exception(stage="run_smoke", exc=exc)
 
-    payload = build_md_truth_evidence_matrix_payload(
-        evidence,
-        flow_mode=flow_mode,
-        session_label=session_label,
-        export=build_export_metadata(
+    failure_reason = None
+    if evidence.account_id is None:
+        failure_reason = "account_id_missing"
+    elif evidence.symbol is None:
+        failure_reason = "symbol_missing"
+    elif not evidence.restore_succeeded:
+        failure_reason = "restore_not_succeeded"
+    elif evidence.disposition not in {
+        "clear",
+        "manual_review_required",
+        "restore_required",
+        "evidence_only",
+    }:
+        failure_reason = "unexpected_disposition"
+
+    payload = {
+        "baseline": BASELINE,
+        "success": failure_reason is None,
+        "failure_reason": failure_reason,
+        "evidence_version": evidence.evidence_version,
+        "flow_mode": flow_mode,
+        "session_label": session_label,
+        "captured_at_utc": evidence.captured_at_utc,
+        "account_id": evidence.account_id,
+        "symbol": evidence.symbol,
+        "disposition": evidence.disposition,
+        "startup_ready": evidence.startup_ready,
+        "restore_triggered": evidence.restore_triggered,
+        "restore_succeeded": evidence.restore_succeeded,
+        "startup_flow_path": evidence.startup_flow_path,
+        "restored_flow_path": evidence.restored_flow_path,
+        "startup_first_tick_ts_epoch_us": evidence.startup_first_tick_ts_epoch_us,
+        "restored_first_tick_ts_epoch_us": evidence.restored_first_tick_ts_epoch_us,
+        "manual_review_codes": list(evidence.manual_review_codes),
+        "restore_required_codes": list(evidence.restore_required_codes),
+        "evidence_only_codes": list(evidence.evidence_only_codes),
+        "export": build_export_metadata(
             export_path=export_path,
             evidence_root=args.evidence_root,
             session_label=session_label,
             explicit_path=args.output_json is not None,
         ),
-        bridge_commands=commands,
-        bridge_events=events,
-    )
-    failure_reason = classify_md_truth_evidence_matrix_failure(evidence)
+        "bridge_command_kinds": [command.kind.value for command in commands],
+        "bridge_event_kinds": [event.kind.value for event in events],
+    }
 
     if export_path is not None:
         try:

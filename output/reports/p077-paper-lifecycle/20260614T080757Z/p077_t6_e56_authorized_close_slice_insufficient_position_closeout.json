@@ -1,0 +1,120 @@
+{
+  "schema": "p077.t6.e56-authorized-close-slice-closeout.v1",
+  "artifact_id": "p077_t6_e56_authorized_close_slice_insufficient_position_closeout",
+  "created_at": "2026-06-14T08:07:57Z",
+  "owner_repo": "D:/Nautilus/nautilus_ctp_adapter",
+  "selected_lane": "ctp_owner_bounded_guarded_paper_close_slice",
+  "authorization": {
+    "source_artifact": "D:/Nautilus/nautilus_strategies/docs/changes/20260614__paper__p077-safer-retry-lane/evidence/20260614T080427Z_formal_bounded_paper_close_authorization.json",
+    "source_checksum": "sha256:46047d3a44532cffaa97a3dc5e942f69e59220e02a6764620116a37be8635413",
+    "consumed_by_this_slice": true,
+    "remaining_authorized_slices": 0,
+    "paper_only": true,
+    "live_forbidden": true
+  },
+  "request_scope": {
+    "account_alias": "19053",
+    "instrument": "rb2610",
+    "side": "SELL",
+    "quantity": 1,
+    "position_effect": "CLOSETODAY",
+    "limit_price": 3180.0,
+    "time_in_force": "GFD",
+    "client_order_id": "p077-t6-rb2610-close1-080757",
+    "session_send_budget": 1
+  },
+  "same_slice_evidence": {
+    "market_freshness": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T080757Z/fresh_market_freshness.json",
+      "checksum": "sha256:1d5612e4444bd73a2ef98b797715462dafc211e5e98f5dd4621a74d0666bab54",
+      "status": "passed",
+      "freshness_basis": "received_at",
+      "first_tick_received_at_utc": "2026-06-14T08:08:22Z",
+      "bid": 3180.0,
+      "ask": 3181.0,
+      "warnings": ["first_tick_exchange_timestamp_stale"]
+    },
+    "pre_snapshot": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T080757Z/fresh_pre_snapshot.json",
+      "checksum": "sha256:8bc6dca0b759911096f49f7a5d960458189215b05be38e0faaadff72be3194af",
+      "run_id": "paper-readonly-1781424510642",
+      "rb2610_position": {
+        "direction": "LONG",
+        "position_qty": 5,
+        "td_position_qty": 5,
+        "yd_position_qty": 0,
+        "exchange_id": "SHFE",
+        "date_type": "1",
+        "hedge_flag": "1"
+      }
+    },
+    "dry_run_preflight": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T080757Z/fresh_guarded_dry_run_preflight.json",
+      "checksum": "sha256:2b7963ce09836ffd0d5bdf3cab572ae1e2d9457d9bdc656f27af9be525d345bd",
+      "status": "passed",
+      "paper_send_armed": false,
+      "native_send_allowed": true,
+      "native_comb_offset": "3",
+      "projected_net_position": 4
+    },
+    "armed_lifecycle": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T080757Z/armed_guarded_close_lifecycle.json",
+      "checksum": "sha256:3a2bca6a34ad024f8c04a13266da75c7f85239c122b91cb33fd8a015a4eecba7",
+      "paper_send_armed": true,
+      "native_send_attempted": true,
+      "submit_attempted": true,
+      "matched_exec_count": 1,
+      "lifecycle_disposition": "cancelled",
+      "callback_source": "OnRspOrderInsert",
+      "status": "53",
+      "decoded_error_text": "持仓不足",
+      "fill_volume": 0,
+      "submit_request_offset_flag": 3,
+      "callback_offset_flag": 1,
+      "native_offset_disposition": "order_insert_response_offset_differs_from_submit_native_comb_offset",
+      "broker_rejection_disposition": "source_bearing_order_insert_insufficient_position_close_rejection"
+    },
+    "post_snapshot": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T080757Z/fresh_post_snapshot.json",
+      "checksum": "sha256:87e25a0b51bdd9802b9b1051e919d114b88629926d0fbe59a92bf4cebddae7e1",
+      "run_id": "paper-readonly-1781424546387",
+      "rb2610_position": {
+        "direction": "LONG",
+        "position_qty": 5,
+        "td_position_qty": 5,
+        "yd_position_qty": 0,
+        "exchange_id": "SHFE",
+        "date_type": "1",
+        "hedge_flag": "1"
+      }
+    }
+  },
+  "reconciliation": {
+    "target_symbol": "rb2610",
+    "pre_position_qty": 5,
+    "post_position_qty": 5,
+    "position_delta": 0,
+    "fill_volume": 0,
+    "disposition": "cancelled_zero_fill_reconciled",
+    "fill_producing_acceptance_satisfied": false
+  },
+  "typed_blocker": {
+    "active": true,
+    "blocker_type": "broker-or-adapter-close-position-semantics",
+    "reason": "Source-bearing OnRspOrderInsert returned decoded insufficient-position text with zero fill while the guarded close-only submit request carried CLOSETODAY/native offset 3 and the callback offset was 1.",
+    "retry_condition": "Do not submit again until the owner records independent broker/exchange close-offset semantic evidence or adapter semantics repair, plus a new formal bounded Paper authorization and fresh same-slice evidence."
+  },
+  "truth_boundaries": {
+    "paper_ready": false,
+    "live_ready": false,
+    "production_ready": false,
+    "capital_allocated": false,
+    "broker_tradable": false,
+    "runtime_truth_created": false,
+    "account_console_runtime_truth": false,
+    "ui_truth_created": false,
+    "china_s2_pass": false,
+    "hft_s3_pass": false,
+    "loop_complete": false
+  }
+}

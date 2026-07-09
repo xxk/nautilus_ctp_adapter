@@ -11,15 +11,11 @@ from .loader import (
     CTP_RUNTIME_PACK_STRICT_ENV,
     add_windows_dll_directories,
     candidate_native_paths,
-    explicit_runtime_pack_bin_from_env,
-    preload_runtime_vendor_dlls,
-    runtime_pack_strict_from_env,
 )
 from .manifest import REQUIRED_NATIVE_DLLS
 
 _ACTIVE_RUNTIME_PACK_BIN: Path | None = None
 _PRELOADED_NATIVE_DLLS: list[object] = []
-_BOOTSTRAPPED_PYO3_IMPORT = False
 
 
 def _repo_root() -> Path:
@@ -59,42 +55,6 @@ def _prepare_runtime_dll_dirs(
         runtime_pack_bin=runtime_pack_bin,
         strict_runtime_pack=strict_runtime_pack,
     )
-
-
-def bootstrap_pyo3_runtime_import(
-    *,
-    repo_root: str | Path | None = None,
-    runtime_pack_bin: str | Path | None = None,
-    strict_runtime_pack: bool | None = None,
-) -> list[Path]:
-    """Prepare Windows DLL resolution before importing ``ctp_runtime._ctp_runtime``.
-
-    This is the native-loader-owned compatibility bootstrap for the top-level
-    ``ctp_runtime`` package.  New code should call owner APIs here instead of
-    duplicating DLL search/preload logic in import shims or smoke scripts.
-    """
-    global _BOOTSTRAPPED_PYO3_IMPORT
-    if os.name != "nt":
-        _BOOTSTRAPPED_PYO3_IMPORT = True
-        return []
-
-    selected_runtime_pack = (
-        runtime_pack_bin if runtime_pack_bin is not None else explicit_runtime_pack_bin_from_env()
-    )
-    strict = runtime_pack_strict_from_env() if strict_runtime_pack is None else strict_runtime_pack
-    if selected_runtime_pack is not None:
-        _select_runtime_pack(selected_runtime_pack, strict_runtime_pack=strict)
-
-    root = Path(repo_root).resolve() if repo_root is not None else _repo_root()
-    native_paths = candidate_native_paths(
-        root,
-        runtime_pack_bin=selected_runtime_pack,
-        strict_runtime_pack=strict,
-    )
-    add_windows_dll_directories(*native_paths)
-    preload_runtime_vendor_dlls(*native_paths)
-    _BOOTSTRAPPED_PYO3_IMPORT = True
-    return native_paths
 
 
 def _preload_runtime_dependencies(

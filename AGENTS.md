@@ -82,9 +82,8 @@ When the goal is to enter the formal frontier quickly, use this order:
 2. `python scripts/show_current_frontier.py --root .`
 3. `python scripts/show_current_frontier.py --by-topic` only when a grouped topic projection is useful
 4. `python scripts/check_harness.py`
-5. `python scripts/check_architecture_governance.py --root .`
-6. `python scripts/check_change_docs.py --root .`
-7. Open only the active change bundle.
+5. `python scripts/check_change_docs.py --root .`
+6. Open only the active change bundle.
 
 ## Repository Role
 
@@ -124,7 +123,7 @@ This repository adopts the `Doc Harness Kit` at:
 
 1. [docs/doc_harness_kit/README.md](/D:/Nautilus/nautilus_ctp_adapter/docs/doc_harness_kit/README.md)
 
-Governance layout is aligned toward `DSLResearch`:
+Governance layout is aligned toward `DSLReserach`:
 
 1. ADR records live under `docs/adr/`
 2. Proposal containers live under `docs/proposals/<proposal-id>/`
@@ -180,9 +179,6 @@ python scripts/check_adr_docs.py --root .
 # Change docs completeness
 python scripts/check_change_docs.py --root .
 
-# Architecture owner/truth/retirement governance
-python scripts/check_architecture_governance.py --root .
-
 # Proposal docs completeness
 python scripts/check_proposal_docs.py --root .
 
@@ -226,28 +222,3 @@ python D:/Nautilus/global_docs/scripts/check_test_contract_authority_adoption.py
 ```
 
 AI must not self-approve protected test contract changes.
-## Required Skills Preflight
-
-本仓继承 `D:/Nautilus/global_docs/AGENTS.md` 的 Required Skills Preflight。
-
-```powershell
-python D:/Nautilus/global_docs/scripts/check_required_skills.py
-```
-
-若输出 `[BLOCKER: REQUIRED_SKILL_MISSING]` 或 `[BLOCKER: REQUIRED_SKILL_CONTRACT_DRIFT]`，必须先按输出的 repair command 修复，不得继续依赖缺失 skill 或声明 pass。
-
-P04 skill usage announcement：若本轮任务触发 P04 / 代码固化 / `solidify-code-constraints` skill，会话必须先输出：`Using solidify-code-constraints skill for P04 code solidification. by xxk`
-
-P02/A14 skill usage announcement：若本轮任务触发 P02 / A14 / bug 驱动架构 review / `bug-architecture-review` skill，会话必须先输出：`Using bug-architecture-review skill for P02/A14 bug-driven architecture review. triggered_by="<trigger keyword>". by xxk`；其中 `<trigger keyword>` 必须是用户消息中触发 skill 加载的原始关键词或短语。
-
-## Worktree Skill / ADR-a020
-
-本仓继承 `D:/Nautilus/global_docs/AGENTS.md` 的 Worktree Skill / ADR-a020 规则。任何涉及 `D:/Nautilus/_worktrees*`、`D:/Nautilus/_worktrees56`、all repo 状态检查、多仓 worktree 创建或 worktree 合并规划的会话，必须先输出：`Using worktree skill for Nautilus multi-repo worktree workflow.`
-
-执行前必须读取 `D:/Nautilus/global_docs/skills/worktree/SKILL.md`，并运行：
-
-```powershell
-python D:/Nautilus/global_docs/scripts/check_worktree_skill_gate.py
-```
-
-worktree skill 不进入 installed required-skill gate；它采用 use-time session elevation。合并路径必须保持 `status -> plan -> prepare-manifest -> execute`，且不得在 topic container root 执行 git merge、git commit 或 git push。

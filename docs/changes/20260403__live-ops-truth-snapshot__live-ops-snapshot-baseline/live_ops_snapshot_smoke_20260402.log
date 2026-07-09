@@ -1,0 +1,92 @@
+{"baseline": "live-ops-snapshot-v1", "account_id": "025292", "symbol": "rb2610", "startup_disposition": "rebuild_required", "md_disposition": "evidence_only", "td_disposition": "manual_review_required", "reconciliation_disposition": "manual_review_required", "startup_shared_flow_reuse_allowed": false, "startup_session_rotated": true, "md_restore_succeeded": true, "position_count": 73, "observed_callback_count": 9, "historical_callback_count": 9, "current_session_callback_count": 0, "available_ratio": 0.213352, "margin_ratio": 0.781532, "manual_review_codes": ["available_ratio_warn", "margin_ratio_warn"], "rebuild_required_codes": ["shared_flow_requires_isolated_rebuild"], "restore_required_codes": [], "boundary_codes": ["historical_callbacks_present"], "evidence_only_codes": ["isolated_flow_verified", "fresh_session_identity_observed", "max_order_ref_reinitialized", "restore_resubscribe_triggered", "no_current_session_callbacks", "dominant_exposure_watch"], "bridge_command_kinds": ["connect", "connect", "connect", "subscribe_market_data", "connect", "subscribe_market_data", "connect", "connect", "query_positions", "connect", "query_account", "connect", "query_positions", "connect", "query_account"], "bridge_event_kinds": ["login_succeeded", "settlement_confirmed", "login_succeeded", "settlement_confirmed", "login_succeeded", "tick", "login_succeeded", "tick", "login_succeeded", "order", "order", "order", "trade", "order", "order", "order", "order", "order", "settlement_confirmed", "login_succeeded", "settlement_confirmed", "login_succeeded", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "login_succeeded", "settlement_confirmed", "login_succeeded", "account", "login_succeeded", "settlement_confirmed", "login_succeeded", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "position", "login_succeeded", "settlement_confirmed", "login_succeeded", "account"]}
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+MD Front Connected
+MD Auto-login: 0155/025292
+MD OnRspUserLogin called: pRspInfo=000000388ABAEE90, pRspUserLogin=000000388ABAEEF0
+  ErrorID=0, ErrorMsg=CTP:No Error
+  FrontID=0, SessionID=0, MaxOrderRef=
+MD Login Success: FrontID=0, SessionID=0
+MD Front Connected
+MD Auto-login: 0155/025292
+MD OnRspUserLogin called: pRspInfo=000000388ABAEF30, pRspUserLogin=000000388ABAEF90
+  ErrorID=0, ErrorMsg=CTP:No Error
+  FrontID=0, SessionID=0, MaxOrderRef=
+MD Login Success: FrontID=0, SessionID=0
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+TD Front Disconnected: 4097
+TD Front Connected
+TD Auto-auth: 0155/025292
+TD Authenticate Success, proceeding to login
+CThostFtdcUserApiImplBase::OnSessionDisconnected[00000203A05455A8][676986881][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[00000203A05458B8][677052418][    0]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[00000203A05454C8][677117955][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[00000203A0545BC8][677511173][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[00000203A0545458][677707783][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[00000203A05454C8][677838857][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[00000203A05457D8][678101003][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[00000203A0545458][678232077][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[00000203A0545228][678559760][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[00000203A05457D8][678821906][ 4097]
+CThostFtdcUserApiImplBase::OnSessionDisconnected[00000203A0545068][678952980][ 4097]

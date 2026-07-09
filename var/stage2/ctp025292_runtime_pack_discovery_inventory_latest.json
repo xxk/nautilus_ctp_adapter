@@ -1,0 +1,180 @@
+{
+  "baseline": "ctp025292-runtime-pack-discover-v1",
+  "runtime_pack_id": "ctp-live-025292-md",
+  "route_scenario": "ctp025292_marketdata_sandbox_paper_simulated_001",
+  "market_source": "CTP 025292 official market data only",
+  "market_data_account_id": "025292",
+  "broker_order_submission": false,
+  "trading_adapter": "disabled",
+  "success": false,
+  "status": "blocked",
+  "blocker_id": "ctp025292_runtime_pack_source_unready",
+  "roots": [
+    "D:\\Nautilus\\nautilus_ctp_adapter\\vendor\\ctp\\bin",
+    "D:\\Nautilus\\nautilus_ctp_adapter\\output",
+    "D:\\wt\\main\\.venv\\Lib\\site-packages\\vnpy_ctp\\api"
+  ],
+  "candidate_count": 8,
+  "trusted_candidate_count": 0,
+  "candidates": [
+    {
+      "path": "D:\\Nautilus\\nautilus_ctp_adapter\\vendor\\ctp\\bin",
+      "classification": "known_openctp_tts_rejected",
+      "issues": [
+        "candidate_known_openctp_tts"
+      ],
+      "dlls": {
+        "thostmduserapi_se.dll": {
+          "sha256": "66BACF7E33AD901534DA4B08662F08FC9F6169760B2AA0EEA85766C93FB6501E",
+          "length": 430592
+        },
+        "thosttraderapi_se.dll": {
+          "sha256": "543ECE8B55C6FBC671B251E8CC0EE909708EE0F3C5ADC4FD2FD542E3B4C8D4E1",
+          "length": 583680
+        }
+      },
+      "trust_marker_present": false,
+      "path_mentions_025292": false
+    },
+    {
+      "path": "D:\\Nautilus\\nautilus_ctp_adapter\\output\\openctp\\ctpapi-python-win64",
+      "classification": "candidate_untrusted",
+      "issues": [
+        "trust_marker_missing"
+      ],
+      "dlls": {
+        "thostmduserapi_se.dll": {
+          "sha256": "52B73FDD75777710232937CF0BA5590FF5CA8BC31563A05E7B635BA353CC8034",
+          "length": 2800128
+        },
+        "thosttraderapi_se.dll": {
+          "sha256": "A05326D02BE3DBE8334632B247EA6E0CB04CEA789753ED389A01A7EAE27B0182",
+          "length": 3181568
+        }
+      },
+      "trust_marker_present": false,
+      "path_mentions_025292": false
+    },
+    {
+      "path": "D:\\Nautilus\\nautilus_ctp_adapter\\output\\openctp\\tts-sdk\\tts_6.6.9-win64-combined",
+      "classification": "known_openctp_tts_rejected",
+      "issues": [
+        "candidate_known_openctp_tts"
+      ],
+      "dlls": {
+        "thostmduserapi_se.dll": {
+          "sha256": "66BACF7E33AD901534DA4B08662F08FC9F6169760B2AA0EEA85766C93FB6501E",
+          "length": 430592
+        },
+        "thosttraderapi_se.dll": {
+          "sha256": "543ECE8B55C6FBC671B251E8CC0EE909708EE0F3C5ADC4FD2FD542E3B4C8D4E1",
+          "length": 583680
+        }
+      },
+      "trust_marker_present": false,
+      "path_mentions_025292": false
+    },
+    {
+      "path": "D:\\Nautilus\\nautilus_ctp_adapter\\output\\openctp\\tts-sdk\\tts_6.6.9\\tts_6.6.9\\win32",
+      "classification": "candidate_untrusted",
+      "issues": [
+        "trust_marker_missing"
+      ],
+      "dlls": {
+        "thostmduserapi_se.dll": {
+          "sha256": "6EBE45FD33DCD4F12B5597A8F600AB9F6C99641F7FD3FB8C80649EB6B7251D92",
+          "length": 382976
+        },
+        "thosttraderapi_se.dll": {
+          "sha256": "0437FA2B9C7540063E7AF22AD625C51F133F62CA6714AB5E4896F6AEAEDA37E4",
+          "length": 526848
+        }
+      },
+      "trust_marker_present": false,
+      "path_mentions_025292": false
+    },
+    {
+      "path": "D:\\Nautilus\\nautilus_ctp_adapter\\output\\openctp\\tts-sdk\\tts_6.6.9\\tts_6.6.9\\win64",
+      "classification": "known_openctp_tts_rejected",
+      "issues": [
+        "candidate_known_openctp_tts"
+      ],
+      "dlls": {
+        "thostmduserapi_se.dll": {
+          "sha256": "66BACF7E33AD901534DA4B08662F08FC9F6169760B2AA0EEA85766C93FB6501E",
+          "length": 430592
+        },
+        "thosttraderapi_se.dll": {
+          "sha256": "543ECE8B55C6FBC671B251E8CC0EE909708EE0F3C5ADC4FD2FD542E3B4C8D4E1",
+          "length": 583680
+        }
+      },
+      "trust_marker_present": false,
+      "path_mentions_025292": false
+    },
+    {
+      "path": "D:\\Nautilus\\nautilus_ctp_adapter\\output\\openctp\\vitrader-runtime",
+      "classification": "candidate_untrusted",
+      "issues": [
+        "trust_marker_missing"
+      ],
+      "dlls": {
+        "thostmduserapi_se.dll": {
+          "sha256": "9FD86BF35F969E440418143E3CC5C03D706700F68869AA45C85406F94EE0AFF8",
+          "length": 2193920
+        },
+        "thosttraderapi_se.dll": {
+          "sha256": "FB4D363DF664908845C94EB8F572E9394CDD1A73FCF33C1645313A4EA01C85C6",
+          "length": 2497024
+        }
+      },
+      "trust_marker_present": false,
+      "path_mentions_025292": false
+    },
+    {
+      "path": "D:\\Nautilus\\nautilus_ctp_adapter\\output\\vnpy_ctp_clone\\vnpy_ctp\\api",
+      "classification": "candidate_untrusted",
+      "issues": [
+        "trust_marker_missing"
+      ],
+      "dlls": {
+        "thostmduserapi_se.dll": {
+          "sha256": "2BF4D1C92563B6AC4654AED12364C45529D95CAB191001E56E219CA788286EAA",
+          "length": 3122176
+        },
+        "thosttraderapi_se.dll": {
+          "sha256": "E8DC311FF2ED832F89B8325378EC043CF3C6BE5AEF277D79F78A7B7E780BF6A9",
+          "length": 3521024
+        }
+      },
+      "trust_marker_present": false,
+      "path_mentions_025292": false
+    },
+    {
+      "path": "D:\\wt\\main\\.venv\\Lib\\site-packages\\vnpy_ctp\\api",
+      "classification": "candidate_untrusted",
+      "issues": [
+        "trust_marker_missing"
+      ],
+      "dlls": {
+        "thostmduserapi_se.dll": {
+          "sha256": "2BF4D1C92563B6AC4654AED12364C45529D95CAB191001E56E219CA788286EAA",
+          "length": 3122176
+        },
+        "thosttraderapi_se.dll": {
+          "sha256": "E8DC311FF2ED832F89B8325378EC043CF3C6BE5AEF277D79F78A7B7E780BF6A9",
+          "length": 3521024
+        }
+      },
+      "trust_marker_present": false,
+      "path_mentions_025292": false
+    }
+  ],
+  "negative_assertions": {
+    "did_not_open_trading_channel": true,
+    "did_not_submit_broker_order": true,
+    "did_not_generate_or_consume_paper_request": true,
+    "did_not_claim_market_data_ready": true
+  },
+  "next_action": "Provide a trust marker or an operator-trusted 025292 DLL source directory, then rerun discovery."
+}

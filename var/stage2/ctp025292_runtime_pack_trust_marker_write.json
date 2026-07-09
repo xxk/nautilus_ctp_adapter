@@ -1,0 +1,45 @@
+{
+  "baseline": "ctp025292-runtime-pack-trust-marker-v1",
+  "runtime_pack_id": "ctp-live-025292-md",
+  "route_scenario": "ctp025292_marketdata_sandbox_paper_simulated_001",
+  "market_source": "CTP 025292 official market data only",
+  "market_data_account_id": "025292",
+  "broker_order_submission": false,
+  "trading_adapter": "disabled",
+  "source_bin": "D:\\Nautilus\\nautilus_ctp_adapter\\output\\vnpy_ctp_clone\\vnpy_ctp\\api",
+  "operator_ack": true,
+  "write_requested": true,
+  "success": true,
+  "status": "marker_written",
+  "blocker_id": null,
+  "issues": [],
+  "marker_path": "D:\\Nautilus\\nautilus_ctp_adapter\\output\\vnpy_ctp_clone\\vnpy_ctp\\api\\_ctp025292_runtime_pack.json",
+  "marker_preview": {
+    "schema_version": "ctp025292.runtime_pack_trust_marker.v1",
+    "runtime_pack_id": "ctp-live-025292-md",
+    "source_kind": "operator_trusted_025292",
+    "source_bin": "D:\\Nautilus\\nautilus_ctp_adapter\\output\\vnpy_ctp_clone\\vnpy_ctp\\api",
+    "dlls": {
+      "thostmduserapi_se.dll": {
+        "sha256": "2BF4D1C92563B6AC4654AED12364C45529D95CAB191001E56E219CA788286EAA",
+        "length": 3122176
+      },
+      "thosttraderapi_se.dll": {
+        "sha256": "E8DC311FF2ED832F89B8325378EC043CF3C6BE5AEF277D79F78A7B7E780BF6A9",
+        "length": 3521024
+      }
+    },
+    "loader_isolation": "fresh_worker_process_per_runtime_pack",
+    "negative_assertions": {
+      "not_broker_order_permission": true,
+      "not_market_data_ready_evidence": true,
+      "not_live_or_paper_ready_evidence": true
+    }
+  },
+  "negative_assertions": {
+    "did_not_open_trading_channel": true,
+    "did_not_submit_broker_order": true,
+    "did_not_generate_or_consume_paper_request": true,
+    "did_not_claim_market_data_ready": true
+  }
+}

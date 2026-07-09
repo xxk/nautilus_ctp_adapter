@@ -1,0 +1,71 @@
+{
+  "schema": "p077.t6.ctp-paper-fresh-exposure-reduction-candidate-preflight.v1",
+  "artifact_kind": "p077_t6_ctp_paper_fresh_exposure_reduction_candidate_preflight",
+  "created_at_local": "2026-06-14T07:22:11+08:00",
+  "owner": "owner://nautilus_ctp_adapter.guarded_paper_order_loop",
+  "source_blocker": {
+    "artifact": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T070007/p077_t6_controlled_retry_preflight_blocker.json",
+    "sha256": "26b8edd710bebefeadc0321174b8102381f66bb82a99d8b952b978319174e642",
+    "blocker_reason": "max_net_position_exceeded"
+  },
+  "previous_candidate": {
+    "artifact": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T071038/p077_t6_exposure_reduction_candidate_preflight.json",
+    "sha256": "d7a3ed4bfb07f2f0a6856c503c69f6e5c3f3a7b44cc6d965cd49d1d89fb3dbf1",
+    "status": "candidate_passed_no_send"
+  },
+  "fresh_market": {
+    "artifact": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T072211/fresh_market_freshness.json",
+    "sha256": "52ee76db3e7cbd2d7948b666d0693bf50885bd83e74034197050da642d5d5cc4",
+    "status": "passed",
+    "freshness_basis": "received_at",
+    "warning": "first_tick_exchange_timestamp_stale",
+    "first_tick_last": 3162.0,
+    "first_tick_received_age_seconds": 0.031
+  },
+  "fresh_pre_snapshot": {
+    "artifact": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T072211/fresh_pre_snapshot.json",
+    "sha256": "2ed9dce04421de4ff107a1545a75379e96a86a6b124c36a5b6907727aa147be5",
+    "run_id": "paper-readonly-1781393002610",
+    "status": "passed",
+    "rb2610_long_qty": 5,
+    "rb2610_td_qty": 5,
+    "rb2610_yd_qty": 0,
+    "observed_order_event_count": 0,
+    "observed_trade_event_count": 0
+  },
+  "fresh_candidate_dry_run": {
+    "artifact": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T072211/fresh_exposure_reduction_candidate_dry_run.json",
+    "sha256": "09a0b710b937c7c46834011e9b0bbd00ab10b55b2bf696ecd752b0347903411a",
+    "status": "passed",
+    "action_mode": "dry_run",
+    "paper_send_armed": false,
+    "submit_attempted": false,
+    "close_intent_disposition": "close_intent_ready",
+    "selected_bucket": "today",
+    "submit_intent": {
+      "instrument": "rb2610",
+      "side": "SELL",
+      "quantity": 1,
+      "position_effect": "CLOSETODAY",
+      "limit_price": 3161.0,
+      "client_order_id": "p077-t6-rb2610-close1-refresh-072211"
+    },
+    "risk_preflight_disposition": "risk_preflight_passed",
+    "projected_net_position": 4,
+    "max_net_position": 5,
+    "native_send_allowed_by_dry_run_contract": true
+  },
+  "authority": {
+    "is_action_capable": false,
+    "retry_authorized_by_this_artifact": false,
+    "paper_ready_claim": false,
+    "live_ready_claim": false,
+    "account_console_runtime_truth_claim": false
+  },
+  "typed_outcome": {
+    "status": "fresh_candidate_preflight_passed_no_send",
+    "blocker_type": null,
+    "next_required_acceptance": "A separate owner-accepted exposure-reduction paper_send lane or an updated risk-bounded retry target is required before any send action.",
+    "recommended_next_heartbeat": "If the loop continues toward action, open or cite the formal exposure-reduction send acceptance lane, then rerun fresh preflight immediately before any paper_send."
+  }
+}

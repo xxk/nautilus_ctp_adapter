@@ -13,16 +13,48 @@ if str(REPO_ROOT) not in sys.path:
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from nautilus_ctp_adapter.diagnostics.paper_recovery_idempotency import (
-    build_controlled_reconnect_evidence,
-)
 from nautilus_ctp_adapter.devtools.offhours_cli import write_json_payload
+from scripts.ctp_paper_recovery_idempotency import build_reconnect_disposition
 
 
 def build_proxy_config_payload(source_config: Path, *, md_port: int, td_port: int) -> dict[str, Any]:
     payload = json.loads(source_config.read_text(encoding="utf-8-sig"))
     payload["Pricer"] = f"tcp://127.0.0.1:{md_port}"
     payload["Host"] = f"tcp://127.0.0.1:{td_port}"
+    return payload
+
+
+def build_controlled_reconnect_evidence(
+    *,
+    run_id: str,
+    md_symbols: list[str],
+    td_ready: bool,
+    settlement_code: int,
+    paper_send_armed: bool,
+    md_drop_count: int,
+    td_drop_count: int,
+) -> dict[str, Any]:
+    payload = build_reconnect_disposition(
+        run_id=run_id,
+        attempt=1,
+        md_symbols=md_symbols,
+        md_disconnect_reason=4097 if md_drop_count else None,
+        td_disconnect_reason=4098 if td_drop_count else None,
+        td_login_success=td_ready,
+        settlement_code=settlement_code,
+        paper_send_armed=paper_send_armed,
+        max_attempts=3,
+    )
+    payload["flow_mode"] = "controlled-front-proxy"
+    payload["paper_send_armed"] = paper_send_armed
+    payload["blocker_resolved"] = "forced_front_disconnect_unavailable"
+    payload["controlled_proxy"] = {
+        "md_drop_count": md_drop_count,
+        "td_drop_count": td_drop_count,
+        "scope": "process_local",
+    }
+    payload["success"] = payload["accepted"] and md_drop_count >= 1 and td_drop_count >= 1
+    payload["status"] = "passed" if payload["success"] else "blocked"
     return payload
 
 

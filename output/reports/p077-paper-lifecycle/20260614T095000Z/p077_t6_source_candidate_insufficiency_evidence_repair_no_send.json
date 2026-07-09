@@ -1,0 +1,61 @@
+{
+  "artifact_id": "p077-t6-source-candidate-insufficiency-evidence-repair-no-send",
+  "created_at": "2026-06-14T09:50:00.291Z",
+  "owner_repo": "D:/Nautilus/nautilus_ctp_adapter",
+  "selected_lane": "P077-T6 owner-side CTP source candidate evidence contract",
+  "consumed_prior_artifact": {
+    "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T094500Z/p077_t6_official_broker_source_candidate_audit_no_send.json",
+    "sha256": "c5c441e5ce99bea424583ab96d8420859b7e34c9af71de28b2fcebf94269f3b8"
+  },
+  "changed_refs": [
+    {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/scripts/ctp_guarded_paper_order_loop.py",
+      "sha256": "6d0cdeb3eadd5309596238a7447f91f4313ea66666849f7c326c0b48fb4471d3",
+      "change": "Adds source_exhaustion_semantics.external_source_candidate_evidence with per-candidate authority, confirmed context, closure flag, and insufficiency reason."
+    },
+    {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/tests/test_guarded_paper_order_loop.py",
+      "sha256": "6b06b81609658656f7ce876b9c22c140faac8a4fcb48a8e945492426614aa1ea",
+      "change": "Locks positive and negative focused contracts for candidate evidence details."
+    }
+  ],
+  "gate_evidence": [
+    {
+      "command": "python -m pytest tests/test_guarded_paper_order_loop.py -q -p no:cacheprovider --basetemp output/pytest-tmp/p077-095000-source-candidate-evidence-final",
+      "result": "passed",
+      "summary": "53 passed in 1.07s"
+    }
+  ],
+  "payload_contract": {
+    "source_exhaustion_semantics_field": "external_source_candidate_evidence",
+    "evidence_item_fields": [
+      "class",
+      "authority",
+      "confirms",
+      "closure_sufficient",
+      "insufficiency_reason"
+    ],
+    "evaluated_classes": [
+      "ctp_api_documentation_mirror",
+      "ctp_client_development_guide_primary_candidate",
+      "cffex_trader_api_pdf_candidate",
+      "futures_broker_ctp_error_help_candidate"
+    ],
+    "all_candidates_closure_sufficient": false,
+    "partial_source_context_authorizes_retry": false,
+    "negative_contract": "non_source_rejection_gets_empty_external_source_candidate_evidence"
+  },
+  "send_authority": {
+    "real_paper_or_native_send_performed": false,
+    "live_send_performed": false,
+    "retry_authorized": false,
+    "broker_tradable_claim": false,
+    "paper_ready_claim": false,
+    "account_console_runtime_truth_claim": false
+  },
+  "active_blocker": {
+    "blocker_type": "broker-or-adapter-close-position-semantics",
+    "retry_condition": "Primary/official broker-front close-rejection rule source explaining observed response offset, or stronger adapter/native semantic repair, plus new formal bounded Paper authorization and fresh same-slice evidence.",
+    "allow_authorize_retry": false
+  }
+}

@@ -1,0 +1,318 @@
+{
+  "baseline": "ctp-guarded-paper-order-loop-v1",
+  "account_profile": "openctp-tts-7x24-simulation",
+  "evidence_class": "openctp-tts-7x24-simulation",
+  "success": true,
+  "status": "passed",
+  "failure_reason": null,
+  "blocker_type": null,
+  "action_mode": "dry_run",
+  "paper_send_armed": false,
+  "pre_snapshot": {
+    "accepted": true,
+    "issues": []
+  },
+  "close_intent": {
+    "accepted": true,
+    "disposition": "close_intent_ready",
+    "candidate": {
+      "venue_symbol": "rb2610",
+      "exchange_id": "SHFE",
+      "direction": "LONG",
+      "position_qty": 5,
+      "td_position_qty": 5,
+      "yd_position_qty": 0,
+      "closable_quantity": 5
+    },
+    "selected_bucket": "today",
+    "submit_intent": {
+      "instrument": "rb2610",
+      "side": "SELL",
+      "quantity": 1,
+      "limit_price": 3162.0,
+      "position_effect": "CLOSETODAY",
+      "order_type": "LIMIT",
+      "time_in_force": "GFD",
+      "price_mode": "snapshot_close",
+      "client_order_id": "p077-t6-rb2610-nosend-preflight-043740"
+    },
+    "issues": []
+  },
+  "position_detail_semantics": {
+    "instrument": "rb2610",
+    "direction_filter": "LONG",
+    "matching_position_count": 1,
+    "position_exchange_ids": [
+      "SHFE"
+    ],
+    "instrument_exchange_id": "SHFE",
+    "position_buckets": [
+      {
+        "direction": "LONG",
+        "position_qty": 5,
+        "td_position_qty": 5,
+        "yd_position_qty": 0
+      }
+    ],
+    "issues": [],
+    "disposition": "position_detail_sufficient_for_current_close_diagnostic",
+    "acceptance_implication": "diagnostic_only_not_position_or_fill_truth",
+    "fill_producing_acceptance_satisfied": false,
+    "requires_owner_resolution_before_retry": false,
+    "writes_truth": false
+  },
+  "order_boundary": {
+    "accepted": true,
+    "disposition": "order_boundary_passed",
+    "issues": [],
+    "instrument": {
+      "venue_symbol": "rb2610",
+      "exchange_id": "SHFE",
+      "price_tick": 1.0,
+      "volume_multiple": 10,
+      "detail_fields": {
+        "instrument_name": "rb2610",
+        "open_date": "20251016",
+        "expire_date": "20261015",
+        "start_deliv_date": null,
+        "end_deliv_date": null,
+        "is_trading": null,
+        "long_margin_ratio": null,
+        "short_margin_ratio": null,
+        "max_market_order_volume": null,
+        "min_market_order_volume": null,
+        "max_limit_order_volume": null,
+        "min_limit_order_volume": null,
+        "product_id": "rb",
+        "underlying_instr_id": "rb",
+        "delivery_year": 2026,
+        "delivery_month": 10
+      }
+    },
+    "limit_boundary": {
+      "source": "not_available",
+      "status": "unknown"
+    }
+  },
+  "risk_preflight": {
+    "accepted": true,
+    "disposition": "risk_preflight_passed",
+    "issues": [],
+    "facts": {
+      "account": {
+        "account_id_present": true,
+        "account_id_fingerprint": "eabddb2a8122",
+        "balance_present": true,
+        "available_present": true,
+        "margin_present": true,
+        "numeric_values_redacted": true
+      },
+      "positions": {
+        "position_count": 5,
+        "query_disposition": "",
+        "instrument": "rb2610",
+        "records_considered": 1,
+        "long_qty": 5,
+        "short_qty": 0,
+        "net_position": 5,
+        "gross_position": 5
+      },
+      "instrument": {
+        "venue_symbol": "rb2610",
+        "detail_fields": {
+          "instrument_name": "rb2610",
+          "open_date": "20251016",
+          "expire_date": "20261015",
+          "start_deliv_date": null,
+          "end_deliv_date": null,
+          "is_trading": null,
+          "long_margin_ratio": null,
+          "short_margin_ratio": null,
+          "max_market_order_volume": null,
+          "min_market_order_volume": null,
+          "max_limit_order_volume": null,
+          "min_limit_order_volume": null,
+          "product_id": "rb",
+          "underlying_instr_id": "rb",
+          "delivery_year": 2026,
+          "delivery_month": 10
+        }
+      }
+    },
+    "guards": {
+      "account_identity": {
+        "accepted": true
+      },
+      "available_metric": {
+        "accepted": true,
+        "basis": "presence_only_redacted"
+      },
+      "margin_metric": {
+        "accepted": true,
+        "basis": "presence_only_redacted"
+      },
+      "instrument_trading_status": {
+        "accepted": true,
+        "is_trading": null
+      },
+      "kill_switch": {
+        "accepted": true,
+        "armed": false,
+        "allow_live_order_smoke": false,
+        "allow_exposure_reduction_order_smoke": true,
+        "exposure_reduction_override": false,
+        "exposure_reduces_net_position": true,
+        "current_net_position": 5,
+        "projected_net_position": 4,
+        "position_effect": "CLOSETODAY"
+      },
+      "instrument_allowlist": {
+        "accepted": true,
+        "allowed_instruments": [
+          "rb2610"
+        ]
+      },
+      "max_order_qty": {
+        "accepted": true,
+        "max_order_qty": 3,
+        "quantity": 1
+      },
+      "max_net_position": {
+        "accepted": true,
+        "max_net_position": 5,
+        "projected_net_position": 4
+      },
+      "frequency_cap": {
+        "accepted": true,
+        "submit_count_last_minute": 0,
+        "max_submit_per_minute": 10
+      },
+      "session_send_budget": {
+        "accepted": true,
+        "session_send_count": 0,
+        "session_send_budget": 1
+      },
+      "client_order_id_idempotency": {
+        "accepted": true,
+        "client_order_id": "p077-t6-rb2610-nosend-preflight-043740"
+      }
+    },
+    "projected_net_position": 4,
+    "verified_exposure_reduction": false,
+    "native_send_allowed": true
+  },
+  "intent_contract": {
+    "instrument": "rb2610",
+    "side": "SELL",
+    "quantity": 1,
+    "limit_price": 3162.0,
+    "position_effect": "CLOSETODAY",
+    "order_type": "LIMIT",
+    "time_in_force": "GFD",
+    "price_mode": "snapshot_close",
+    "client_order_id": "p077-t6-rb2610-nosend-preflight-043740"
+  },
+  "order_contract": {
+    "accepted": true,
+    "disposition": "order_contract_passed",
+    "issues": []
+  },
+  "mapped_submit": {
+    "error": null,
+    "client_order_id": "p077-t6-rb2610-nosend-preflight-043740",
+    "order_ref": 2,
+    "front_id": 1,
+    "session_id": 823526152,
+    "order_ref_present": true,
+    "front_id_present": true,
+    "session_id_present": true,
+    "command_kind": "submit_order",
+    "command_payload": {
+      "channel": "td",
+      "side": "SELL",
+      "quantity": "1",
+      "limit_price": "3162.0",
+      "position_effect": "CLOSETODAY",
+      "order_type": "LIMIT",
+      "time_in_force": "GFD",
+      "native_side": "1",
+      "native_order_type": "0",
+      "native_comb_offset": "3",
+      "native_comb_hedge": "1",
+      "order_ref": "2",
+      "front_id": "1",
+      "session_id": "823526152"
+    }
+  },
+  "order_lifecycle": {
+    "dry_run": true,
+    "live_send_armed": false,
+    "bootstrap_ready": true,
+    "matched_exec_count": 0,
+    "command_kinds": [
+      "connect",
+      "submit_order"
+    ],
+    "event_kinds": [
+      "login_succeeded",
+      "settlement_confirmed"
+    ],
+    "lifecycle_events": [],
+    "verdict": {
+      "accepted": true,
+      "disposition": "dry_run_preflight",
+      "matched_event_count": 0,
+      "unique_fill_count": 0,
+      "duplicate_fill_count": 0,
+      "fill_volume": 0,
+      "leaves_qty": 1,
+      "native_status_diagnostics": {
+        "observed_statuses": [],
+        "ctp_status_meanings": {},
+        "disposition": "no_native_status_observed",
+        "semantic_reason": "undetermined_from_status_only",
+        "error_text_seen": false,
+        "error_text_contains_replacement_char": false,
+        "broker_semantic_reason_inferred": false
+      },
+      "issues": []
+    }
+  },
+  "post_snapshot": null,
+  "reconciliation": null,
+  "issues": [],
+  "native_offset_semantics": {
+    "position_effect": "CLOSETODAY",
+    "submit_native_comb_offset": "3",
+    "callback_offset_flags": [],
+    "callback_matches_submit_native_comb_offset": null,
+    "disposition": "insufficient_native_offset_observation",
+    "acceptance_implication": "diagnostic_only_not_fill_or_closeout_truth",
+    "fill_producing_acceptance_satisfied": false,
+    "requires_owner_resolution_before_retry": true,
+    "writes_truth": false
+  },
+  "callback_source_observability": {
+    "accepted": true,
+    "disposition": "callback_source_not_required_for_non_rejection",
+    "callback_sources": [],
+    "zero_fill_rejection": false,
+    "acceptance_implication": "diagnostic_only_not_fill_or_closeout_truth",
+    "fill_producing_acceptance_satisfied": false,
+    "requires_owner_resolution_before_retry": false,
+    "writes_truth": false
+  },
+  "broker_rejection_semantics": {
+    "disposition": "no_decoded_broker_close_position_rejection",
+    "blocker_type": null,
+    "decoded_error_texts": [],
+    "insufficient_position_text_observed": false,
+    "close_intent": true,
+    "zero_fill_rejection": false,
+    "native_offset_disposition": "insufficient_native_offset_observation",
+    "acceptance_implication": "typed_blocker_only_not_fill_or_closeout_truth",
+    "fill_producing_acceptance_satisfied": false,
+    "requires_owner_resolution_before_retry": false,
+    "writes_truth": false
+  }
+}

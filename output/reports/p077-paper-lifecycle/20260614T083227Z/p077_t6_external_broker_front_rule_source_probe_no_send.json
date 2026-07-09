@@ -1,0 +1,86 @@
+{
+  "schema": "p077.t6.external-broker-front-rule-source-probe-no-send.v1",
+  "artifact_id": "p077_t6_external_broker_front_rule_source_probe_no_send",
+  "created_at": "2026-06-14T08:32:27Z",
+  "owner_repo": "D:/Nautilus/nautilus_ctp_adapter",
+  "selected_lane": "ctp_owner_external_broker_front_rule_source_probe_no_send",
+  "action_mode": "no_send_external_source_probe",
+  "authorization": {
+    "formal_authorization_present": false,
+    "active_bounded_authorization": false,
+    "paper_send_armed": false,
+    "native_send_attempted": false,
+    "submit_attempted": false,
+    "paper_only": true,
+    "live_forbidden": true
+  },
+  "source_artifacts": {
+    "local_rule_source_audit": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T082827Z/p077_t6_broker_front_rule_source_audit_no_send.json",
+      "checksum": "sha256:3580beeb53fae702efd21d768a781210d85444d230ee7f431f6f2a85bc4453de"
+    },
+    "onrsp_offset_authority_guardrail_repair": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T082357Z/p077_t6_onrsp_offset_authority_guardrail_repair_no_send.json",
+      "checksum": "sha256:459c0f1c43e918357836bd9fd17108f4c8533a8aa212a7250b1c4fb70e396f6f"
+    }
+  },
+  "external_source_probe": {
+    "queries": [
+      "CTP API OnRspOrderInsert CThostFtdcInputOrderField CombOffsetFlag ErrorMsg official documentation",
+      "ThostFtdcTraderSpi OnRspOrderInsert CThostFtdcInputOrderField CombOffsetFlag official",
+      "CTP API OnRspOrderInsert 报单录入请求响应 CombOffsetFlag"
+    ],
+    "candidate_sources": [
+      {
+        "url": "https://documentation.help/CTP-API-cn/ONRSPORDERINSERT.html",
+        "classification": "ctp_api_documentation_mirror_not_primary_owner_rule",
+        "usable_for": [
+          "OnRspOrderInsert is the response callback after ReqOrderInsert field/CTP errors",
+          "the callback carries pInputOrder and pRspInfo/ErrorMsg"
+        ],
+        "not_sufficient_for": [
+          "whether pInputOrder.CombOffsetFlag is request echo or front-normalized response field",
+          "whether insufficient-position plus response offset 1 after CloseToday submit offset 3 implies broker/exchange close-offset rule"
+        ]
+      },
+      {
+        "url": "https://www.cffex.com.cn/u/cms/www/201812/06163529dh4x.pdf",
+        "classification": "official_exchange_pdf_candidate_unusable_this_slice",
+        "usable_for": [],
+        "not_sufficient_for": [
+          "not opened into specific OnRspOrderInsert/CombOffsetFlag rule evidence in this slice"
+        ]
+      }
+    ],
+    "primary_or_official_rule_source_found": false,
+    "independent_rule_source_sufficient_to_close_blocker": false
+  },
+  "semantic_interpretation": {
+    "onrsp_callback_shape_confirmed_by_documentation_mirror": true,
+    "field_rewrite_semantics_confirmed": false,
+    "broker_front_close_rejection_rule_confirmed": false,
+    "cannot_infer_pass_from_documentation_mirror": true,
+    "cannot_infer_pass_from_non_primary_blog_sources": true,
+    "fill_producing_acceptance_satisfied": false,
+    "acceptance_implication": "typed_blocker_only_not_fill_or_closeout_truth"
+  },
+  "typed_blocker": {
+    "active": true,
+    "blocker_type": "primary-broker-front-close-rejection-rule-source-missing",
+    "reason": "External source probing found a CTP API documentation mirror that confirms OnRspOrderInsert callback shape and pInputOrder/pRspInfo fields, but did not find a primary or official-grade rule source sufficient to interpret the response offset 1 as broker/front close-rejection semantics after a remembered CloseToday submit offset 3.",
+    "retry_condition": "Do not submit again until a primary/official broker-front source or owner-approved adapter/native repair closes this semantic gap, then P077 records a new formal bounded Paper authorization and owner collects fresh same-slice market/account/preflight evidence."
+  },
+  "truth_boundaries": {
+    "paper_ready": false,
+    "live_ready": false,
+    "production_ready": false,
+    "capital_allocated": false,
+    "broker_tradable": false,
+    "runtime_truth_created": false,
+    "account_console_runtime_truth": false,
+    "ui_truth_created": false,
+    "china_s2_pass": false,
+    "hft_s3_pass": false,
+    "loop_complete": false
+  }
+}

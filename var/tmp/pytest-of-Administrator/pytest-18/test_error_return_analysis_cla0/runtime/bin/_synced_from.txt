@@ -1,0 +1,2 @@
+runtime_pack_id=ctp-live-025292-md
+ctp_api=vendor-x

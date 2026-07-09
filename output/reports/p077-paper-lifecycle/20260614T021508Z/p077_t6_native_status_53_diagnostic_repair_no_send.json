@@ -1,0 +1,78 @@
+{
+  "schema": "p077.t6.ctp-paper-native-status-diagnostic-repair.v1",
+  "created_at_utc": "2026-06-14T02:15:08Z",
+  "owner_repo": "nautilus_ctp_adapter",
+  "calling_repo": "nautilus_strategies",
+  "route_id": "ctp-paper-19053",
+  "account_alias": "19053",
+  "instrument": "rb2610",
+  "evidence_class": "owner_side_no_send_code_repair_and_reclassification",
+  "paper_send_attempted": false,
+  "native_send_attempted": false,
+  "retry_authorized_by_this_artifact": false,
+  "runtime_truth_created": false,
+  "account_console_truth_created": false,
+  "source_artifacts": {
+    "armed_repaired_projection_closeout": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T020238Z/p077_t6_armed_repaired_projection_cancelled_no_fill_closeout.json",
+      "sha256": "sha256:f8b489723e868a38abcee28c403b324100b4ff1ded0a7cdd9e8138deeb38d6da"
+    },
+    "armed_repaired_projection_boundary": {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T020238Z/armed_repaired_projection_boundary.json",
+      "sha256": "sha256:11c1285dba8e04a510e0aadff8ed6eb2b0c746e89021010f951756c5ee3209f5"
+    }
+  },
+  "source_lifecycle_summary": {
+    "client_order_id": "p077-t6-rb2610-close1-repaired-20260614T020238Z",
+    "side": "SELL",
+    "position_effect": "CLOSETODAY",
+    "quantity": 1,
+    "limit_price": 3162.0,
+    "source_typed_outcome": "armed_repaired_projection_cancelled_no_fill_closeout",
+    "source_fill_producing_acceptance_satisfied": false
+  },
+  "reclassified_verdict": {
+    "accepted": true,
+    "disposition": "cancelled",
+    "matched_event_count": 1,
+    "unique_fill_count": 0,
+    "duplicate_fill_count": 0,
+    "fill_volume": 0,
+    "leaves_qty": 0,
+    "native_status_diagnostics": {
+      "observed_statuses": [
+        "53"
+      ],
+      "ctp_status_meanings": {
+        "53": "ascii_code_53_for_ctp_order_status_char_5_cancelled"
+      },
+      "disposition": "ctp_cancelled_status_without_fill",
+      "semantic_reason": "undetermined_from_status_only",
+      "error_text_seen": true,
+      "error_text_contains_replacement_char": true,
+      "broker_semantic_reason_inferred": false
+    },
+    "issues": []
+  },
+  "owner_repair": {
+    "changed_refs": [
+      "scripts/ctp_guarded_paper_order_loop.py",
+      "tests/test_guarded_paper_order_loop.py"
+    ],
+    "change_summary": "classify_lifecycle_events now emits native_status_diagnostics without changing order send, guardrail, fill, or reconcile behavior.",
+    "focused_gate": "python -m pytest tests/test_guarded_paper_order_loop.py -q -p no:cacheprovider -> 37 passed"
+  },
+  "typed_outcome": "native_status_53_diagnostic_repair_no_send",
+  "blocker": {
+    "type": "typed_runtime_semantics_blocker",
+    "owner": "nautilus_ctp_adapter",
+    "summary": "Status 53 is classified as CTP cancelled status char 5/ascii 53 without fill, but broker semantic reason remains undetermined from status alone and replacement-character error text.",
+    "retry_condition": "Future progress requires decoded broker error text or an exchange/broker-side semantic rule tied to typed callback fields; do not infer fill-producing acceptance or broker tradability from status 53."
+  },
+  "paper_ready_claimed": false,
+  "live_ready_claimed": false,
+  "admission_claimed": false,
+  "capital_allocated_claimed": false,
+  "broker_tradable_claimed": false,
+  "fill_producing_acceptance_satisfied": false
+}

@@ -1,0 +1,119 @@
+{
+  "schema_version": "p077.t6.external_source_retry_audit.v1",
+  "artifact_id": "p077-t6-external-source-retry-audit-no-send-20260614T100730Z",
+  "created_at_utc": "2026-06-14T10:07:30Z",
+  "created_by": "Codex",
+  "owner_repo": "D:/Nautilus/nautilus_ctp_adapter",
+  "selected_lane": "P077-T6-REAL-PAPER-NODE-CAPABILITY-RUNWAY",
+  "change_ref": "D:/Nautilus/nautilus_strategies/docs/changes/20260614__paper__p077-safer-retry-lane/",
+  "proposal_ref": "D:/Nautilus/nautilus_strategies/docs/proposals/p077-p076-timed-paper-loop-workflow/",
+  "basis_artifacts": [
+    {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T100330Z/p077_t6_full_payload_source_closure_guardrail_contract_no_send.json",
+      "sha256": "7b0d6401d5c32b5b95e514554b497d044dd3f9cf2239b09a7bcc7966ef2175c8"
+    },
+    {
+      "path": "D:/Nautilus/nautilus_ctp_adapter/output/reports/p077-paper-lifecycle/20260614T095730Z/p077_t6_source_closure_guardrail_candidate_payload_repair_no_send.json",
+      "sha256": "d562e9731184ad18786635afe461cd9ca394bb8441d944906a2905368f1b6b9c"
+    }
+  ],
+  "source_retry_audit": {
+    "question": "Can currently reachable external source candidates close the broker/front response semantics for a source-bearing OnRspOrderInsert insufficient-position rejection where submit-boundary CLOSETODAY native offset was 3 but response diagnostic offset was 1?",
+    "result": "blocked_partial_sources_do_not_close_observed_response_offset_semantics",
+    "source_candidates_reviewed": [
+      {
+        "class": "ctp_api_documentation_mirror",
+        "url": "https://documentation.help/CTP-API-cn/ONRSPORDERINSERT.html",
+        "confirms": [
+          "OnRspOrderInsert_callback_is_a_response_to_ReqOrderInsert",
+          "callback_carries_pInputOrder_pRspInfo_nRequestID_bIsLast"
+        ],
+        "closure_sufficient": false,
+        "insufficiency_reason": "documents_callback_shape_but_does_not_explain_response_comb_offset_rewrite_or_broker_front_close_rejection_semantics"
+      },
+      {
+        "class": "ctp_req_order_insert_documentation_mirror",
+        "url": "https://documentation.help/CTP-API-cn/REQORDERINSERT.html",
+        "confirms": [
+          "CombOffsetFlag_is_the_open_close_flag",
+          "SHFE_and_INE_have_close_today_instruction"
+        ],
+        "closure_sufficient": false,
+        "insufficiency_reason": "documents_request_side_offset_field_but_does_not_explain_observed_OnRspOrderInsert_response_offset_1_after_submitted_close_today_3"
+      },
+      {
+        "class": "ctp_client_development_guide_pdf_candidate",
+        "url": "https://www.eastmoneyfutures.com/software/9809db08-c8cb-4cc4-b631-8a16f0c2dfb9/0f757a06-10a5-48c2-817e-362b42202b51/f3ec4355-a448-45d7-bd51-3124d046092a/CTPcdg_ch.pdf",
+        "confirms": [
+          "CombOffsetFlag_selects_open_close_or_close_today",
+          "single_leg_orders_use_first_character",
+          "Open_is_0_and_Close_is_1"
+        ],
+        "closure_sufficient": false,
+        "insufficiency_reason": "candidate_guide_confirms_request_field_usage_but_not_broker_front_response_offset_semantics_for_insufficient_position"
+      },
+      {
+        "class": "cffex_trader_api_pdf_candidate",
+        "url": "https://www.cffex.com.cn/u/cms/www/201812/06163529dh4x.pdf",
+        "confirms": [
+          "trader_api_callback_context",
+          "ctp_error_category_context_for_position_insufficiency"
+        ],
+        "closure_sufficient": false,
+        "insufficiency_reason": "exchange_hosted_api_pdf_does_not_explain_close_today_response_offset_mismatch_or_authorize_retry"
+      },
+      {
+        "class": "broker_or_vendor_help_candidate",
+        "url": "https://www.shinnytech.com/articles/reference/CTP-error-answer-page",
+        "confirms": [
+          "close_position_insufficient_error_category",
+          "pending_close_orders_or_position_attribute_mismatch_can_reduce_closable_quantity"
+        ],
+        "closure_sufficient": false,
+        "insufficiency_reason": "help_page_explains_user_level_error_causes_but_not_api_response_offset_authority_or_the_observed_source_bearing_response_shape"
+      },
+      {
+        "class": "futures_broker_help_candidate",
+        "url": "https://www.sywgqh.com.cn/Pc/Customer_Service/Help_center/jy/124257.html",
+        "confirms": [
+          "close_position_or_close_today_position_insufficient_error_category",
+          "filled_or_pending_orders_may_affect_closable_quantity"
+        ],
+        "closure_sufficient": false,
+        "insufficiency_reason": "broker_help_page_is_not_a_primary_api_rule_source_and_does_not_explain_response_offset_semantics"
+      }
+    ],
+    "external_source_candidates_sufficient_to_close": false,
+    "partial_source_context_authorizes_retry": false,
+    "semantic_closure_allowed_by_source_context": false,
+    "retry_authorization_allowed_by_source_context": false,
+    "next_required_evidence": [
+      "primary_or_official_broker_front_close_rejection_rule_source_that_explains_observed_response_offset",
+      "adapter_native_semantic_repair_beyond_local_diagnostics",
+      "new_formal_retry_authorization_before_any_future_send"
+    ]
+  },
+  "paper_order_action": {
+    "paper_account_authorization_prompt_present": true,
+    "paper_send_attempted": false,
+    "native_send_attempted": false,
+    "submit_attempted": false,
+    "cancel_attempted": false,
+    "retry_authorized_by_this_artifact": false,
+    "reason": "This owner slice is a no-send external source retry audit. It does not provide fresh same-slice market/account/preflight evidence, lifecycle evidence, post-snapshot evidence, reconcile evidence, or formal retry authorization."
+  },
+  "truth_boundaries": {
+    "runtime_truth_created": false,
+    "ledger_truth_created": false,
+    "account_console_truth_created": false,
+    "fill_producing_acceptance_satisfied": false,
+    "paper_ready_claimed": false,
+    "live_ready_claimed": false,
+    "broker_tradable_claimed": false
+  },
+  "active_blocker": {
+    "blocker_type": "primary-broker-front-close-rejection-rule-source-or-stronger-adapter-native-semantic-repair-missing",
+    "still_blocking": true,
+    "retry_condition": "Only a new owner artifact with fresh same-slice market/account/preflight evidence and formal bounded Paper authorization may attempt another guarded Paper send."
+  }
+}

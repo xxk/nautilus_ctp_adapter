@@ -1,0 +1,2 @@
+profile=auto
+ctp_api=vendor/ctp/bin

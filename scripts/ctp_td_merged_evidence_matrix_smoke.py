@@ -19,14 +19,9 @@ from nautilus_ctp_adapter.devtools.offhours_cli import (
     resolve_session_label,
     write_json_payload,
 )
-from nautilus_ctp_adapter.diagnostics.evidence_payloads import (
-    TD_MERGED_EVIDENCE_MATRIX_BASELINE,
-    build_td_merged_evidence_matrix_payload,
-    classify_td_merged_evidence_matrix_failure,
-)
 
 
-BASELINE = TD_MERGED_EVIDENCE_MATRIX_BASELINE
+BASELINE = "td-merged-evidence-matrix-v1"
 
 
 def _emit_payload(payload: dict[str, object]) -> None:
@@ -92,21 +87,48 @@ def main() -> int:
     except Exception as exc:
         return _emit_exception(stage="run_smoke", exc=exc)
 
-    payload = build_td_merged_evidence_matrix_payload(
-        evidence,
-        flow_path=None if args.flow_path is None else str(args.flow_path),
-        flow_mode=flow_mode,
-        session_label=session_label,
-        export=build_export_metadata(
+    failure_reason = None
+    if evidence.account_id is None:
+        failure_reason = "account_id_missing"
+    elif evidence.position_count < 0:
+        failure_reason = "position_count_invalid"
+    elif evidence.disposition not in {
+        "clear",
+        "manual_review_required",
+        "boundary_required",
+        "evidence_only",
+    }:
+        failure_reason = "unexpected_disposition"
+
+    payload = {
+        "baseline": BASELINE,
+        "success": failure_reason is None,
+        "failure_reason": failure_reason,
+        "evidence_version": evidence.evidence_version,
+        "flow_path": None if args.flow_path is None else str(args.flow_path),
+        "flow_mode": flow_mode,
+        "session_label": session_label,
+        "captured_at_utc": evidence.captured_at_utc,
+        "account_id": evidence.account_id,
+        "disposition": evidence.disposition,
+        "position_count": evidence.position_count,
+        "observed_callback_count": evidence.observed_callback_count,
+        "historical_callback_count": evidence.historical_callback_count,
+        "current_session_callback_count": evidence.current_session_callback_count,
+        "available_ratio": evidence.available_ratio,
+        "margin_ratio": evidence.margin_ratio,
+        "manual_review_codes": list(evidence.manual_review_codes),
+        "boundary_codes": list(evidence.boundary_codes),
+        "evidence_only_codes": list(evidence.evidence_only_codes),
+        "export": build_export_metadata(
             export_path=export_path,
             evidence_root=args.evidence_root,
             session_label=session_label,
             explicit_path=args.output_json is not None,
         ),
-        bridge_commands=commands,
-        bridge_events=events,
-    )
-    failure_reason = classify_td_merged_evidence_matrix_failure(evidence)
+        "bridge_command_kinds": [command.kind.value for command in commands],
+        "bridge_event_kinds": [event.kind.value for event in events],
+    }
 
     if export_path is not None:
         try:

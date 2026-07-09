@@ -19,13 +19,9 @@ from nautilus_ctp_adapter.devtools.offhours_cli import (
     resolve_session_label,
     write_json_payload,
 )
-from nautilus_ctp_adapter.diagnostics.evidence_payloads import (
-    TD_ORDER_TRUTH_BASELINE,
-    build_td_order_truth_payload,
-)
 
 
-BASELINE = TD_ORDER_TRUTH_BASELINE
+BASELINE = "td-order-truth-v1"
 
 
 def _emit_payload(payload: dict[str, object]) -> None:
@@ -89,19 +85,56 @@ def main() -> int:
     except Exception as exc:
         return _emit_exception(stage="run_smoke", exc=exc)
 
-    payload = build_td_order_truth_payload(
-        result,
-        flow_mode=flow_mode,
-        session_label=session_label,
-        export=build_export_metadata(
+    failure_reason = None
+    if not result.ready:
+        failure_reason = "bootstrap_not_ready"
+    elif result.login_success is not True:
+        failure_reason = "login_failed"
+    elif result.settlement_code != 0:
+        failure_reason = "settlement_not_confirmed"
+
+    payload = {
+        "baseline": BASELINE,
+        "success": failure_reason is None,
+        "failure_reason": failure_reason,
+        "flow_mode": flow_mode,
+        "session_label": session_label,
+        "flow_path": result.flow_path,
+        "ready": result.ready,
+        "login_success": result.login_success,
+        "settlement_code": result.settlement_code,
+        "disconnect_count": result.disconnect_count,
+        "disconnect_reasons": list(result.disconnect_reasons),
+        "observed_callback_count": result.observed_callback_count,
+        "observed_order_event_count": result.observed_order_event_count,
+        "observed_trade_event_count": result.observed_trade_event_count,
+        "no_callbacks_observed": result.no_callbacks_observed,
+        "first_order_id": result.first_order_id,
+        "first_order_ref": result.first_order_ref,
+        "first_session_id": result.first_session_id,
+        "first_front_id": result.first_front_id,
+        "first_is_trade": result.first_is_trade,
+        "observed_callbacks": [
+            {
+                "order_id": callback.order_id,
+                "order_ref": callback.order_ref,
+                "front_id": callback.front_id,
+                "session_id": callback.session_id,
+                "is_trade": callback.is_trade,
+                "ts_epoch_us": callback.ts_epoch_us,
+                "status": callback.status,
+            }
+            for callback in result.observed_callbacks
+        ],
+        "export": build_export_metadata(
             export_path=export_path,
             evidence_root=args.evidence_root,
             session_label=session_label,
             explicit_path=args.output_json is not None,
         ),
-        bridge_commands=commands,
-        bridge_events=events,
-    )
+        "bridge_command_kinds": [command.kind.value for command in commands],
+        "bridge_event_kinds": [event.kind.value for event in events],
+    }
 
     if export_path is not None:
         try:
@@ -111,7 +144,7 @@ def main() -> int:
 
     _emit_payload(payload)
 
-    return 0 if payload["success"] else 1
+    return 0 if failure_reason is None else 1
 
 
 if __name__ == "__main__":

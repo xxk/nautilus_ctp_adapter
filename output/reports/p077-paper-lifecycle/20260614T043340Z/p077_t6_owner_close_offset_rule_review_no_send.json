@@ -1,0 +1,54 @@
+{
+  "schema": "p077_t6_owner_close_offset_rule_review_no_send.v1",
+  "created_at": "2026-06-14T04:33:40.725Z",
+  "owner_repo": "D:/Nautilus/nautilus_ctp_adapter",
+  "selected_lane": "ctp_adapter_owner_side_blocker_repair",
+  "review_scope": "existing owner-maintained outbound close offset rule for SHFE/INE close-today handling",
+  "source_refs": {
+    "ctp_sdk_offset_constants": "D:/Nautilus/nautilus_ctp_adapter/vendor/ctp/sdk/ThostFtdcUserApiDataType.h#THOST_FTDC_OF_Close=1;CloseToday=3;CloseYesterday=4",
+    "adapter_close_split_rule": "D:/Nautilus/nautilus_ctp_adapter/src/nautilus_ctp_adapter/adapters/ctp/execution_client.py#build_close_position_intent_SHFE_INE_split",
+    "adapter_native_offset_mapping": "D:/Nautilus/nautilus_ctp_adapter/src/nautilus_ctp_adapter/adapters/ctp/execution_client.py#_native_comb_offset_value",
+    "owner_acceptance": "D:/Nautilus/nautilus_ctp_adapter/docs/changes/20260608__openctp-tts-simulation-provider__close-position-semantics/acceptance.md"
+  },
+  "source_ref_sha256": {
+    "ctp_sdk_offset_constants": "0e83c85a4e1a6660f707f82666d565cb026c1c0971c31f0c78676b8b28bcb4e4",
+    "adapter_close_split_rule": "2531601a017e3e8166d77f2caef80607a71f2c2fbd91687226d6cab07a345f66",
+    "adapter_native_offset_mapping": "2531601a017e3e8166d77f2caef80607a71f2c2fbd91687226d6cab07a345f66",
+    "owner_acceptance": "47b88d6a46cdeea97c00e18a90caf29f5fcfc93cdc43152cacf3c7f3eac2bfd2"
+  },
+  "owner_rule_summary": {
+    "ctp_sdk_offset_constants": {
+      "OPEN": "0",
+      "CLOSE": "1",
+      "CLOSETODAY": "3",
+      "CLOSEYESTERDAY": "4"
+    },
+    "adapter_rule": "SHFE/INE generic CLOSE is split into CLOSETODAY when today quantity is available, otherwise CLOSEYESTERDAY when yesterday quantity is available; explicit CLOSETODAY and CLOSEYESTERDAY validate their buckets before native send.",
+    "native_submit_mapping": "CLOSETODAY maps to native CombOffsetFlag 3.",
+    "p077_authorized_retry_intent": "rb2610 SHFE LONG today bucket close used SELL CLOSETODAY quantity 1."
+  },
+  "rule_review_verdict": {
+    "outbound_close_offset_rule_exists": true,
+    "outbound_rule_owner": "nautilus_ctp_adapter",
+    "outbound_rule_explains_submit_mapping": true,
+    "outbound_rule_explains_legacy_broker_rejection": false,
+    "legacy_callback_source_available": false,
+    "can_promote_legacy_rejection_to_broker_exchange_rule": false,
+    "blocker_type": "broker-or-adapter-close-position-semantics",
+    "status": "active_outbound_rule_exists_but_rejection_semantics_unresolved"
+  },
+  "no_send": true,
+  "order_actions": 0,
+  "formal_acceptance": {
+    "paper_ready": false,
+    "live_ready": false,
+    "broker_tradable": false,
+    "t6_pass": false,
+    "fill_producing_acceptance_satisfied": false,
+    "reason": "Existing owner rule proves outbound mapping only; it does not explain the zero-fill broker rejection without source-bearing callback evidence."
+  },
+  "next_required_evidence": [
+    "fresh guarded Paper lifecycle callback carrying callback_source for close rejection path, only with formal authorization artifact",
+    "or an owner-maintained broker/exchange rejection rule that explicitly covers source-bearing callback fields and broker text"
+  ]
+}

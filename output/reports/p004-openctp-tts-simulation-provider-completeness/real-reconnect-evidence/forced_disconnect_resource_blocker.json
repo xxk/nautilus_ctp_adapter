@@ -1,0 +1,60 @@
+{
+  "accepted": false,
+  "success": false,
+  "status": "blocked",
+  "baseline": "ctp-paper-recovery-idempotency-v1",
+  "account_profile": "openctp-tts-7x24-simulation",
+  "evidence_class": "openctp-tts-7x24-simulation",
+  "flow_mode": "openctp-tts-resource-blocker",
+  "blocker_type": "paper-resource",
+  "recovery": {
+    "run_id": "p004-real-reconnect-resource-blocker",
+    "attempt": 1,
+    "timeline": [
+      {
+        "event": "resource_blocker_recorded",
+        "code": "forced_front_disconnect_unavailable",
+        "detail": "OpenCTP public 7x24 simulation front is externally operated; this run cannot force a real front disconnect without operator/network intervention, so real reconnect is typed as paper-resource blocker instead of fake pass."
+      }
+    ],
+    "disconnects": [],
+    "reconnects": [
+      {
+        "channel": "md",
+        "login_success": null,
+        "settlement_code": null,
+        "resubscribed_symbols": [
+          "c2609",
+          "zn2610"
+        ],
+        "resubscribe_counts": {
+          "c2609": 1,
+          "zn2610": 1
+        },
+        "guardrails_preserved": true
+      },
+      {
+        "channel": "td",
+        "login_success": null,
+        "settlement_code": null,
+        "resubscribed_symbols": [],
+        "guardrails_preserved": true
+      }
+    ],
+    "query_recovery": {
+      "account_query": "not_executed",
+      "position_query": "not_executed",
+      "order_query": "not_executed",
+      "disposition": "resource_blocked"
+    },
+    "in_flight_order": {
+      "client_order_id": null,
+      "disposition": "not_executed"
+    },
+    "disposition": "typed_blocker"
+  },
+  "issues": [
+    "forced_front_disconnect_unavailable"
+  ],
+  "blocker_detail": "OpenCTP public 7x24 simulation front is externally operated; this run cannot force a real front disconnect without operator/network intervention, so real reconnect is typed as paper-resource blocker instead of fake pass."
+}

@@ -12,15 +12,22 @@ if str(SRC_ROOT) not in sys.path:
 
 from nautilus_ctp_adapter.adapters.ctp.config import CtpAdapterConfig
 from nautilus_ctp_adapter.adapters.ctp.factory import build_ctp_stack
-from nautilus_ctp_adapter.diagnostics.evidence_payloads import (
-    ORDER_LIFECYCLE_SMOKE_BASELINE,
-    build_order_lifecycle_exception_payload,
-    build_order_lifecycle_payload,
-    classify_order_lifecycle_success,
-)
+from nautilus_ctp_adapter.runtime import CtpRuntimeEvent, CtpRuntimeEventKind
 
 
-BASELINE = ORDER_LIFECYCLE_SMOKE_BASELINE
+def _serialize_exec_event(event: CtpRuntimeEvent) -> dict[str, object]:
+    return {
+        "kind": event.kind.value,
+        "client_order_id": event.client_order_id,
+        "venue_symbol": event.venue_symbol,
+        "message": event.message,
+        "native_order_id": event.payload.get("native_order_id", event.payload.get("order_id")),
+        "native_order_ref": event.payload.get("native_order_ref", event.payload.get("order_ref")),
+        "status": event.payload.get("status"),
+        "trade_volume": event.payload.get("trade_volume"),
+        "leaves_qty": event.payload.get("leaves_qty"),
+        "match_reason": event.payload.get("match_reason"),
+    }
 
 
 def main() -> int:
@@ -55,31 +62,91 @@ def main() -> int:
     except RuntimeError as exc:
         commands = runtime_bridge.drain_submitted_commands()
         events = runtime_bridge.drain_events()
-        payload = build_order_lifecycle_exception_payload(
-            dry_run=not args.live_send,
-            live_send_requested=args.live_send,
-            td_session_identity=execution_client.td_session_identity,
-            error=str(exc),
-            commands=commands,
-            events=events,
-        )
+        payload = {
+            "baseline": "nautilus-order-lifecycle-smoke-v1",
+            "dry_run": not args.live_send,
+            "live_send_requested": args.live_send,
+            "td_session_identity": None
+            if execution_client.td_session_identity is None
+            else {
+                "front_id": execution_client.td_session_identity.front_id,
+                "session_id": execution_client.td_session_identity.session_id,
+                "max_order_ref": execution_client.td_session_identity.max_order_ref,
+            },
+            "error": str(exc),
+            "command_kinds": [command.kind.value for command in commands],
+            "event_kinds": [event.kind.value for event in events],
+            "exec_events": [
+                _serialize_exec_event(event)
+                for event in events
+                if event.kind in {CtpRuntimeEventKind.ORDER, CtpRuntimeEventKind.TRADE}
+            ],
+        }
         print(json.dumps(payload, ensure_ascii=False))
         return 1
     commands = runtime_bridge.drain_submitted_commands()
     events = runtime_bridge.drain_events()
 
-    payload = build_order_lifecycle_payload(
-        result=result,
-        live_send_requested=args.live_send,
-        commands=commands,
-        events=events,
-    )
+    payload = {
+        "baseline": "nautilus-order-lifecycle-smoke-v1",
+        "dry_run": result.dry_run,
+        "live_send_requested": args.live_send,
+        "live_send_armed": result.live_send_armed,
+        "bootstrap_ready": result.bootstrap.ready,
+        "connect_request_id": result.bootstrap.execution_bootstrap.bootstrap_state.connect_request_id,
+        "td_session_identity": None
+        if result.bootstrap.td_session_identity is None
+        else {
+            "front_id": result.bootstrap.td_session_identity.front_id,
+            "session_id": result.bootstrap.td_session_identity.session_id,
+            "max_order_ref": result.bootstrap.td_session_identity.max_order_ref,
+        },
+        "mapped_submit_error": None
+        if result.mapped_submit.error is None
+        else {
+            "error_id": result.mapped_submit.error.error_id,
+            "error_message": result.mapped_submit.error.error_message,
+        },
+        "mapped_submit_order_ref": result.mapped_submit.order_ref,
+        "matched_exec_count": 0 if not result.matched_execs else len(result.matched_execs),
+        "matched_execs": []
+        if not result.matched_execs
+        else [
+            {
+                "python_client_order_id": matched.python_client_order_id,
+                "native_order_id": matched.native_order_id,
+                "native_order_ref": matched.native_order_ref,
+                "venue_symbol": matched.venue_symbol,
+                "front_id": matched.front_id,
+                "session_id": matched.session_id,
+                "status": matched.status,
+                "is_trade": matched.is_trade,
+                "trade_volume": matched.trade_volume,
+                "leaves_qty": matched.leaves_qty,
+                "match_reason": matched.match_reason,
+            }
+            for matched in result.matched_execs
+        ],
+        "command_kinds": [command.kind.value for command in commands],
+        "submit_payload": None if result.mapped_submit.command is None else result.mapped_submit.command.payload,
+        "event_kinds": [event.kind.value for event in events],
+        "exec_events": [
+            _serialize_exec_event(event)
+            for event in events
+            if event.kind in {CtpRuntimeEventKind.ORDER, CtpRuntimeEventKind.TRADE}
+        ],
+    }
     print(json.dumps(payload, ensure_ascii=False))
 
-    success = classify_order_lifecycle_success(
-        result,
-        matched_exec_count=int(payload["matched_exec_count"]),
+    success = (
+        result.bootstrap.ready
+        and result.mapped_submit.error is None
+        and result.mapped_submit.command is not None
     )
+    if result.dry_run:
+        success = success and result.live_send_armed is False
+    else:
+        success = success and result.live_send_armed and payload["matched_exec_count"] > 0
     return 0 if success else 1
 
 

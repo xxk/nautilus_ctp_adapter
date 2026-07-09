@@ -1,0 +1,63 @@
+{
+  "baseline": "ctp-paper-readonly-snapshot-v1",
+  "success": true,
+  "status": "passed",
+  "failure_reason": null,
+  "blocker_type": null,
+  "action_mode": "request_only",
+  "connect_requested": false,
+  "schema": {
+    "run_id": "paper-readonly-1780904567284",
+    "flow_path": null,
+    "session_label": "shared-flow",
+    "account_profile": "openctp-paper",
+    "evidence_class": "paper-simulation",
+    "reconciliation_role": "pre_or_post_order_snapshot",
+    "schema_version": "ctp-paper-readonly-snapshot-v1"
+  },
+  "config_path": "D:\\Nautilus\\nautilus_ctp_adapter\\cfgs\\local\\ctp.openctp.tts.7x24.local.json",
+  "issues": [],
+  "account": {
+    "identity": {
+      "account_id_present": true,
+      "account_id_fingerprint": "eabddb2a8122"
+    },
+    "disposition": {
+      "status": "not_run",
+      "disposition": "request_only",
+      "failure_reason": null
+    }
+  },
+  "positions": {
+    "disposition": {
+      "status": "not_run",
+      "disposition": "request_only",
+      "failure_reason": null
+    },
+    "position_count": null,
+    "no_positions": null,
+    "records": []
+  },
+  "instruments": {
+    "requested_symbols": [
+      "TEST"
+    ],
+    "loaded": null,
+    "instrument_count": null,
+    "records": [],
+    "contract_issues": []
+  },
+  "order_trade": {
+    "disposition": "not_run",
+    "observed_order_event_count": null,
+    "observed_trade_event_count": null
+  },
+  "flow_mode": "default_shared_flow",
+  "export": {
+    "path": "output\\reports\\p003-ctp-live-trading-provider-readiness\\paper-readonly-snapshot-config-only.json",
+    "written": true,
+    "session_label": "shared-flow",
+    "evidence_root": null,
+    "explicit_path": true
+  }
+}
