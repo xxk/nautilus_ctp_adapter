@@ -19,9 +19,14 @@ from nautilus_ctp_adapter.devtools.offhours_cli import (
     resolve_session_label,
     write_json_payload,
 )
+from nautilus_ctp_adapter.diagnostics.evidence_payloads import (
+    STARTUP_TRUTH_EVIDENCE_MATRIX_BASELINE,
+    build_startup_truth_evidence_matrix_payload,
+    classify_startup_truth_evidence_matrix_failure,
+)
 
 
-BASELINE = "td-startup-truth-evidence-matrix-v1"
+BASELINE = STARTUP_TRUTH_EVIDENCE_MATRIX_BASELINE
 
 
 def _emit_payload(payload: dict[str, object]) -> None:
@@ -86,50 +91,20 @@ def main() -> int:
     except Exception as exc:
         return _emit_exception(stage="run_smoke", exc=exc)
 
-    failure_reason = None
-    if evidence.account_id is None:
-        failure_reason = "account_id_missing"
-    elif evidence.disposition not in {
-        "clear",
-        "manual_review_required",
-        "rebuild_required",
-        "evidence_only",
-    }:
-        failure_reason = "unexpected_disposition"
-
-    payload = {
-        "baseline": BASELINE,
-        "success": failure_reason is None,
-        "failure_reason": failure_reason,
-        "flow_mode": flow_mode,
-        "session_label": session_label,
-        "evidence_version": evidence.evidence_version,
-        "captured_at_utc": evidence.captured_at_utc,
-        "account_id": evidence.account_id,
-        "disposition": evidence.disposition,
-        "shared_flow_reuse_allowed": evidence.shared_flow_reuse_allowed,
-        "session_rotated": evidence.session_rotated,
-        "max_order_ref_reset": evidence.max_order_ref_reset,
-        "shared_flow_path": evidence.shared_flow_path,
-        "isolated_flow_path": evidence.isolated_flow_path,
-        "shared_session_id": evidence.shared_session_id,
-        "isolated_session_id": evidence.isolated_session_id,
-        "shared_max_order_ref": evidence.shared_max_order_ref,
-        "isolated_max_order_ref": evidence.isolated_max_order_ref,
-        "shared_disconnect_count": evidence.shared_disconnect_count,
-        "isolated_disconnect_count": evidence.isolated_disconnect_count,
-        "manual_review_codes": list(evidence.manual_review_codes),
-        "rebuild_required_codes": list(evidence.rebuild_required_codes),
-        "evidence_only_codes": list(evidence.evidence_only_codes),
-        "export": build_export_metadata(
+    payload = build_startup_truth_evidence_matrix_payload(
+        evidence,
+        flow_mode=flow_mode,
+        session_label=session_label,
+        export=build_export_metadata(
             export_path=export_path,
             evidence_root=args.evidence_root,
             session_label=session_label,
             explicit_path=args.output_json is not None,
         ),
-        "bridge_command_kinds": [command.kind.value for command in commands],
-        "bridge_event_kinds": [event.kind.value for event in events],
-    }
+        bridge_commands=commands,
+        bridge_events=events,
+    )
+    failure_reason = classify_startup_truth_evidence_matrix_failure(evidence)
 
     if export_path is not None:
         try:

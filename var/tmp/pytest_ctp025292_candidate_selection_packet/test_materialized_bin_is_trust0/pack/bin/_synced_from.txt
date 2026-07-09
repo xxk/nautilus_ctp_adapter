@@ -1,2 +1,0 @@
-runtime_pack_id=ctp-live-025292-md
-ctp_api=D:\Nautilus\_worktrees\r1-heartbeat-driver-contract\nautilus_ctp_adapter\var\tmp\pytest_ctp025292_candidate_selection_packet\test_materialized_bin_is_trust0\operator-source

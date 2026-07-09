@@ -2,31 +2,17 @@
 ctp_runtime — PyO3 bridge exposing the Rust-owned CTP runtime to Python.
 
 Public symbols are re-exported from the compiled ``_ctp_runtime`` extension.
+The native-loader-owned compatibility bootstrap keeps DLL resolution out of
+this import shim so it cannot become a second native loading truth.
 """
 
 from pathlib import Path
-import sys
+
+from nautilus_ctp_adapter.native.pyo3_runtime import bootstrap_pyo3_runtime_import
 
 
-if sys.platform == "win32":
-    from nautilus_ctp_adapter.native.loader import (
-        add_windows_dll_directories,
-        candidate_native_paths,
-        explicit_runtime_pack_bin_from_env,
-        preload_runtime_vendor_dlls,
-        runtime_pack_strict_from_env,
-    )
-
-    _REPO_ROOT = Path(__file__).resolve().parents[2]
-    _NATIVE_PATHS = candidate_native_paths(
-        _REPO_ROOT,
-        runtime_pack_bin=explicit_runtime_pack_bin_from_env(),
-        strict_runtime_pack=runtime_pack_strict_from_env(),
-    )
-    add_windows_dll_directories(
-        *_NATIVE_PATHS
-    )
-    preload_runtime_vendor_dlls(*_NATIVE_PATHS)
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+bootstrap_pyo3_runtime_import(repo_root=_REPO_ROOT)
 
 from ._ctp_runtime import (  # noqa: F401  (re-export)
     CtpMdSession,

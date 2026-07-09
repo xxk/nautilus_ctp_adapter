@@ -23,9 +23,13 @@ from nautilus_ctp_adapter.devtools.offhours_cli import (
     resolve_session_label,
     write_json_payload,
 )
+from nautilus_ctp_adapter.diagnostics.evidence_payloads import (
+    MD_LOGIN_SMOKE_BASELINE,
+    build_md_login_smoke_payload,
+)
 
 
-BASELINE = "md-login-smoke-v1"
+BASELINE = MD_LOGIN_SMOKE_BASELINE
 
 
 def _field_shape(value: str) -> dict[str, object]:
@@ -277,53 +281,24 @@ def main() -> int:
             runtime_pack_bin=args.runtime_pack_bin,
         )
 
-    failure_reason = None
-    if not result.login_success:
-        failure_reason = "login_failed"
-    elif result.subscribe_code != 0:
-        failure_reason = "subscribe_failed"
-    elif result.first_tick_symbol is None:
-        failure_reason = "first_tick_missing"
-
-    payload = {
-        "baseline": BASELINE,
-        "success": failure_reason is None,
-        "failure_reason": failure_reason,
-        "flow_mode": flow_mode,
-        "session_label": session_label,
-        "flow_path": None if args.flow_path is None else str(args.flow_path),
-        "instruments": list(getattr(config, "instruments", [])),
-        "instrument_override": args.instruments is not None,
-        "md_front_override": md_front_override,
-        "md_login_override": md_login_override,
-        "runtime_pack_override": _runtime_pack_override(args.runtime_pack_bin),
-        "init_code": result.init_code,
-        "login_request_code": result.login_request_code,
-        "subscribe_code": result.subscribe_code,
-        "login_success": result.login_success,
-        "login_error_id": result.login_error_id,
-        "login_error_message": result.login_error_message,
-        "front_connected": bool(getattr(result, "front_connected", False)),
-        "front_connected_count": int(getattr(result, "front_connected_count", 0)),
-        "disconnect_count": int(getattr(result, "disconnect_count", 0)),
-        "disconnect_reasons": list(getattr(result, "disconnect_reasons", [])),
-        "first_tick_symbol": result.first_tick_symbol,
-        "first_tick_last": result.first_tick_last,
-        "first_tick_bid": result.first_tick_bid,
-        "first_tick_ask": result.first_tick_ask,
-        "first_tick_ts_epoch_us": result.first_tick_ts_epoch_us,
-        "bridge_event_kinds": [event.kind.value for event in events],
-        "bridge_tick_symbol": next(
-            (event.venue_symbol for event in events if getattr(event, "venue_symbol", None)),
-            None,
-        ),
-        "export": build_export_metadata(
+    payload = build_md_login_smoke_payload(
+        result,
+        flow_path=None if args.flow_path is None else str(args.flow_path),
+        flow_mode=flow_mode,
+        session_label=session_label,
+        instruments=getattr(config, "instruments", []),
+        instrument_override=args.instruments is not None,
+        md_front_override=md_front_override,
+        md_login_override=md_login_override,
+        runtime_pack_override=_runtime_pack_override(args.runtime_pack_bin),
+        export=build_export_metadata(
             export_path=export_path,
             evidence_root=args.evidence_root,
             session_label=session_label,
             explicit_path=args.output_json is not None,
         ),
-    }
+        bridge_events=events,
+    )
 
     if export_path is not None:
         try:
@@ -337,7 +312,7 @@ def main() -> int:
             )
 
     _emit_payload(payload)
-    return 0 if failure_reason is None else 1
+    return 0 if payload["success"] else 1
 
 
 if __name__ == "__main__":

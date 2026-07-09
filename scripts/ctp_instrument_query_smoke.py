@@ -19,9 +19,13 @@ from nautilus_ctp_adapter.devtools.offhours_cli import (
     resolve_session_label,
     write_json_payload,
 )
+from nautilus_ctp_adapter.diagnostics.evidence_payloads import (
+    INSTRUMENT_QUERY_BASELINE,
+    build_instrument_query_payload,
+)
 
 
-BASELINE = "instrument-query-smoke-v1"
+BASELINE = INSTRUMENT_QUERY_BASELINE
 
 
 def _emit_payload(payload: dict[str, object]) -> None:
@@ -40,18 +44,6 @@ def _emit_exception(*, stage: str, exc: Exception) -> int:
         }
     )
     return 1
-
-
-def _instrument_matches_requested_symbol(*, requested_symbol: str, venue_symbol: str, display_symbol: str) -> bool:
-    requested = requested_symbol.strip().lower()
-    if not requested:
-        return False
-    candidates = {
-        venue_symbol.strip().lower(),
-        display_symbol.strip().lower(),
-        display_symbol.split(".", 1)[0].strip().lower(),
-    }
-    return requested in candidates
 
 
 def main() -> int:
@@ -96,58 +88,21 @@ def main() -> int:
     except Exception as exc:
         return _emit_exception(stage="run_smoke", exc=exc)
 
-    matched_symbols = [
-        item.display_symbol
-        for item in result.instruments
-        if _instrument_matches_requested_symbol(
-            requested_symbol=args.symbol,
-            venue_symbol=item.venue_symbol,
-            display_symbol=item.display_symbol,
-        )
-    ]
-    exact_symbol_found = len(matched_symbols) > 0
-
-    failure_reason = None
-    if not result.loaded:
-        failure_reason = "instrument_query_incomplete"
-    elif result.instrument_count == 0:
-        failure_reason = "instrument_missing"
-    elif not exact_symbol_found:
-        failure_reason = "instrument_symbol_mismatch"
-
-    payload = {
-        "baseline": BASELINE,
-        "success": failure_reason is None,
-        "failure_reason": failure_reason,
-        "flow_path": None if args.flow_path is None else str(args.flow_path),
-        "flow_mode": flow_mode,
-        "session_label": session_label,
-        "requested_symbol": args.symbol,
-        "request_id": result.request_id,
-        "loaded": result.loaded,
-        "instrument_count": result.instrument_count,
-        "symbols": [item.display_symbol for item in result.instruments],
-        "matched_symbols": matched_symbols,
-        "exact_symbol_found": exact_symbol_found,
-        "export": build_export_metadata(
+    payload = build_instrument_query_payload(
+        result,
+        requested_symbol=args.symbol,
+        flow_path=None if args.flow_path is None else str(args.flow_path),
+        flow_mode=flow_mode,
+        session_label=session_label,
+        export=build_export_metadata(
             export_path=export_path,
             evidence_root=args.evidence_root,
             session_label=session_label,
             explicit_path=args.output_json is not None,
         ),
-        "bridge_command_kinds": [command.kind.value for command in commands],
-        "bridge_event_kinds": [event.kind.value for event in events],
-        "first_instrument": None
-        if not result.instruments
-        else {
-            "display_symbol": result.instruments[0].display_symbol,
-            "underlying": result.instruments[0].underlying,
-            "contract_month": result.instruments[0].contract_month,
-            "product_kind": result.instruments[0].product_kind.value,
-            "price_tick": result.instruments[0].price_tick,
-            "volume_multiple": result.instruments[0].volume_multiple,
-        },
-    }
+        bridge_commands=commands,
+        bridge_events=events,
+    )
 
     if export_path is not None:
         try:
@@ -156,7 +111,7 @@ def main() -> int:
             return _emit_exception(stage="export_payload", exc=exc)
 
     _emit_payload(payload)
-    return 0 if failure_reason is None else 1
+    return 0 if payload["success"] else 1
 
 
 if __name__ == "__main__":

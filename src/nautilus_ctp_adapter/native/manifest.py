@@ -76,6 +76,8 @@ REPO_OWNED_CTP_NATIVE_EXPORTS = (
     CtpNativeExport("TdQryInstrument", "query", "Query normalized instrument snapshots."),
     CtpNativeExport("TdQryPosition", "query", "Query normalized position snapshots."),
     CtpNativeExport("TdQryAccount", "query", "Query normalized account snapshots."),
+    CtpNativeExport("TdQryOrder", "query", "Query normalized order snapshots."),
+    CtpNativeExport("TdQryTrade", "query", "Query normalized trade snapshots."),
     CtpNativeExport("TdQryInstrumentStatus", "query", "Query normalized instrument status snapshots."),
 )
 

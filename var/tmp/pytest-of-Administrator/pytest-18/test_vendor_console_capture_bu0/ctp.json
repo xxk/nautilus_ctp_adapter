@@ -1,1 +1,0 @@
-{"broker_id": "0155", "user_id": "025292", "password": "secret-password", "md_front": "tcp://180.168.159.225:51213", "td_front": "tcp://180.168.159.225:51205", "product_info": "iQuant", "instruments": ["ag2612"]}

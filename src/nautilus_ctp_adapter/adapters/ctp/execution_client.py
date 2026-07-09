@@ -2,10 +2,34 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
 import time
 
+from nautilus_ctp_adapter.diagnostics import td_policy
+from nautilus_ctp_adapter.diagnostics.td_models import (
+    CtpAccountQuerySmokeResult,
+    CtpCancelOrderIntent,
+    CtpClosePositionPlan,
+    CtpExecutionBootstrapResult,
+    CtpExecutionError,
+    CtpLiveExecutionClientBootstrapResult,
+    CtpMappedOrderCommand,
+    CtpMatchedExecEvent,
+    CtpOrderLifecycleSmokeResult,
+    CtpOrderPrecheck,
+    CtpPositionQuerySmokeResult,
+    CtpSubmitOrderIntent,
+    CtpTdBootstrapState,
+    CtpTdExecEventPayload,
+    CtpTdHistoricalCallbackBoundaryFinding,
+    CtpTdHistoricalCallbackBoundaryPolicyResult,
+    CtpTdObservedCallback,
+    CtpTdOrderTradeSnapshot,
+    CtpTdOrderTruthBaseline,
+    CtpTdOrderTruthEvidenceMatrix,
+    CtpTdSessionIdentity,
+    CtpTdSmokeResult,
+)
 from nautilus_ctp_adapter.native import NativeExecView, NativePositionView, NativeTradingAccountView
 from nautilus_ctp_adapter.native.pyo3_runtime import create_td_live_session
 from nautilus_ctp_adapter.runtime import (
@@ -23,288 +47,6 @@ from .config import CtpAdapterConfig, CtpExecutionGuardrails
 
 def _create_td_live_session(flow_path: Path):
     return create_td_live_session(flow_path)
-
-
-@dataclass(slots=True)
-class CtpOrderPrecheck:
-    allowed: bool
-    violations: list[str]
-    selected_price: float | None
-
-
-@dataclass(slots=True)
-class CtpTdSmokeResult:
-    init_code: int
-    authenticate_code: int
-    login_code: int
-    settlement_code: int
-    login_success: bool | None
-    login_error_id: int | None
-    login_error_message: str | None
-    front_id: int | None = None
-    session_id: int | None = None
-    max_order_ref: int | None = None
-    disconnects: list[int] | None = None
-
-
-@dataclass(slots=True)
-class CtpTdSessionIdentity:
-    front_id: int
-    session_id: int
-    max_order_ref: int
-
-
-@dataclass(slots=True)
-class CtpTdBootstrapState:
-    started: bool = False
-    connect_request_id: str | None = None
-
-
-@dataclass(slots=True)
-class CtpExecutionBootstrapResult:
-    bootstrap_state: CtpTdBootstrapState
-    td_smoke: CtpTdSmokeResult
-
-
-@dataclass(slots=True)
-class CtpSubmitOrderIntent:
-    instrument_id: str
-    side: str
-    quantity: int
-    limit_price: float
-    position_effect: str = "OPEN"
-    order_type: str = "LIMIT"
-    time_in_force: str = "GFD"
-    client_order_id: str | None = None
-
-
-@dataclass(slots=True)
-class CtpCancelOrderIntent:
-    instrument_id: str
-    client_order_id: str
-    order_ref: int
-    front_id: int
-    session_id: int
-    exchange_id: str | None = None
-
-
-@dataclass(slots=True)
-class CtpClosePositionPlan:
-    submit_intent: CtpSubmitOrderIntent | None
-    selected_bucket: str | None
-    closable_quantity: int
-    error: "CtpExecutionError | None" = None
-
-
-@dataclass(slots=True)
-class CtpExecutionError:
-    error_id: int
-    error_message: str
-
-
-@dataclass(slots=True)
-class CtpMappedOrderCommand:
-    command: CtpRuntimeCommand | None
-    client_order_id: str | None
-    order_ref: int | None
-    front_id: int | None
-    session_id: int | None
-    error: CtpExecutionError | None = None
-
-
-@dataclass(slots=True)
-class CtpLiveExecutionClientBootstrapResult:
-    execution_bootstrap: CtpExecutionBootstrapResult
-    ready: bool
-    td_session_identity: CtpTdSessionIdentity | None
-
-
-@dataclass(slots=True)
-class CtpOrderLifecycleSmokeResult:
-    bootstrap: CtpLiveExecutionClientBootstrapResult
-    mapped_submit: CtpMappedOrderCommand
-    dry_run: bool
-    live_send_armed: bool = False
-    matched_execs: list["CtpMatchedExecEvent"] | None = None
-
-
-@dataclass(slots=True)
-class CtpPositionQuerySmokeResult:
-    bootstrap: CtpLiveExecutionClientBootstrapResult
-    query_request_id: str
-    query_code: int
-    completed: bool
-    timed_out: bool
-    no_positions: bool
-    position_count: int
-    positions: tuple[CtpPositionRecord, ...]
-    disconnects: list[int]
-
-
-@dataclass(slots=True)
-class CtpAccountQuerySmokeResult:
-    bootstrap: CtpLiveExecutionClientBootstrapResult
-    query_request_id: str
-    query_code: int
-    completed: bool
-    timed_out: bool
-    account: CtpAccountRecord | None
-    disconnects: list[int]
-
-
-@dataclass(slots=True)
-class CtpMatchedExecEvent:
-    python_client_order_id: str
-    native_order_id: str
-    native_order_ref: str
-    venue_symbol: str
-    front_id: int
-    session_id: int
-    status: int
-    callback_source: str
-    offset_flag: int
-    submit_request_offset_flag: int
-    submit_request_offset_source: str
-    is_trade: bool
-    trade_volume: int
-    leaves_qty: int
-    match_reason: str
-    submit_request_id: int = -1
-    submit_request_id_source: str = ""
-    response_request_id: int = -1
-    response_is_last: bool = False
-    response_error_id: int = 0
-
-
-@dataclass(slots=True)
-class CtpTdObservedCallback:
-    order_id: str
-    order_ref: str
-    front_id: int
-    session_id: int
-    is_trade: bool
-    ts_epoch_us: int
-    status: int
-
-
-@dataclass(slots=True)
-class CtpTdOrderTruthBaseline:
-    flow_path: str
-    flow_mode: str
-    ready: bool
-    login_success: bool | None
-    settlement_code: int
-    login_front_id: int | None
-    login_session_id: int | None
-    login_max_order_ref: int | None
-    disconnect_count: int
-    disconnect_reasons: tuple[int, ...]
-    observed_callback_count: int
-    observed_order_event_count: int
-    observed_trade_event_count: int
-    no_callbacks_observed: bool
-    first_order_id: str | None
-    first_order_ref: str | None
-    first_session_id: int | None
-    first_front_id: int | None
-    first_is_trade: bool | None
-    observed_callbacks: tuple[CtpTdObservedCallback, ...] = ()
-
-
-@dataclass(slots=True)
-class CtpTdHistoricalCallbackBoundaryFinding:
-    code: str
-    severity: str
-    action: str
-    metric: str
-    metric_value: int | str | None
-    threshold: int | str | None
-    message: str
-
-
-@dataclass(slots=True)
-class CtpTdHistoricalCallbackBoundaryPolicyResult:
-    baseline: CtpTdOrderTruthBaseline
-    disposition: str
-    historical_callback_count: int
-    delayed_callback_count: int
-    current_session_callback_count: int
-    first_historical_order_id: str | None
-    first_current_session_order_id: str | None
-    findings: tuple[CtpTdHistoricalCallbackBoundaryFinding, ...]
-
-
-@dataclass(slots=True)
-class CtpTdOrderTradeSnapshot:
-    baseline: CtpTdOrderTruthBaseline
-    disposition: str
-    observed_order_event_count: int
-    observed_trade_event_count: int
-    no_order_events: bool
-    no_trade_events: bool
-    historical_order_count: int
-    historical_trade_count: int
-    delayed_order_count: int
-    delayed_trade_count: int
-    historical_residue_order_count: int
-    historical_residue_trade_count: int
-    current_session_order_count: int
-    current_session_trade_count: int
-    first_order_event_id: str | None
-    first_trade_event_id: str | None
-    first_historical_order_id: str | None
-    first_historical_trade_id: str | None
-    first_current_session_order_id: str | None
-    first_current_session_trade_id: str | None
-    findings: tuple[CtpTdHistoricalCallbackBoundaryFinding, ...]
-
-
-@dataclass(slots=True)
-class CtpTdOrderTruthEvidenceMatrix:
-    evidence_version: str
-    captured_at_utc: str
-    account_id: str | None
-    disposition: str
-    observed_callback_count: int
-    historical_callback_count: int
-    delayed_callback_count: int
-    current_session_callback_count: int
-    first_historical_order_id: str | None
-    first_current_session_order_id: str | None
-    manual_review_codes: tuple[str, ...]
-    boundary_codes: tuple[str, ...]
-    evidence_only_codes: tuple[str, ...]
-
-
-@dataclass(slots=True)
-class CtpTdExecEventPayload:
-    order_id: str
-    venue_symbol: str
-    order_ref: str
-    front_id: int
-    session_id: int
-    status: int
-    is_trade: bool
-    trade_price: float
-    trade_volume: int
-    leaves_qty: int
-    error_message: str
-
-    @classmethod
-    def from_runtime_event(cls, event: CtpRuntimeEvent) -> "CtpTdExecEventPayload":
-        return cls(
-            order_id=event.payload.get("order_id", ""),
-            venue_symbol=event.venue_symbol or "",
-            order_ref=event.payload.get("order_ref", ""),
-            front_id=int(event.payload.get("front_id", "0")),
-            session_id=int(event.payload.get("session_id", "0")),
-            status=int(event.payload.get("status", "0")),
-            is_trade=event.kind is CtpRuntimeEventKind.TRADE,
-            trade_price=float(event.payload.get("trade_price", "0")),
-            trade_volume=int(event.payload.get("trade_volume", "0")),
-            leaves_qty=int(event.payload.get("leaves_qty", "0")),
-            error_message=event.message or "",
-        )
 
 
 class CtpExecutionClient:
@@ -410,6 +152,38 @@ class CtpExecutionClient:
         return CtpLiveExecutionClientBootstrapResult(
             execution_bootstrap=execution_bootstrap,
             ready=ready,
+            td_session_identity=self._td_session_identity,
+        )
+
+    def _bootstrap_dry_run_execution_client_mainline(self) -> CtpLiveExecutionClientBootstrapResult:
+        bootstrap_state = self.bootstrap_execution_mainline()
+        if self._td_session_identity is None:
+            self._td_session_identity = CtpTdSessionIdentity(
+                front_id=1,
+                session_id=1,
+                max_order_ref=0,
+            )
+        if self._next_order_ref is None:
+            self._next_order_ref = self._td_session_identity.max_order_ref + 1
+        td_smoke = CtpTdSmokeResult(
+            init_code=0,
+            authenticate_code=0,
+            login_code=0,
+            settlement_code=0,
+            login_success=None,
+            login_error_id=None,
+            login_error_message="dry_run_native_login_not_executed",
+            front_id=self._td_session_identity.front_id,
+            session_id=self._td_session_identity.session_id,
+            max_order_ref=self._td_session_identity.max_order_ref,
+            disconnects=[],
+        )
+        return CtpLiveExecutionClientBootstrapResult(
+            execution_bootstrap=CtpExecutionBootstrapResult(
+                bootstrap_state=bootstrap_state,
+                td_smoke=td_smoke,
+            ),
+            ready=True,
             td_session_identity=self._td_session_identity,
         )
 
@@ -720,10 +494,7 @@ class CtpExecutionClient:
                 flow_path=flow_path,
             )
 
-        bootstrap = self.bootstrap_live_execution_client_mainline(
-            timeout_seconds=timeout_seconds,
-            flow_path=flow_path,
-        )
+        bootstrap = self._bootstrap_dry_run_execution_client_mainline()
         mapped_submit = self.map_submit_order(submit_intent)
         self.submit_mapped_order(mapped_submit)
         return CtpOrderLifecycleSmokeResult(
@@ -901,138 +672,7 @@ class CtpExecutionClient:
         self,
         baseline: CtpTdOrderTruthBaseline,
     ) -> CtpTdHistoricalCallbackBoundaryPolicyResult:
-        findings: list[CtpTdHistoricalCallbackBoundaryFinding] = []
-
-        if not baseline.ready:
-            findings.append(
-                CtpTdHistoricalCallbackBoundaryFinding(
-                    code="td_order_truth_unready",
-                    severity="critical",
-                    action="manual_review_required",
-                    metric="ready",
-                    metric_value=str(baseline.ready),
-                    threshold="true",
-                    message="TD order truth baseline is not ready enough to classify callback boundaries.",
-                )
-            )
-
-        if baseline.login_front_id is None or baseline.login_session_id is None:
-            findings.append(
-                CtpTdHistoricalCallbackBoundaryFinding(
-                    code="missing_login_identity",
-                    severity="critical",
-                    action="manual_review_required",
-                    metric="login_session_identity",
-                    metric_value=None,
-                    threshold="present",
-                    message="Current TD login identity is missing, so callback boundary classification cannot be trusted.",
-                )
-            )
-
-        historical_callback_count = 0
-        delayed_callback_count = 0
-        current_session_callback_count = 0
-        first_historical_order_id = None
-        first_current_session_order_id = None
-
-        for callback in baseline.observed_callbacks:
-            same_session = (
-                baseline.login_front_id is not None
-                and baseline.login_session_id is not None
-                and callback.front_id == baseline.login_front_id
-                and callback.session_id == baseline.login_session_id
-            )
-            callback_order_ref = self._parse_native_int(callback.order_ref)
-            if not same_session:
-                historical_callback_count += 1
-                if first_historical_order_id is None:
-                    first_historical_order_id = callback.order_id or None
-                continue
-
-            if (
-                baseline.login_max_order_ref is not None
-                and callback_order_ref is not None
-                and callback_order_ref <= baseline.login_max_order_ref
-            ):
-                delayed_callback_count += 1
-                if first_historical_order_id is None:
-                    first_historical_order_id = callback.order_id or None
-                continue
-
-            current_session_callback_count += 1
-            if first_current_session_order_id is None:
-                first_current_session_order_id = callback.order_id or None
-
-        if baseline.no_callbacks_observed:
-            findings.append(
-                CtpTdHistoricalCallbackBoundaryFinding(
-                    code="no_callbacks_observed",
-                    severity="info",
-                    action="evidence_only",
-                    metric="observed_callback_count",
-                    metric_value=0,
-                    threshold="> 0 optional",
-                    message="No real callbacks were observed during the live read-only observation window.",
-                )
-            )
-
-        if historical_callback_count > 0:
-            findings.append(
-                CtpTdHistoricalCallbackBoundaryFinding(
-                    code="historical_callbacks_present",
-                    severity="warn",
-                    action="boundary_required",
-                    metric="historical_callback_count",
-                    metric_value=historical_callback_count,
-                    threshold=0,
-                    message="Observed callbacks whose front/session identity does not match the current login truth.",
-                )
-            )
-
-        if delayed_callback_count > 0:
-            findings.append(
-                CtpTdHistoricalCallbackBoundaryFinding(
-                    code="delayed_callbacks_present",
-                    severity="warn",
-                    action="boundary_required",
-                    metric="delayed_callback_count",
-                    metric_value=delayed_callback_count,
-                    threshold=0,
-                    message="Observed callbacks that match the current session but use order refs at or below the login baseline.",
-                )
-            )
-
-        if current_session_callback_count > 0:
-            findings.append(
-                CtpTdHistoricalCallbackBoundaryFinding(
-                    code="current_session_callbacks_present",
-                    severity="info",
-                    action="evidence_only",
-                    metric="current_session_callback_count",
-                    metric_value=current_session_callback_count,
-                    threshold=0,
-                    message="Observed callbacks that belong to the current TD session identity.",
-                )
-            )
-
-        disposition = "clear"
-        if any(finding.action == "manual_review_required" for finding in findings):
-            disposition = "manual_review_required"
-        elif any(finding.action == "boundary_required" for finding in findings):
-            disposition = "boundary_required"
-        elif findings:
-            disposition = "evidence_only"
-
-        return CtpTdHistoricalCallbackBoundaryPolicyResult(
-            baseline=baseline,
-            disposition=disposition,
-            historical_callback_count=historical_callback_count,
-            delayed_callback_count=delayed_callback_count,
-            current_session_callback_count=current_session_callback_count,
-            first_historical_order_id=first_historical_order_id,
-            first_current_session_order_id=first_current_session_order_id,
-            findings=tuple(findings),
-        )
+        return td_policy.evaluate_historical_callback_boundary_policy(baseline)
 
     def capture_historical_callback_boundary_policy_mainline(
         self,
@@ -1052,234 +692,7 @@ class CtpExecutionClient:
         self,
         baseline: CtpTdOrderTruthBaseline,
     ) -> CtpTdOrderTradeSnapshot:
-        findings: list[CtpTdHistoricalCallbackBoundaryFinding] = []
-
-        if not baseline.ready:
-            findings.append(
-                CtpTdHistoricalCallbackBoundaryFinding(
-                    code="order_trade_snapshot_unready",
-                    severity="critical",
-                    action="manual_review_required",
-                    metric="ready",
-                    metric_value=str(baseline.ready),
-                    threshold="true",
-                    message="TD order/trade snapshot is not ready enough to classify read-only order/trade evidence.",
-                )
-            )
-
-        if baseline.login_front_id is None or baseline.login_session_id is None:
-            findings.append(
-                CtpTdHistoricalCallbackBoundaryFinding(
-                    code="missing_login_identity",
-                    severity="critical",
-                    action="manual_review_required",
-                    metric="login_session_identity",
-                    metric_value=None,
-                    threshold="present",
-                    message="Current TD login identity is missing, so read-only order/trade snapshot cannot be trusted.",
-                )
-            )
-
-        historical_order_count = 0
-        historical_trade_count = 0
-        delayed_order_count = 0
-        delayed_trade_count = 0
-        current_session_order_count = 0
-        current_session_trade_count = 0
-        first_order_event_id = None
-        first_trade_event_id = None
-        first_historical_order_id = None
-        first_historical_trade_id = None
-        first_current_session_order_id = None
-        first_current_session_trade_id = None
-
-        for callback in baseline.observed_callbacks:
-            if callback.is_trade:
-                if first_trade_event_id is None:
-                    first_trade_event_id = callback.order_id or None
-            elif first_order_event_id is None:
-                first_order_event_id = callback.order_id or None
-
-            same_session = (
-                baseline.login_front_id is not None
-                and baseline.login_session_id is not None
-                and callback.front_id == baseline.login_front_id
-                and callback.session_id == baseline.login_session_id
-            )
-            callback_order_ref = self._parse_native_int(callback.order_ref)
-            is_delayed = (
-                same_session
-                and baseline.login_max_order_ref is not None
-                and callback_order_ref is not None
-                and callback_order_ref <= baseline.login_max_order_ref
-            )
-
-            if not same_session:
-                if callback.is_trade:
-                    historical_trade_count += 1
-                    if first_historical_trade_id is None:
-                        first_historical_trade_id = callback.order_id or None
-                else:
-                    historical_order_count += 1
-                    if first_historical_order_id is None:
-                        first_historical_order_id = callback.order_id or None
-                continue
-
-            if is_delayed:
-                if callback.is_trade:
-                    delayed_trade_count += 1
-                    if first_historical_trade_id is None:
-                        first_historical_trade_id = callback.order_id or None
-                else:
-                    delayed_order_count += 1
-                    if first_historical_order_id is None:
-                        first_historical_order_id = callback.order_id or None
-                continue
-
-            if callback.is_trade:
-                current_session_trade_count += 1
-                if first_current_session_trade_id is None:
-                    first_current_session_trade_id = callback.order_id or None
-            else:
-                current_session_order_count += 1
-                if first_current_session_order_id is None:
-                    first_current_session_order_id = callback.order_id or None
-
-        if baseline.observed_order_event_count == 0:
-            findings.append(
-                CtpTdHistoricalCallbackBoundaryFinding(
-                    code="no_order_events_observed",
-                    severity="info",
-                    action="evidence_only",
-                    metric="observed_order_event_count",
-                    metric_value=0,
-                    threshold="> 0 optional",
-                    message="No order callbacks were observed during the read-only TD snapshot window.",
-                )
-            )
-
-        if baseline.observed_trade_event_count == 0:
-            findings.append(
-                CtpTdHistoricalCallbackBoundaryFinding(
-                    code="no_trade_events_observed",
-                    severity="info",
-                    action="evidence_only",
-                    metric="observed_trade_event_count",
-                    metric_value=0,
-                    threshold="> 0 optional",
-                    message="No trade callbacks were observed during the read-only TD snapshot window.",
-                )
-            )
-
-        if historical_order_count > 0:
-            findings.append(
-                CtpTdHistoricalCallbackBoundaryFinding(
-                    code="historical_order_events_present",
-                    severity="warn",
-                    action="boundary_required",
-                    metric="historical_order_count",
-                    metric_value=historical_order_count,
-                    threshold=0,
-                    message="Observed order callbacks whose front/session identity does not match the current login truth.",
-                )
-            )
-
-        if historical_trade_count > 0:
-            findings.append(
-                CtpTdHistoricalCallbackBoundaryFinding(
-                    code="historical_trade_events_present",
-                    severity="warn",
-                    action="boundary_required",
-                    metric="historical_trade_count",
-                    metric_value=historical_trade_count,
-                    threshold=0,
-                    message="Observed trade callbacks whose front/session identity does not match the current login truth.",
-                )
-            )
-
-        if delayed_order_count > 0:
-            findings.append(
-                CtpTdHistoricalCallbackBoundaryFinding(
-                    code="delayed_order_events_present",
-                    severity="warn",
-                    action="boundary_required",
-                    metric="delayed_order_count",
-                    metric_value=delayed_order_count,
-                    threshold=0,
-                    message="Observed order callbacks that match the current session but use order refs at or below the login baseline.",
-                )
-            )
-
-        if delayed_trade_count > 0:
-            findings.append(
-                CtpTdHistoricalCallbackBoundaryFinding(
-                    code="delayed_trade_events_present",
-                    severity="warn",
-                    action="boundary_required",
-                    metric="delayed_trade_count",
-                    metric_value=delayed_trade_count,
-                    threshold=0,
-                    message="Observed trade callbacks that match the current session but use order refs at or below the login baseline.",
-                )
-            )
-
-        if current_session_order_count > 0:
-            findings.append(
-                CtpTdHistoricalCallbackBoundaryFinding(
-                    code="current_session_order_events_present",
-                    severity="info",
-                    action="evidence_only",
-                    metric="current_session_order_count",
-                    metric_value=current_session_order_count,
-                    threshold=0,
-                    message="Observed order callbacks that belong to the current TD session identity.",
-                )
-            )
-
-        if current_session_trade_count > 0:
-            findings.append(
-                CtpTdHistoricalCallbackBoundaryFinding(
-                    code="current_session_trade_events_present",
-                    severity="info",
-                    action="evidence_only",
-                    metric="current_session_trade_count",
-                    metric_value=current_session_trade_count,
-                    threshold=0,
-                    message="Observed trade callbacks that belong to the current TD session identity.",
-                )
-            )
-
-        disposition = "clear"
-        if any(finding.action == "manual_review_required" for finding in findings):
-            disposition = "manual_review_required"
-        elif any(finding.action == "boundary_required" for finding in findings):
-            disposition = "boundary_required"
-        elif findings:
-            disposition = "evidence_only"
-
-        return CtpTdOrderTradeSnapshot(
-            baseline=baseline,
-            disposition=disposition,
-            observed_order_event_count=baseline.observed_order_event_count,
-            observed_trade_event_count=baseline.observed_trade_event_count,
-            no_order_events=baseline.observed_order_event_count == 0,
-            no_trade_events=baseline.observed_trade_event_count == 0,
-            historical_order_count=historical_order_count,
-            historical_trade_count=historical_trade_count,
-            delayed_order_count=delayed_order_count,
-            delayed_trade_count=delayed_trade_count,
-            historical_residue_order_count=historical_order_count + delayed_order_count,
-            historical_residue_trade_count=historical_trade_count + delayed_trade_count,
-            current_session_order_count=current_session_order_count,
-            current_session_trade_count=current_session_trade_count,
-            first_order_event_id=first_order_event_id,
-            first_trade_event_id=first_trade_event_id,
-            first_historical_order_id=first_historical_order_id,
-            first_historical_trade_id=first_historical_trade_id,
-            first_current_session_order_id=first_current_session_order_id,
-            first_current_session_trade_id=first_current_session_trade_id,
-            findings=tuple(findings),
-        )
+        return td_policy.evaluate_order_trade_snapshot(baseline)
 
     def capture_td_order_trade_snapshot_mainline(
         self,
@@ -1299,29 +712,9 @@ class CtpExecutionClient:
         self,
         result: CtpTdHistoricalCallbackBoundaryPolicyResult,
     ) -> CtpTdOrderTruthEvidenceMatrix:
-        manual_review_codes = tuple(
-            finding.code for finding in result.findings if finding.action == "manual_review_required"
-        )
-        boundary_codes = tuple(
-            finding.code for finding in result.findings if finding.action == "boundary_required"
-        )
-        evidence_only_codes = tuple(
-            finding.code for finding in result.findings if finding.action == "evidence_only"
-        )
-        return CtpTdOrderTruthEvidenceMatrix(
-            evidence_version="td-order-truth-evidence-v1",
-            captured_at_utc=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        return td_policy.build_td_order_truth_evidence_matrix(
+            result,
             account_id=self._config.user_id or None,
-            disposition=result.disposition,
-            observed_callback_count=result.baseline.observed_callback_count,
-            historical_callback_count=result.historical_callback_count,
-            delayed_callback_count=result.delayed_callback_count,
-            current_session_callback_count=result.current_session_callback_count,
-            first_historical_order_id=result.first_historical_order_id,
-            first_current_session_order_id=result.first_current_session_order_id,
-            manual_review_codes=manual_review_codes,
-            boundary_codes=boundary_codes,
-            evidence_only_codes=evidence_only_codes,
         )
 
     def capture_td_order_truth_evidence_matrix_mainline(
@@ -2189,6 +1582,19 @@ class CtpExecutionClient:
             match_reason=match_reason,
         )
         if matched_client_order_id and match_reason:
+            submit_request_id = self._parse_native_int(
+                str(state.get("expected_submit_request_id", "") or "")
+            )
+            submit_request_id_source = str(
+                state.get("expected_submit_request_id_source", "") or ""
+            )
+            if submit_request_id is None:
+                submit_request_id = int(exec_view.response_request_id)
+                submit_request_id_source = (
+                    "CtpRuntimeCommand.request_id"
+                    " -> TdOrderSend.request_id"
+                    " -> CTP ReqOrderInsert nRequestID"
+                )
             state["matched_exec_views"].append(exec_view)
             state["matched_exec_events"].append(
                 CtpMatchedExecEvent(
@@ -2203,13 +1609,8 @@ class CtpExecutionClient:
                     offset_flag=int(exec_view.offset_flag),
                     submit_request_offset_flag=int(exec_view.submit_request_offset_flag),
                     submit_request_offset_source=exec_view.submit_request_offset_source,
-                    submit_request_id=self._parse_native_int(
-                        str(state.get("expected_submit_request_id", "") or "")
-                    )
-                    or -1,
-                    submit_request_id_source=str(
-                        state.get("expected_submit_request_id_source", "") or ""
-                    ),
+                    submit_request_id=submit_request_id,
+                    submit_request_id_source=submit_request_id_source,
                     is_trade=bool(exec_view.is_trade),
                     trade_volume=int(exec_view.trade_volume),
                     leaves_qty=int(exec_view.leaves_qty),

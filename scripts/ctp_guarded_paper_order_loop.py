@@ -17,6 +17,15 @@ if str(SRC_ROOT) not in sys.path:
 from nautilus_ctp_adapter.adapters.ctp.config import CtpAdapterConfig
 from nautilus_ctp_adapter.adapters.ctp.execution_client import CtpExecutionClient
 from nautilus_ctp_adapter.adapters.ctp.factory import build_ctp_stack
+from nautilus_ctp_adapter.diagnostics.guarded_paper_order import (
+    build_callback_source_observability,
+    finalize_order_lifecycle_payload,
+)
+from nautilus_ctp_adapter.diagnostics.send_mode import (
+    SendMode,
+    SendModeConfigurationError,
+    resolve_send_mode,
+)
 from nautilus_ctp_adapter.devtools.offhours_cli import write_json_payload
 
 from scripts.ctp_paper_session_preflight import paper_config_issues
@@ -25,7 +34,6 @@ from scripts.ctp_paper_session_preflight import paper_config_issues
 BASELINE = "ctp-guarded-paper-order-loop-v1"
 DEFAULT_CONFIG = REPO_ROOT / "cfgs" / "local" / "ctp.openctp.tts.7x24.local.json"
 OPENCTP_TTS_7X24_PROFILE = "openctp-tts-7x24-simulation"
-OPENCTP_TTS_7X24_PROFILE_ALIASES = {OPENCTP_TTS_7X24_PROFILE, "openctp-paper"}
 OPENCTP_TTS_7X24_EVIDENCE_CLASS = "openctp-tts-7x24-simulation"
 OPENCTP_TTS_7X24_EVIDENCE_ALIASES = {OPENCTP_TTS_7X24_EVIDENCE_CLASS, "paper-simulation"}
 
@@ -56,7 +64,7 @@ def validate_pre_order_snapshot(path: Path) -> dict[str, Any]:
     schema = payload.get("schema") if isinstance(payload, dict) else {}
     if not payload.get("success"):
         issues.append("pre_snapshot_not_success")
-    if schema.get("account_profile") not in OPENCTP_TTS_7X24_PROFILE_ALIASES:
+    if schema.get("account_profile") != OPENCTP_TTS_7X24_PROFILE:
         issues.append("pre_snapshot_account_profile")
     if schema.get("evidence_class") not in OPENCTP_TTS_7X24_EVIDENCE_ALIASES:
         issues.append("pre_snapshot_evidence_class")
@@ -84,7 +92,7 @@ def select_close_candidate_from_snapshot(
         issues.append("pre_snapshot_run_id_mismatch")
     if not snapshot_payload.get("success"):
         issues.append("pre_snapshot_not_success")
-    if schema.get("account_profile") not in OPENCTP_TTS_7X24_PROFILE_ALIASES:
+    if schema.get("account_profile") != OPENCTP_TTS_7X24_PROFILE:
         issues.append("pre_snapshot_account_profile")
     if schema.get("evidence_class") not in OPENCTP_TTS_7X24_EVIDENCE_ALIASES:
         issues.append("pre_snapshot_evidence_class")
@@ -413,12 +421,14 @@ def build_risk_preflight_from_snapshot(
     quantity: int,
     position_effect: str,
     client_order_id: str,
-    arm_paper_send: bool,
+    arm_paper_send: bool | None = None,
+    send_mode: SendMode | str | None = None,
     submit_count_last_minute: int = 0,
     session_send_count: int = 0,
     session_send_budget: int = 0,
     seen_client_order_ids: list[str] | None = None,
 ) -> dict[str, Any]:
+    send_mode_resolution = resolve_send_mode(send_mode, arm_paper_send=arm_paper_send)
     facts = extract_risk_facts_from_snapshot(snapshot_payload, instrument=instrument)
     guardrails = config.execution_guardrails
     normalized_side = side.strip().upper()
@@ -435,7 +445,7 @@ def build_risk_preflight_from_snapshot(
         position_effect=normalized_effect,
     )
     exposure_reduction_override = (
-        arm_paper_send
+        send_mode_resolution.paper_send_armed
         and not guardrails.allow_live_order_smoke
         and guardrails.allow_exposure_reduction_order_smoke
         and exposure_reduces_net_position
@@ -477,12 +487,13 @@ def build_risk_preflight_from_snapshot(
     _record_guard(
         "kill_switch",
         not (
-            arm_paper_send
+            send_mode_resolution.paper_send_armed
             and not guardrails.allow_live_order_smoke
             and not exposure_reduction_override
         ),
         "kill_switch_closed",
-        armed=arm_paper_send,
+        armed=send_mode_resolution.paper_send_armed,
+        send_mode=send_mode_resolution.send_mode.value,
         allow_live_order_smoke=guardrails.allow_live_order_smoke,
         allow_exposure_reduction_order_smoke=(
             guardrails.allow_exposure_reduction_order_smoke
@@ -792,48 +803,6 @@ def build_native_offset_semantics(
         "fill_producing_acceptance_satisfied": False,
         "requires_owner_resolution_before_retry": disposition
         != "callback_offset_matches_submit_native_comb_offset",
-        "writes_truth": False,
-    }
-
-
-def build_callback_source_observability(
-    *,
-    lifecycle_events: list[dict[str, Any]],
-    lifecycle_verdict: dict[str, Any],
-    paper_send_armed: bool = False,
-) -> dict[str, Any]:
-    callback_sources = sorted(
-        {
-            str(event.get("callback_source", "")).strip()
-            for event in lifecycle_events
-            if str(event.get("callback_source", "")).strip()
-        }
-    )
-    zero_fill_rejection = (
-        lifecycle_verdict.get("disposition") in {"cancelled", "rejected"}
-        and int(lifecycle_verdict.get("fill_volume", 0) or 0) == 0
-    )
-    lifecycle_timeout = lifecycle_verdict.get("disposition") == "timeout"
-    source_observed = bool(callback_sources)
-    source_required = zero_fill_rejection or (paper_send_armed and lifecycle_timeout)
-    accepted = not source_required or source_observed
-    return {
-        "accepted": accepted,
-        "disposition": (
-            "callback_source_observed"
-            if source_observed
-            else "missing_callback_source_for_armed_lifecycle_timeout"
-            if paper_send_armed and lifecycle_timeout
-            else "callback_source_not_required_for_non_rejection"
-            if not source_required
-            else "missing_callback_source_for_zero_fill_rejection"
-        ),
-        "callback_sources": callback_sources,
-        "zero_fill_rejection": zero_fill_rejection,
-        "armed_lifecycle_timeout": paper_send_armed and lifecycle_timeout,
-        "acceptance_implication": "diagnostic_only_not_fill_or_closeout_truth",
-        "fill_producing_acceptance_satisfied": False,
-        "requires_owner_resolution_before_retry": source_required and not source_observed,
         "writes_truth": False,
     }
 
@@ -1274,14 +1243,20 @@ def build_close_offset_owner_rule_semantics(
         position_detail_semantics.get("disposition")
         == "position_detail_sufficient_for_current_close_diagnostic"
     )
-    close_today_submit_observed = (
-        position_effect == "CLOSETODAY"
-        and expected_offset == "3"
-        and submit_offset == "3"
-        and submit_boundary_matches
+    close_offset_submit_observed = submit_boundary_matches and (
+        (
+            position_effect == "CLOSETODAY"
+            and expected_offset == "3"
+            and submit_offset == "3"
+        )
+        or (
+            position_effect == "CLOSEYESTERDAY"
+            and expected_offset == "4"
+            and submit_offset == "4"
+        )
     )
     callback_is_rejection_diagnostic_only = (
-        close_today_submit_observed
+        close_offset_submit_observed
         and order_insert_response_mismatch
         and source_bearing_rejection
         and "OnRspOrderInsert" in callback_sources
@@ -1316,8 +1291,8 @@ def build_close_offset_owner_rule_semantics(
         "rule": (
             "OnRspOrderInsert offset fields on a zero-fill insufficient-position "
             "close rejection are diagnostic response fields only. They must not "
-            "rewrite submit-boundary provenance or silently change a future "
-            "CLOSETODAY request into CLOSE."
+            "rewrite close-offset submit-boundary provenance or silently change "
+            "a future CLOSETODAY or CLOSEYESTERDAY request into CLOSE."
         ),
         "next_required_evidence": (
             [
@@ -1729,8 +1704,9 @@ def run_guarded_paper_order(
     order_type: str = "LIMIT",
     time_in_force: str = "GFD",
     client_order_id: str,
-    arm_paper_send: bool,
-    timeout_seconds: int,
+    arm_paper_send: bool | None = None,
+    send_mode: SendMode | str | None = None,
+    timeout_seconds: int = 20,
     post_snapshot: Path | None = None,
     close_from_pre_snapshot: bool = False,
     expected_pre_snapshot_run_id: str | None = None,
@@ -1740,6 +1716,9 @@ def run_guarded_paper_order(
     session_send_budget: int = 0,
     seen_client_order_ids: list[str] | None = None,
 ) -> dict[str, Any]:
+    send_mode_resolution = resolve_send_mode(send_mode, arm_paper_send=arm_paper_send)
+    if send_mode_resolution.send_mode is SendMode.ARMED_LIVE:
+        raise SendModeConfigurationError("guarded paper order loop does not accept armed_live send mode")
     pre_snapshot_verdict = validate_pre_order_snapshot(pre_snapshot)
     close_intent: dict[str, Any] | None = None
     order_boundary: dict[str, Any] | None = None
@@ -1797,8 +1776,9 @@ def run_guarded_paper_order(
         "status": "blocked",
         "failure_reason": None,
         "blocker_type": None,
-        "action_mode": "paper_send" if arm_paper_send else "dry_run",
-        "paper_send_armed": arm_paper_send,
+        "action_mode": send_mode_resolution.action_mode,
+        "send_mode": send_mode_resolution.send_mode.value,
+        "paper_send_armed": send_mode_resolution.paper_send_armed,
         "pre_snapshot": pre_snapshot_verdict,
         "close_intent": close_intent,
         "position_detail_semantics": None
@@ -1861,7 +1841,7 @@ def run_guarded_paper_order(
             quantity=quantity,
             position_effect=normalized_position_effect,
             client_order_id=client_order_id,
-            arm_paper_send=arm_paper_send,
+            send_mode=send_mode_resolution.send_mode,
             submit_count_last_minute=submit_count_last_minute,
             session_send_count=session_send_count,
             session_send_budget=session_send_budget,
@@ -1884,7 +1864,7 @@ def run_guarded_paper_order(
     )
     config_issues = paper_config_issues(
         config,
-        allow_live_order_smoke=arm_paper_send,
+        allow_live_order_smoke=send_mode_resolution.paper_send_armed,
         allow_exposure_reduction_order_smoke=(
             verified_exposure_reduction or exposure_reduction_preflight
         ),
@@ -1907,7 +1887,7 @@ def run_guarded_paper_order(
             position_effect=normalized_position_effect,
             client_order_id=client_order_id,
             timeout_seconds=timeout_seconds,
-            dry_run=not arm_paper_send,
+            dry_run=send_mode_resolution.dry_run,
             time_in_force=time_in_force,
             order_type=order_type,
             verified_exposure_reduction=verified_exposure_reduction,
@@ -1986,7 +1966,7 @@ def run_guarded_paper_order(
     payload["callback_source_observability"] = build_callback_source_observability(
         lifecycle_events=lifecycle_events,
         lifecycle_verdict=lifecycle_verdict,
-        paper_send_armed=arm_paper_send,
+        paper_send_armed=send_mode_resolution.paper_send_armed,
     )
     payload["broker_rejection_semantics"] = build_broker_rejection_semantics(
         intent_contract=payload["intent_contract"],
@@ -2011,7 +1991,7 @@ def run_guarded_paper_order(
             payload["source_exhaustion_semantics"]
         )
     )
-    if not arm_paper_send and lifecycle_verdict["disposition"] == "timeout":
+    if send_mode_resolution.send_mode is SendMode.DRY_RUN and lifecycle_verdict["disposition"] == "timeout":
         lifecycle_verdict = {
             **lifecycle_verdict,
             "accepted": True,
@@ -2078,24 +2058,18 @@ def run_guarded_paper_order(
                 "disposition": "post_snapshot_rejected",
                 "issues": list(post_snapshot_verdict["issues"]),
             }
-    success = (
-        result.bootstrap.ready
-        and result.mapped_submit.error is None
-        and result.mapped_submit.command is not None
-        and payload["order_contract"]["accepted"]
-        and lifecycle_verdict["accepted"]
+    return finalize_order_lifecycle_payload(
+        payload=payload,
+        bootstrap_ready=result.bootstrap.ready,
+        mapped_error=result.mapped_submit.error,
+        mapped_command=result.mapped_submit.command,
+        order_contract=payload["order_contract"],
+        lifecycle_verdict=lifecycle_verdict,
+        reconciliation=payload["reconciliation"],
+        send_mode=send_mode_resolution.send_mode,
+        dry_run=result.dry_run,
+        live_send_armed=result.live_send_armed,
     )
-    if payload["reconciliation"] is not None:
-        success = success and payload["reconciliation"]["accepted"]
-    if not arm_paper_send:
-        success = success and result.dry_run and result.live_send_armed is False
-    else:
-        success = success and result.live_send_armed
-    payload["success"] = success
-    payload["status"] = "passed" if success else "blocked"
-    payload["failure_reason"] = None if success else "order_lifecycle_not_ready"
-    payload["blocker_type"] = None if success else "paper-resource"
-    return payload
 
 
 def main() -> int:
@@ -2112,7 +2086,8 @@ def main() -> int:
     parser.add_argument("--time-in-force", default="GFD")
     parser.add_argument("--client-order-id", default="paper-order-1")
     parser.add_argument("--timeout-seconds", type=int, default=20)
-    parser.add_argument("--arm-paper-send", action="store_true")
+    parser.add_argument("--send-mode", choices=[SendMode.DRY_RUN.value, SendMode.ARMED_PAPER.value])
+    parser.add_argument("--arm-paper-send", action="store_true", default=None)
     parser.add_argument("--close-from-pre-snapshot", action="store_true")
     parser.add_argument("--expected-pre-snapshot-run-id")
     parser.add_argument("--close-position-direction")
@@ -2135,6 +2110,7 @@ def main() -> int:
         order_type=args.order_type,
         time_in_force=args.time_in_force,
         client_order_id=args.client_order_id,
+        send_mode=args.send_mode,
         arm_paper_send=args.arm_paper_send,
         timeout_seconds=args.timeout_seconds,
         close_from_pre_snapshot=args.close_from_pre_snapshot,

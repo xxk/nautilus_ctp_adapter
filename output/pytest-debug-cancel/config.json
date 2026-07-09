@@ -1,1 +1,0 @@
-{"BrokerID": "9999", "UserID": "u", "Password": "p", "Pricer": "tcp://md", "Host": "tcp://td", "AppID": "client_test", "AuthCode": "auth", "ProductInfo": "prod", "Instruments": ["rb2610"], "ExecutionGuardrails": {"Enabled": true, "AllowedInstruments": ["rb2610"], "MaxOrderQty": 3, "MaxNetPosition": 3, "MaxSubmitPerMinute": 5, "AllowLiveOrderSmoke": false}}
