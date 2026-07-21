@@ -242,7 +242,7 @@ P02/A14 skill usage announcement：若本轮任务触发 P02 / A14 / bug 驱动�
 
 ## Worktree Skill / ADR-a020
 
-本仓继承 `D:/Nautilus/global_docs/AGENTS.md` 的 Worktree Skill / ADR-a020 规则。任何涉及 `D:/Nautilus/_worktrees*`、`D:/Nautilus/_worktrees56`、all repo 状态检查、多仓 worktree 创建或 worktree 合并规划的会话，必须先输出：`Using worktree skill for Nautilus multi-repo worktree workflow.`
+本仓继承 `D:/Nautilus/global_docs/AGENTS.md` 的 Worktree Skill / ADR-a020 规则。只有最新用户请求明确表达 explicit multi-worktree management intent（create worktree、switch/select worktree、repair/inspect worktree、list/check status across multiple worktrees/repos、compare multiple repos/worktrees、plan cross-repo integration/PR/merge work）时，才读取 canonical skill 并输出：`Using worktree skill for Nautilus multi-repo worktree workflow.` 仅包含 `D:/Nautilus/_worktrees*`、`D:/Nautilus/_worktrees56`、cwd/path、quoted/inherited banner、side-conversation 或泛词 `worktree` / `multi-repo` / `PR merge` / `Gitea PR` 而无动作请求时不得触发。
 
 执行前必须读取 `D:/Nautilus/global_docs/skills/worktree/SKILL.md`，并运行：
 
